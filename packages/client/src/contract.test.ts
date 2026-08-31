@@ -1,6 +1,7 @@
 import { test } from "vitest";
 import assert from "node:assert";
 import { fund } from "./contract.js";
+import { DEFAULT_RETRY_POLICY } from "./retry.js";
 
 test("transient simulate-phase failure recovers", async () => {
   let simulateCalls = 0;
@@ -25,7 +26,9 @@ test("transient simulate-phase failure recovers", async () => {
     },
   };
 
-  const result = await fund(mockClient, { circleId: 0n, from: "G..." });
+  const policy = { ...DEFAULT_RETRY_POLICY, sleep: async () => {} };
+
+  const result = await fund(mockClient, { circleId: 0n, from: "G..." }, policy);
   assert.strictEqual(simulateCalls, 3);
   assert.strictEqual(signAndSendCalls, 1);
   assert.strictEqual(result.hash, "0xabc");
@@ -49,7 +52,11 @@ test("post-submit failure surfaces immediately without a second submission", asy
   };
 
   await assert.rejects(
-    async () => await fund(mockClient, { circleId: 0n, from: "G..." }),
+    async () =>
+      await fund(mockClient, { circleId: 0n, from: "G..." }, {
+        ...DEFAULT_RETRY_POLICY,
+        sleep: async () => {},
+      }),
     /504/
   );
   assert.strictEqual(simulateCalls, 1);

@@ -20,7 +20,7 @@ const sdk = await ShariboSDK.connect(
     networkPassphrase: "Test SDF Network ; September 2015",
   },
   Keypair.random(),                        // or a wallet-style signer
-  // { retryPolicy: { maxRetries: 5, baseDelayMs: 250 } } // optional
+  // { retryPolicy: { attempts: 5, baseDelayMs: 250, maxDelayMs: 4000, jitter: true } } // optional
 );
 
 // Create a circle.
@@ -78,8 +78,19 @@ once the SDK covers 100% of their surface (see the JUMP plan in
 Network requests in the Soroban testnet environment can occasionally fail due to rate limits or transient load (e.g. `429 Too Many Requests`, `503 Service Unavailable`, or timeouts).
 
 The SDK automatically handles these transient failures:
-- **Simulation Phase:** Contract calls (e.g. `createCircle`, `fund`, `claim`, `getCircle`) will retry simulation/preparation steps automatically using exponential backoff with jitter (up to 3 retries, starting at 500ms).
+- **Simulation Phase:** Contract calls (e.g. `createCircle`, `fund`, `claim`, `getCircle`) will retry simulation/preparation steps automatically with exponential backoff.
 - **Submit Phase:** Once a transaction is signed and submitted to the network (`signAndSend`), no further automatic retries are attempted. This ensures safety against double-spend or replay issues. A failure during submission or polling will surface immediately to the caller, as the state of the transaction is ambiguous.
 
+**Defaults** (`DEFAULT_RETRY_POLICY` in `src/retry.ts`):
+
+| Option | Default | Meaning |
+| --- | --- | --- |
+| `attempts` | `3` | Maximum invocations of the retried step (1 = never retry) |
+| `baseDelayMs` | `250` | Delay before the first retry; doubles per retry after |
+| `maxDelayMs` | `4000` | Upper bound for any single backoff delay |
+| `jitter` | `true` | Full jitter — each delay is drawn from `[0, capped)` |
+| `isRetryable` | 429 / 500–504 / timeout / connection reset / fetch failed | Decides whether a thrown error is worth retrying |
+| `sleep` | real `setTimeout` | Injectable async sleep for tests (fake clock) |
+
 Override the policy per SDK instance with the `retryPolicy` option:
-`{ maxRetries, baseDelayMs }` (see `src/retry.ts`).
+`{ attempts, baseDelayMs, maxDelayMs, jitter, isRetryable, sleep? }` (see `src/retry.ts`).
