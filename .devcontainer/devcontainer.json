@@ -1,0 +1,14 @@
+{
+  "dockerfile": ".devcontainer/Dockerfile",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "rust-lang.rust-analyzer",
+        "damirka.circom-syntax",
+        "esbenp.prettier-vscode",
+        "dbaeumer.vscode-eslint"
+      ]
+    }
+  },
+  "postCreateCommand": "npm ci"
+}

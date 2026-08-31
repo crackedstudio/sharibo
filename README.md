@@ -204,6 +204,14 @@ Circuit: `circuits/membership.circom`. Contract: `contracts/sharibo/src/lib.rs`.
 - **Public signal order:** `[nullifierHash, root, externalNullifier]` (circuit output first, then declared public inputs, in that order) — this is what circom/snarkjs actually emit, not the `[root, externalNullifier, nullifierHash]` a naive reading might assume. Circuit, contract, and client all agree on this order.
 - **Field:** BLS12-381 scalar field throughout (client, contract, circuit).
 
+## DevContainer (Fast Path)
+
+A fully configured DevContainer is available to avoid manual toolchain installation. See the [DevContainer setup](#devcontainer-fast-path) for details.
+
+**Image size:** ~4GB. **Build time:** several minutes on first run, but provides zero-config setup for Rust, Stellar CLI, Node, and Circom.
+
+---
+
 ## Run it
 
 Fresh-machine steps, in order. Everything below targets **Stellar testnet only**.
