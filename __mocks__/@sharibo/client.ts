@@ -24,12 +24,15 @@ import type {
   Identity,
   ContractProof,
   ContractVerificationKey,
-  SharaboNetworkConfig,
-  SharaboClient,
+  ShariboNetworkConfig,
+  ShariboClient,
   TxResult,
   CircleView,
   MerkleProof,
 } from "@sharibo/client";
+
+export const TREE_LEVELS = 4;
+export const MAX_CIRCLE_SIZE = 2 ** TREE_LEVELS;
 
 // ── Identity ──────────────────────────────────────────────────────────────────
 
@@ -113,34 +116,34 @@ export const generateProof = vi.fn(async () => ({
 
 export const connect = vi.fn(
   async (
-    _config: SharaboNetworkConfig,
+    _config: ShariboNetworkConfig,
     _keypair: unknown,
-  ): Promise<SharaboClient> => ({}) as SharaboClient,
+  ): Promise<ShariboClient> => ({}) as ShariboClient,
 );
 
 export const createCircle = vi.fn(
-  async (_client: SharaboClient, _args: unknown): Promise<TxResult<bigint>> => ({
-    result: 0n,
+  async (_client: ShariboClient, _args: unknown): Promise<TxResult<bigint>> => ({
+    result: 37n,
     hash: "mockCreateHash",
   }),
 );
 
 export const fund = vi.fn(
-  async (_client: SharaboClient, _args: unknown): Promise<TxResult<void>> => ({
+  async (_client: ShariboClient, _args: unknown): Promise<TxResult<void>> => ({
     result: undefined,
     hash: "mockFundHash",
   }),
 );
 
 export const claim = vi.fn(
-  async (_client: SharaboClient, _args: unknown): Promise<TxResult<void>> => ({
+  async (_client: ShariboClient, _args: unknown): Promise<TxResult<void>> => ({
     result: undefined,
     hash: "mockClaimHash",
   }),
 );
 
 export const getCircle = vi.fn(
-  async (_client: SharaboClient, _circleId: bigint): Promise<CircleView> => ({
+  async (_client: ShariboClient, _circleId: bigint): Promise<CircleView> => ({
     admin: "MOCK_ADMIN",
     token: "MOCK_TOKEN",
     root: 12345n,
@@ -150,3 +153,79 @@ export const getCircle = vi.fn(
     pot: 0n,
   }),
 );
+
+export const getCircleCount = vi.fn(async (): Promise<bigint> => 1n);
+
+export const hasClaimed = vi.fn(
+  async (_client: ShariboClient, _circleId: bigint, _nullifierHash: bigint): Promise<boolean> =>
+    false,
+);
+
+// ── SDK facade ────────────────────────────────────────────────────────────────
+//
+// Mirrors the real `ShariboSDK.connect(...)` interface. In tests the bound
+// client is discarded; each method simply delegates to the stub free
+// functions above so existing assertions on `connect`/`createCircle`/... keep
+// working and interaction flows can be asserted through the facade too.
+
+export class ShariboSDK {
+  readonly networkConfig: ShariboNetworkConfig;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  readonly signer: any;
+  readonly publicKey: string;
+  readonly client: ShariboClient;
+
+  private constructor(
+    networkConfig: ShariboNetworkConfig,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    signer: any,
+    publicKey: string,
+  ) {
+    this.networkConfig = networkConfig;
+    this.signer = signer;
+    this.publicKey = publicKey;
+    this.client = ({} as ShariboClient);
+  }
+
+  static async connect(
+    config: ShariboNetworkConfig,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    keypairOrSigner: any,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    _options?: any,
+  ): Promise<ShariboSDK> {
+    const publicKey =
+      typeof keypairOrSigner?.publicKey === "function"
+        ? keypairOrSigner.publicKey()
+        : keypairOrSigner?.publicKey ?? "MOCK_PUBLIC_KEY";
+    return new ShariboSDK(config, keypairOrSigner, publicKey);
+  }
+
+  createCircle(args: unknown): Promise<TxResult<bigint>> {
+    return createCircle(this.client, args);
+  }
+
+  fund(args: unknown): Promise<TxResult<void>> {
+    return fund(this.client, args);
+  }
+
+  claim(args: unknown): Promise<TxResult<void>> {
+    return claim(this.client, args);
+  }
+
+  getCircle(circleId: bigint): Promise<CircleView> {
+    return getCircle(this.client, circleId);
+  }
+
+  getCircleCount(): Promise<bigint> {
+    return getCircleCount(this.client);
+  }
+
+  getStatus(): Promise<bigint> {
+    return this.getCircleCount();
+  }
+
+  hasClaimed(circleId: bigint, nullifierHash: bigint): Promise<boolean> {
+    return hasClaimed(this.client, circleId, nullifierHash);
+  }
+}

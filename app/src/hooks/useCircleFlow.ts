@@ -1,21 +1,24 @@
 import { useState } from "react";
 import { Keypair } from "@stellar/stellar-sdk";
 import {
+  ShariboSDK,
   generateIdentity,
   computeExternalNullifier,
   MerkleTree,
   generateProof,
   verificationKeyToContractFormat,
-  connect,
-  createCircle,
-  fund,
-  claim,
-  getCircle,
+  TREE_LEVELS,
   type ContractProof,
 } from "@sharibo/client";
-import { NETWORK, TOKEN, LEVELS, CIRCLE_SIZE, STROOPS_PER_XLM } from "../config.js";
+import { NETWORK, TOKEN } from "../config.js";
 import { friendbotFund } from "../lib/friendbot.js";
 import type { Member, ClaimResult } from "../types.js";
+
+// UI/demo constants — mirror the on-chain circle size and the demo pot, and
+// keep the tree depth in lockstep with the membership circuit.
+const LEVELS = TREE_LEVELS;
+const CIRCLE_SIZE = 5;
+const STROOPS_PER_XLM = 10_000_000n;
 
 // All the state and on-chain calls behind a single demo run: create a
 // circle, fund it from 5 members, prove + claim, then optionally replay the
@@ -104,8 +107,8 @@ export function useCircleFlow() {
       setBusy("Creating the circle on testnet…");
       const vkJson = await fetch("/circuits/verification_key.json").then((r) => r.json());
       const vk = verificationKeyToContractFormat(vkJson);
-      const adminClient = await connect(NETWORK, adminKp);
-      const { result: newCircleId } = await createCircle(adminClient, {
+      const adminSdk = await ShariboSDK.connect(NETWORK, adminKp);
+      const { result: newCircleId } = await adminSdk.createCircle({
         admin: adminKp.publicKey(),
         token: TOKEN,
         root: newTree.root,
@@ -135,16 +138,16 @@ export function useCircleFlow() {
     try {
       const m = members[i];
       await friendbotFund(m.keypair.publicKey());
-      const memberClient = await connect(NETWORK, m.keypair);
-      const { hash } = await fund(memberClient, {
+      const memberSdk = await ShariboSDK.connect(NETWORK, m.keypair);
+      const { hash } = await memberSdk.fund({
         circleId,
         from: m.keypair.publicKey(),
       });
       setMembers((prev) =>
         prev.map((mm, idx) => (idx === i ? { ...mm, funded: true, fundHash: hash } : mm)),
       );
-      const adminClient = await connect(NETWORK, admin);
-      const circle = await getCircle(adminClient, circleId);
+      const adminSdk = await ShariboSDK.connect(NETWORK, admin);
+      const circle = await adminSdk.getCircle(circleId);
       setPot(circle.pot);
       setRound(circle.round);
     } catch (e) {
@@ -181,8 +184,8 @@ export function useCircleFlow() {
       const recipient = Keypair.random();
       await friendbotFund(recipient.publicKey());
 
-      const adminClient = await connect(NETWORK, admin);
-      const { hash } = await claim(adminClient, {
+      const adminSdk = await ShariboSDK.connect(NETWORK, admin);
+      const { hash } = await adminSdk.claim({
         circleId,
         recipient: recipient.publicKey(),
         nullifierHash: generated.nullifierHash,
@@ -194,7 +197,7 @@ export function useCircleFlow() {
       setNullifierHash(generated.nullifierHash);
       setClaimResult({ recipient: recipient.publicKey(), hash });
 
-      const circle = await getCircle(adminClient, circleId);
+      const circle = await adminSdk.getCircle(circleId);
       setPot(circle.pot);
       setRound(circle.round);
     } catch (e) {
@@ -213,15 +216,15 @@ export function useCircleFlow() {
       // Fund round `round` again so this exercises the nullifier-reuse
       // check specifically, not just "the pot is empty" — the same
       // proof's nullifier gets rejected even against a fresh, funded round.
-      const adminClient = await connect(NETWORK, admin);
+      const adminSdk = await ShariboSDK.connect(NETWORK, admin);
       for (const m of members) {
-        const memberClient = await connect(NETWORK, m.keypair);
-        await fund(memberClient, { circleId, from: m.keypair.publicKey() });
+        const memberSdk = await ShariboSDK.connect(NETWORK, m.keypair);
+        await memberSdk.fund({ circleId, from: m.keypair.publicKey() });
       }
       const freshExternalNullifier = await computeExternalNullifier(circleId, BigInt(round));
 
       setBusy("Replaying the used nullifier…");
-      await claim(adminClient, {
+      await adminSdk.claim({
         circleId,
         recipient: Keypair.random().publicKey(),
         nullifierHash,
@@ -235,8 +238,8 @@ export function useCircleFlow() {
       // Reflect the on-chain state either way: the re-funding above happened
       // for real even though the replayed claim itself was rejected.
       try {
-        const adminClient = await connect(NETWORK, admin);
-        const circle = await getCircle(adminClient, circleId);
+        const adminSdk = await ShariboSDK.connect(NETWORK, admin);
+        const circle = await adminSdk.getCircle(circleId);
         setPot(circle.pot);
         setRound(circle.round);
       } catch {

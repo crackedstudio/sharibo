@@ -92,3 +92,28 @@ export function useI18n(): I18nContextValue {
   }
   return ctx;
 }
+
+/**
+ * Dropdown to switch the UI locale (en / es). Locale codes come from
+ * whatever files exist under src/locales/, so adding a language is just
+ * adding a dictionary file.
+ */
+export function LanguageSwitcher({ className }: { className?: string }) {
+  const { locale, locales, setLocale, t } = useI18n();
+  return (
+    <label className={className}>
+      <span className="sr-only">{t("lang.label")}</span>
+      <select
+        aria-label={t("lang.label")}
+        value={locale}
+        onChange={(e) => setLocale(e.target.value)}
+      >
+        {locales.map((code) => (
+          <option key={code} value={code}>
+            {t(`lang.${code}`)}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}

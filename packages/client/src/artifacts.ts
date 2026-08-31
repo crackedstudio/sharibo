@@ -213,6 +213,8 @@ function installIndicator(): void {
   if (document.body) add();
   else document.addEventListener("DOMContentLoaded", add, { once: true });
 }
-
-installIndicator();
-prefetchMembershipArtifacts();
+// No module-load side effects here on purpose: importing this module — from
+// tests, scripts, SSR, or the web app — must not start a network fetch (and
+// the artifact URLs are origin-relative, so a fetch makes no sense outside a
+// real browser page anyway). Call prefetchMembershipArtifacts() explicitly
+// when a page actually wants to start warming the prover.

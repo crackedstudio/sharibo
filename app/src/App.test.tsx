@@ -8,6 +8,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import App from "./App";
+import { I18nProvider } from "./i18n";
 
 // Activate the manual mock at <root>/__mocks__/@sharibo/client.ts.
 vi.mock("@sharibo/client");
@@ -30,32 +31,43 @@ vi.mock("@stellar/stellar-sdk", async (importOriginal) => {
 // Stub fetch so the "friendbot" call in startCircle never fires.
 global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) });
 
+// The app reads a `sharibo.locale` preference from localStorage; give each
+// test a clean slate.
+function renderApp() {
+  return render(
+    <I18nProvider>
+      <App />
+    </I18nProvider>,
+  );
+}
+
 describe("App — landing screen", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    window.localStorage.clear();
   });
 
   it("renders the SHARIBO heading", () => {
-    render(<App />);
+    renderApp();
     expect(screen.getByRole("heading", { name: /sharibo/i })).toBeInTheDocument();
   });
 
   it("renders the launch button", () => {
-    render(<App />);
+    renderApp();
     const btn = screen.getByRole("button", { name: /launch a 5-member circle on testnet/i });
     expect(btn).toBeInTheDocument();
     expect(btn).not.toBeDisabled();
   });
 
   it("renders the tagline copy", () => {
-    render(<App />);
+    renderApp();
     expect(
       screen.getByText(/private rotating savings circle/i),
     ).toBeInTheDocument();
   });
 
   it("renders the testnet-only disclaimer fineprint", () => {
-    render(<App />);
+    renderApp();
     expect(screen.getByText(/testnet only/i)).toBeInTheDocument();
   });
 });

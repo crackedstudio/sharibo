@@ -89,3 +89,13 @@ export const configError: string[] = result.errors;
  * `configError.length === 0`; otherwise the values are undefined at runtime.
  */
 export const config: AppConfig = result.config ?? ({} as AppConfig);
+
+/** Network connection parameters shared by every SDK call. */
+export const NETWORK = {
+  contractId: config.contractId,
+  rpcUrl: config.rpcUrl,
+  networkPassphrase: config.networkPassphrase,
+};
+
+/** Token contract that funds each round's pot. */
+export const TOKEN = config.testTokenContractId;

@@ -31,19 +31,15 @@ import { promisify, parseArgs } from "node:util";
 const execFileAsync = promisify(execFile);
 import { Keypair } from "@stellar/stellar-sdk";
 import {
+  ShariboSDK,
   generateIdentity,
   computeExternalNullifier,
   MerkleTree,
   generateProof,
   verificationKeyToContractFormat,
-  connect,
-  createCircle,
-  fund,
-  claim,
-  getCircle,
   TREE_LEVELS,
-  ContractError,
 } from "@sharibo/client";
+import { config } from "./config.js";
 import { checkContractDeployed } from "./testnet-health.js";
 
 // --- CLI flag parsing (node:util parseArgs — no new deps) ---
@@ -243,6 +239,21 @@ async function main() {
   }
 
   const admin = Keypair.fromSecret(ADMIN_SECRET);
+  const network = {
+    contractId: CONTRACT_ID,
+    rpcUrl: RPC_URL,
+    networkPassphrase: NETWORK_PASSPHRASE,
+  };
+
+  // One SDK instance per signer, bound to the same network. The facade holds
+  // the contract client + retry policy so the calls below never thread an
+  // untyped client around (issue #284).
+  verbose("connecting admin SDK...");
+  const adminSdk = await withTimeout(
+    ShariboSDK.connect(network, admin),
+    30_000,
+    "ShariboSDK.connect(admin)",
+  );
 
   console.log("1. Generating 5 member identities + funding accounts via friendbot...");
   const members = Array.from({ length: CIRCLE_SIZE }, () => ({
@@ -269,7 +280,7 @@ async function main() {
 
   const { tree, vk } = await step("build merkle tree + load verification key", async () => {
     const tree = MerkleTree.create(
-      LEVELS,
+      TREE_LEVELS,
       members.map((m) => m.identity.commitment),
     );
     console.log("   Merkle root:", tree.root.toString());
@@ -283,26 +294,16 @@ async function main() {
     return { tree, vk: verificationKeyToContractFormat(vkJson) };
   });
 
-  verbose("connecting admin client...");
-  const adminClient = await withTimeout(
-    connect(
-      { contractId: CONTRACT_ID, rpcUrl: RPC_URL, networkPassphrase: NETWORK_PASSPHRASE },
-      admin,
-    ),
-    30_000,
-    "connect(admin)",
-  );
-
   let circleId: bigint;
   if (REUSE_CIRCLE != null) {
     circleId = REUSE_CIRCLE;
     console.log(`\n2. Reusing existing circle ${circleId} (--reuse-circle)...`);
-    const existing = await getCircle(adminClient, circleId);
+    const existing = await adminSdk.getCircle(circleId);
     console.log(`   circle ${circleId}: round=${existing.round}, pot=${existing.pot}, size=${existing.size}`);
   } else {
     console.log("\n2. Creating the circle...");
-    const { result } = await withTimeout(
-      createCircle(adminClient, {
+    const { result, hash } = await withTimeout(
+      adminSdk.createCircle({
         admin: admin.publicKey(),
         token: TOKEN,
         root: tree.root,
@@ -314,28 +315,35 @@ async function main() {
       "createCircle",
     );
     circleId = result;
+    runArtifact.circleId = circleId.toString();
+    runArtifact.treeRoot = tree.root.toString();
+    runArtifact.createCircleTxHash = hash;
     console.log("   circle_id =", circleId);
   }
 
   console.log("\n3. Funding from all 5 members...");
   for (const [i, m] of members.entries()) {
     verbose(`connecting member ${i}...`);
-    const memberClient = await withTimeout(
-      connect(
-        { contractId: CONTRACT_ID, rpcUrl: RPC_URL, networkPassphrase: NETWORK_PASSPHRASE },
-        m.keypair,
-      ),
+    const memberSdk = await withTimeout(
+      ShariboSDK.connect(network, m.keypair),
       30_000,
-      "createCircle",
+      `ShariboSDK.connect(member ${i})`,
     );
     verbose(`funding from member ${i}...`);
-    await withTimeout(
-      fund(memberClient, { circleId, from: m.keypair.publicKey() }),
+    const { hash } = await withTimeout(
+      memberSdk.fund({ circleId, from: m.keypair.publicKey() }),
       30_000,
       `fund(member ${i})`,
     );
-    console.log("   pot fully funded:", fundedCircle.pot.toString(), "stroops");
-  });
+    runArtifact.members[i].fundTxHashRound0 = hash;
+    console.log(`   [${i + 1}/${CIRCLE_SIZE}] funded from`, m.keypair.publicKey());
+  }
+  const fundedCircle = await adminSdk.getCircle(circleId);
+  assert(
+    fundedCircle.pot === CONTRIBUTION * BigInt(CIRCLE_SIZE),
+    `pot should be exactly ${CIRCLE_SIZE} contributions, got ${fundedCircle.pot}`,
+  );
+  console.log("   pot fully funded:", fundedCircle.pot.toString(), "stroops");
 
   console.log("\n4. Generating a real ZK proof for member", CLAIMANT_INDEX, "...");
   const externalNullifier = await computeExternalNullifier(circleId, 0n);
@@ -345,8 +353,10 @@ async function main() {
     "circuits",
     "build",
   );
+  const claimant = members[CLAIMANT_INDEX];
+  const merkleProof = tree.proofOf(claimant.identity.commitment);
   verbose("generating proof with wasm + zkey from", circuitsBuildDir);
-  const { proof, nullifierHash, root, externalNullifier: provenExternalNullifier } =
+  const { proof, nullifierHash, root: proofRoot, externalNullifier: proofExternalNullifier } =
     await timed("proof generation", () =>
       generateProof(
         {
@@ -361,27 +371,12 @@ async function main() {
         path.join(circuitsBuildDir, "membership_final.zkey"),
       ),
     );
-    const { proof, nullifierHash, root, externalNullifier: provenExternalNullifier } =
-      await generateProof(
-        {
-          identityNullifier: claimant.identity.identityNullifier,
-          identitySecret: claimant.identity.identitySecret,
-          pathElements: merkleProof.pathElements,
-          pathIndices: merkleProof.pathIndices,
-          root: tree.root,
-          externalNullifier,
-        },
-        path.join(circuitsBuildDir, "membership_js", "membership.wasm"),
-        path.join(circuitsBuildDir, "membership_final.zkey"),
-      );
-    assert(root === tree.root, "proof's public root must match the circle's root");
-    assert(
-      provenExternalNullifier === externalNullifier,
-      "proof's public externalNullifier must match the expected round tag",
-    );
-    console.log("   proof generated, nullifierHash =", nullifierHash.toString());
-    return { proof, nullifierHash };
-  });
+  assert(proofRoot === tree.root, "proof's public root must match the circle's root");
+  assert(
+    proofExternalNullifier === externalNullifier,
+    "proof's public externalNullifier must match the expected round tag",
+  );
+  console.log("   proof generated, nullifierHash =", nullifierHash.toString());
 
   console.log("\n5. Generating a FRESH recipient address (never used as a funder)...");
   const recipient = await step("fund fresh recipient", async () => {
@@ -394,8 +389,8 @@ async function main() {
   console.log("\n6. Claiming the pot to the fresh recipient...");
   const balanceBefore = await nativeBalance(recipient.publicKey());
   verbose("submitting claim transaction...");
-  await withTimeout(
-    claim(adminClient, {
+  const claimResult = await withTimeout(
+    adminSdk.claim({
       circleId,
       recipient: recipient.publicKey(),
       nullifierHash,
@@ -407,7 +402,7 @@ async function main() {
   );
   runArtifact.claim = {
     recipient: recipient.publicKey(),
-    txHash: claimTxHash,
+    txHash: claimResult.hash,
     nullifierHash: nullifierHash.toString(),
   };
   const balanceAfter = await nativeBalance(recipient.publicKey());
@@ -416,7 +411,7 @@ async function main() {
     `recipient should have received exactly the pot (got delta ${balanceAfter - balanceBefore})`,
   );
 
-  const claimedCircle = await getCircle(adminClient, circleId);
+  const claimedCircle = await adminSdk.getCircle(circleId);
   assert(claimedCircle.pot === 0n, "pot should be empty after claim");
   assert(claimedCircle.round === 1, "round should have advanced to 1");
   console.log("   payout confirmed: pot -> 0, round -> 1");
@@ -431,26 +426,28 @@ async function main() {
     // interesting) fact that an empty pot can't be claimed.
     for (const [i, m] of members.entries()) {
       verbose(`connecting member ${i} for round 1...`);
-      const memberClient = await withTimeout(
-        connect({ contractId: CONTRACT_ID, rpcUrl: RPC_URL, networkPassphrase: NETWORK_PASSPHRASE }, m.keypair),
+      const memberSdk = await withTimeout(
+        ShariboSDK.connect(network, m.keypair),
         30_000,
-        `connect(member ${i}, round 1)`,
+        `ShariboSDK.connect(member ${i}, round 1)`,
       );
       verbose(`funding member ${i} for round 1...`);
-      await withTimeout(
-        fund(memberClient, { circleId, from: m.keypair.publicKey() }),
+      const { hash } = await withTimeout(
+        memberSdk.fund({ circleId, from: m.keypair.publicKey() }),
         30_000,
         `fund(member ${i}, round 1)`,
       );
+      runArtifact.members[i].fundTxHashRound1 = hash;
       console.log(`   [${i + 1}/${CIRCLE_SIZE}] funded round 1 from`, m.keypair.publicKey());
     }
     const round1ExternalNullifier = await computeExternalNullifier(circleId, 1n);
 
     let secondClaimRejected = false;
+    let replayDetail = "";
     try {
       verbose("attempting replay with round 0's nullifier against round 1...");
       await withTimeout(
-        claim(adminClient, {
+        adminSdk.claim({
           circleId,
           recipient: Keypair.random().publicKey(),
           nullifierHash,
@@ -468,16 +465,19 @@ async function main() {
         `expected AlreadyClaimed (#4), got: ${message.split("\n")[0]}`,
       );
       console.log("   rejected as expected (AlreadyClaimed):", message.split("\n")[0]);
+      replayDetail = message.split("\n")[0];
     }
+    runArtifact.replayAttempt = { rejected: secondClaimRejected, detail: replayDetail };
     assert(secondClaimRejected, "a second claim with the same nullifier must be rejected");
 
     console.log("\nAll assertions passed.");
   }
 
   console.log(
-    `Recipient ${recipient.publicKey()} is a freshly generated keypair with no on-chain history`,
+    `\nRecipient ${recipient.publicKey()} is a freshly generated keypair with no on-chain history`,
     "connecting it to any of the 5 funders — that's the unlinkability the ZK proof buys.",
   );
+  console.log("\nRun artifact:", writeRunArtifact());
 
   printStepSummary();
 

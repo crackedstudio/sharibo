@@ -2,6 +2,7 @@ import { Client as ContractClient, basicNodeSigner } from "@stellar/stellar-sdk/
 import { Keypair, StrKey } from "@stellar/stellar-sdk";
 import type { ContractProof, ContractVerificationKey } from "./prove.js";
 import { ContractError, RpcError } from "./errors.js";
+import { withRetry, DEFAULT_RETRY_POLICY, type RetryPolicy } from "./retry.js";
 
 /**
  * Network configuration for connecting to the Sharibo contract.
@@ -29,6 +30,16 @@ export interface ShariboNetworkConfig {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type ShariboClient = any;
 
+/**
+ * The transaction builder the dynamically-typed contract client returns from
+ * each contract method (create_circle/fund/claim/get_circle/...). Kept as
+ * `any` for the same reason as `ShariboClient` — the shape is defined by the
+ * on-chain spec, not by a hand-rolled interface. It exposes `signAndSend`,
+ * whose result shape is documented by `populateTxResult`.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ContractTx = any;
+
 export interface ShariboSigner {
   publicKey: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -37,34 +48,51 @@ export interface ShariboSigner {
   signAuthEntry?: (entryXdr: string, opts?: any) => Promise<string>;
 }
 
+export interface ResolvedSigner {
+  publicKey: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  signTransaction: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  signAuthEntry: any;
+}
+
+/**
+ * Turns a keypair or a wallet signer into the pieces the contract client
+ * needs, without constructing the client. Shared by `connect` and the SDK
+ * facade so both agree on who the signer is.
+ */
+export function resolveSigner(
+  keypairOrSigner: Keypair | ShariboSigner,
+  networkPassphrase: string,
+): ResolvedSigner {
+  if (keypairOrSigner instanceof Keypair) {
+    const signer = basicNodeSigner(keypairOrSigner, networkPassphrase);
+    return {
+      publicKey: keypairOrSigner.publicKey(),
+      signTransaction: signer.signTransaction,
+      signAuthEntry: signer.signAuthEntry,
+    };
+  }
+  return {
+    publicKey: keypairOrSigner.publicKey,
+    signTransaction: keypairOrSigner.signTransaction,
+    signAuthEntry: keypairOrSigner.signAuthEntry,
+  };
+}
+
 export async function connect(
   config: ShariboNetworkConfig,
   keypairOrSigner: Keypair | ShariboSigner,
 ): Promise<ShariboClient> {
-  let publicKey: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let signTransaction: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let signAuthEntry: any;
-
-  if (keypairOrSigner instanceof Keypair) {
-    const signer = basicNodeSigner(keypairOrSigner, config.networkPassphrase);
-    publicKey = keypairOrSigner.publicKey();
-    signTransaction = signer.signTransaction;
-    signAuthEntry = signer.signAuthEntry;
-  } else {
-    publicKey = keypairOrSigner.publicKey;
-    signTransaction = keypairOrSigner.signTransaction;
-    signAuthEntry = keypairOrSigner.signAuthEntry;
-  }
+  const signer = resolveSigner(keypairOrSigner, config.networkPassphrase);
 
   return ContractClient.from({
     contractId: config.contractId,
     networkPassphrase: config.networkPassphrase,
     rpcUrl: config.rpcUrl,
-    publicKey,
-    signTransaction,
-    signAuthEntry,
+    publicKey: signer.publicKey,
+    signTransaction: signer.signTransaction,
+    signAuthEntry: signer.signAuthEntry,
   });
 }
 
@@ -133,15 +161,16 @@ export async function createCircle(
     size: number;
     vk: ContractVerificationKey;
   },
+  retryPolicy: RetryPolicy = DEFAULT_RETRY_POLICY,
 ): Promise<TxResult<bigint>> {
-  const tx = await withRetry(() => client.create_circle({
+  const tx: ContractTx = await withRetry(() => client.create_circle({
     admin: args.admin,
     token: args.token,
     root: args.root,
     contribution: args.contribution,
     size: args.size,
     vk: args.vk,
-  }));
+  }), retryPolicy);
   const sent = await tx.signAndSend();
   return populateTxResult(sent.result as bigint, sent);
 }
@@ -158,8 +187,9 @@ export async function createCircle(
 export async function fund(
   client: ShariboClient,
   args: { circleId: bigint; from: string },
+  retryPolicy: RetryPolicy = DEFAULT_RETRY_POLICY,
 ): Promise<TxResult<void>> {
-  const tx = await withRetry(() => client.fund({ circle_id: args.circleId, from: args.from }));
+  const tx: ContractTx = await withRetry(() => client.fund({ circle_id: args.circleId, from: args.from }), retryPolicy);
   const sent = await tx.signAndSend();
   return populateTxResult(undefined, sent);
 }
@@ -185,14 +215,15 @@ export async function claim(
     externalNullifier: bigint;
     proof: ContractProof;
   },
+  retryPolicy: RetryPolicy = DEFAULT_RETRY_POLICY,
 ): Promise<TxResult<void>> {
-  const tx = await withRetry(() => client.claim({
+  const tx: ContractTx = await withRetry(() => client.claim({
     circle_id: args.circleId,
     recipient: args.recipient,
     nullifier_hash: args.nullifierHash,
     external_nullifier: args.externalNullifier,
     proof: args.proof,
-  }));
+  }), retryPolicy);
   const sent = await tx.signAndSend();
   return populateTxResult(undefined, sent);
 }
@@ -225,17 +256,24 @@ export interface CircleView {
  * @param circleId - The ID of the circle to query.
  * @returns The circle's current state.
  */
-export async function getCircle(client: ShariboClient, circleId: bigint): Promise<CircleView> {
+export async function getCircle(
+  client: ShariboClient,
+  circleId: bigint,
+  retryPolicy: RetryPolicy = DEFAULT_RETRY_POLICY,
+): Promise<CircleView> {
   // get_circle is a pure read: the SDK detects no signature is needed and
   // refuses signAndSend() without `force` (there's nothing to sign/submit).
-  const tx = await withRetry(() => client.get_circle({ circle_id: circleId }));
+  const tx: ContractTx = await withRetry(() => client.get_circle({ circle_id: circleId }), retryPolicy);
   const sent = await tx.signAndSend({ force: true });
   return sent.result;
 }
 
 /** Pure read: the current count of circles ever created. 0 if none yet. */
-export async function getCircleCount(client: ShariboClient): Promise<bigint> {
-  const tx = await client.get_circle_count();
+export async function getCircleCount(
+  client: ShariboClient,
+  retryPolicy: RetryPolicy = DEFAULT_RETRY_POLICY,
+): Promise<bigint> {
+  const tx: ContractTx = await withRetry(() => client.get_circle_count(), retryPolicy);
   const sent = await tx.signAndSend({ force: true });
   return sent.result as bigint;
 }
@@ -245,11 +283,12 @@ export async function hasClaimed(
   client: ShariboClient,
   circleId: bigint,
   nullifierHash: bigint,
+  retryPolicy: RetryPolicy = DEFAULT_RETRY_POLICY,
 ): Promise<boolean> {
-  const tx = await withRetry(() => client.has_claimed({
+  const tx: ContractTx = await withRetry(() => client.has_claimed({
     circle_id: circleId,
     nullifier_hash: nullifierHash,
-  }));
+  }), retryPolicy);
   const sent = await tx.signAndSend({ force: true });
   return sent.result;
 }

@@ -1,5 +1,8 @@
+import { useI18n } from "../i18n.js";
+
 export function Stepper({ step }: { step: 0 | 1 | 2 | 3 }) {
-  const labels = ["Create", "Fund", "Prove & Claim", "Unlinked ✓"];
+  const { t } = useI18n();
+  const labels = [t("step.create"), t("step.fund"), t("step.proveClaim"), t("step.unlinked")];
   return (
     <div className="stepper">
       {labels.map((label, i) => (

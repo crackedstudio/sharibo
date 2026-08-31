@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
 import { validateCircuitInput, type CircuitInput } from "./prove.js";
 import { FR_MODULUS } from "./identity.js";

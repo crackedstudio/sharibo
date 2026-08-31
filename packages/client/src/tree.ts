@@ -1,4 +1,16 @@
 import { poseidon, FR_MODULUS } from "./identity.js";
+import { InvalidInputError } from "./errors.js";
+
+/**
+ * The Merkle tree depth used by the membership circuit. Single source of
+ * truth, shared between the client SDK, the app, and the e2e script so the
+ * tree the client builds always matches the circuit the contract verifies
+ * against. The circuit's depth is fixed in `circuits/config.json`.
+ */
+export const TREE_LEVELS = 4;
+
+/** Maximum circle size: a full tree of `TREE_LEVELS` leaves. */
+export const MAX_CIRCLE_SIZE = 2 ** TREE_LEVELS;
 
 /**
  * Fixed placeholder for unused leaves when padding the tree out to full capacity (2**levels).
@@ -121,6 +133,26 @@ export class MerkleTree {
    */
   indexOf(leaf: bigint): number {
     return this.leaves.findIndex((l) => l === leaf);
+  }
+
+  /**
+   * Generates a Merkle proof for a leaf by its commitment value, with a
+   * descriptive error for leaves that aren't in the tree.
+   *
+   * @param leaf - The leaf value (identity commitment) to prove membership of.
+   * @returns A MerkleProof for the leaf.
+   * @throws {InvalidInputError} If the leaf is not in the tree.
+   */
+  proofOf(leaf: bigint): MerkleProof {
+    const index = this.indexOf(leaf);
+    if (index === -1) {
+      const slots = this.layers[0].length;
+      const occupied = this.leaves.length;
+      throw new InvalidInputError(
+        `leaf 0x${leaf.toString(16)} not found in this tree (${slots} slots, ${occupied} occupied)`,
+      );
+    }
+    return this.proof(index);
   }
 
   /**
