@@ -13,6 +13,9 @@ use soroban_sdk::{
 /// Committed at circle creation time; every [`Self::claim`] proof is checked
 /// against this key. Encodes the trusted-setup output of the Semaphore-style
 /// circuit used by the off-chain prover.
+///
+/// G1/G2 byte encoding rules are in docs/wire-format.md §3.
+/// ic length rule: ic.len() == number_of_public_signals + 1 (§4).
 #[contracttype]
 #[derive(Clone)]
 pub struct VerificationKey {
@@ -33,6 +36,8 @@ pub struct VerificationKey {
 ///
 /// The three group elements satisfy the standard pairing equation checked by
 /// [`Contract::verify_groth16`].
+///
+/// G1/G2 byte encoding rules are in docs/wire-format.md §3.
 #[contracttype]
 #[derive(Clone)]
 pub struct Proof {
@@ -388,11 +393,10 @@ impl Contract {
     ///    entry means this identity already claimed (in any prior round)
     ///    and is trying to double-spend. Reverts with
     ///    [`Error::AlreadyClaimed`].
-    ///
-    /// 4. **Groth16 proof verifies.** Standard pairing check against the
-    ///    circle's [`VerificationKey`] with public inputs
-    ///    `(nullifier_hash, root, external_nullifier)`. Reverts with
-    ///    [`Error::InvalidProof`].
+    ///    ///   4. **Groth16 proof verifies.** Standard pairing check against the
+    ///    circle's [`VerificationKey`] with public inputs in the order
+    ///    `[nullifier_hash, root, external_nullifier]` (see
+    ///    docs/wire-format.md §1). Reverts with [`Error::InvalidProof`].
     ///
     /// # State effects
     ///
@@ -452,6 +456,8 @@ impl Contract {
         }
 
         // 4. the ZK proof itself must verify against the circle's committed root
+        // Public signal order: [nullifierHash, root, externalNullifier]
+        // — see docs/wire-format.md §1.
         let public_inputs = vec![
             &env,
             nullifier_hash.clone(),
@@ -686,17 +692,11 @@ impl Contract {
             .extend_ttl(&key, LEDGER_THRESHOLD, LEDGER_EXTEND_TO);
     }
 
-    // Binds a proof to (circle_id, round) with SHA-256 (a native, accelerated
-    // Soroban host function), reduced into the BLS12-381 scalar field via
-    // `Fr::from_bytes` (which reduces mod r automatically). This is a
-    // deliberate, permanent choice, not a placeholder: Soroban has no native
-    // Poseidon host function, so hashing this check with Poseidon would mean
-    // hand-porting a Poseidon permutation into pure Rust for no security
-    // benefit — SHA-256 is equally sound for binding a proof to a round.
-    // Poseidon is used where it actually earns its keep: *inside* the
-    // circuit's constraint system (commitment + nullifierHash), where a
-    // SNARK-unfriendly hash like SHA-256 would cost far more constraints.
-    // See NOTES.md.
+    // External nullifier derivation: SHA-256 over big-endian u64(circle_id)
+    // || u32(round), reduced mod r. Byte order and modulus reduction are
+    // specified in docs/wire-format.md §2. Both Rust and TypeScript
+    // implementations must agree on these details — a disagreement is
+    // silent until the contract rejects the client's proof with WrongRoundTag.
     fn compute_external_nullifier(env: &Env, circle_id: u64, round: u32) -> Fr {
         let mut bytes = Bytes::new(env);
         bytes.extend_from_array(&circle_id.to_be_bytes());
@@ -708,9 +708,10 @@ impl Contract {
     // Real on-chain Groth16 verification over BLS12-381, using Soroban's
     // native accelerated pairing host functions (see NOTES.md for why
     // BLS12-381 rather than BN254 — a pure-Rust BN254 pairing check does not
-    // fit the CPU budget). Checks the standard Groth16 pairing equation:
-    // e(-A, B) * e(alpha, beta) * e(vk_x, gamma) * e(C, delta) == 1
-    // where vk_x = ic[0] + sum(public_inputs[i] * ic[i+1]).
+    // fit the CPU budget).
+    //
+    // Verification equation and public_inputs vector order are specified in
+    // docs/wire-format.md §§1, 4.
     fn verify_groth16(
         env: &Env,
         vk: &VerificationKey,

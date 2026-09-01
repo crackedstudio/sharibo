@@ -4,6 +4,10 @@ import {
   type ProverArtifacts,
 } from "./artifacts";
 
+// G1/G2 encoding, public signal order, and vk.ic length rules are
+// specified in docs/wire-format.md — that document is the single source
+// of truth; do not describe the wire format here.
+
 export interface ProofResult {
   proof: unknown;
   publicSignals: string[];

@@ -3,6 +3,9 @@ import { Keypair, StrKey } from "@stellar/stellar-sdk";
 import type { ContractProof, ContractVerificationKey } from "./prove.js";
 import { ContractError, RpcError } from "./errors.js";
 
+// Public signal order and claim argument order are specified in
+// docs/wire-format.md §1 — that document is the single source of truth.
+
 /**
  * Network configuration for connecting to the Sharibo contract.
  *
