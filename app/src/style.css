@@ -140,6 +140,20 @@ h2 {
   margin-top: 16px;
 }
 
+.token-notice {
+  font-size: 13px;
+  color: #444;
+  margin: 4px 0 12px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.token-notice-tip {
+  color: #888;
+  font-size: 12px;
+}
+
 .network-banner {
   font-family: "JetBrains Mono", monospace;
   font-size: 12px;

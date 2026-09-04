@@ -48,6 +48,33 @@ We use a set of topic labels to categorize issues and pull requests. These label
 
 When looking for issues to work on, start by filtering by the `good first issue` label. These issues are specifically marked as suitable for newcomers and provide a great way to get familiar with the codebase. Before you start working on an issue, leave a comment to claim it and let the maintainers know you're working on it. If you have questions about the issue or need clarification, ask them directly on the issue rather than in a pull request—this helps keep the PR focused on the implementation.
 
+## SDK API Changes
+
+The SDK (`@sharibo/client`) has a committed snapshot of its public API surface in `packages/client/api-surface.json`. When you intentionally add, remove, or rename exported functions, types, or constants, the test `packages/client/src/api-surface.test.ts` will catch the mismatch.
+
+### Updating the API Snapshot
+
+If your change is intentional (e.g., renaming a function, adding a new export):
+
+1. Make your code change and run the test:
+   ```bash
+   npm run test -- packages/client/src/api-surface.test.ts
+   ```
+   
+2. The test will fail with a diff showing what changed.
+
+3. Review the diff carefully to confirm it matches your intent.
+
+4. Update `packages/client/api-surface.json` to match the new API:
+   ```bash
+   npm run test -- packages/client/src/api-surface.test.ts --reporter=json > /tmp/api.json
+   ```
+   Then copy the actual exports into `api-surface.json`.
+
+5. Commit both your code changes and the updated `api-surface.json` together. This makes it easy to see in the PR what the API change is.
+
+If the test fails unexpectedly, it means you've inadvertently changed the public API. Consider whether that's the right fix, or if you should rename more carefully or preserve backward compatibility.
+
 ## Setup trouble?
 
 Getting a fresh machine running and tripping on a toolchain issue (`circom`, `wasm32v1-none`, `stellar` vs `soroban`, friendbot limits, testnet resets, missing `circuits/build/`)? See [docs/troubleshooting.md](docs/troubleshooting.md) for symptom → cause → fix walkthroughs.

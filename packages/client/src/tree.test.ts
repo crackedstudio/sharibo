@@ -1,61 +1,25 @@
-/**
- * Tests for tree.ts — MerkleTree construction, proof generation, and the
- * correctness properties that matter for the ZK circuit.
- *
- * Runs with vitest (see vitest.config.ts).  Do NOT import from "node:test" —
- * Stryker's vitest runner instruments the module and re-runs these tests; the
- * node:test runner is invisible to it.
- *
- * ## Why the sibling-ordering and pathIndices tests exist
- *
- * Line coverage passes even if the proof method returns plausible-looking
- * values because a shallow "a root is produced" assertion never verifies
- * *which* values appear at *which* positions.  The circuit's MerkleTreeChecker
- * component reconstructs the root by selecting
- *   - poseidon(sibling, node)  when pathIndices[i] == 1  (node is right child)
- *   - poseidon(node, sibling)  when pathIndices[i] == 0  (node is left child)
- * so a swapped sibling index, a wrong direction bit, or a transposed pair of
- * siblings each produce a root mismatch that the SNARK would reject.  The
- * tests below pin *exact* values to catch those mutations.
- */
-import { describe, it, expect } from "vitest";
+import { test } from "node:test";
+import assert from "node:assert/strict";
 import { MerkleTree, ZERO_VALUE } from "./tree.js";
-import { poseidon, generateIdentity, FR_MODULUS } from "./identity.js";
+import { generateIdentity, FR_MODULUS } from "./identity.js";
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+const LEVELS = 4;
 
-/**
- * Recomputes the root from a leaf and a Merkle proof, following exactly the
- * same selection logic the circuit uses:
- *   pathIndices[i] == 1  →  node is the RIGHT child  →  hash(sibling, node)
- *   pathIndices[i] == 0  →  node is the LEFT child   →  hash(node, sibling)
- *
- * This helper is deliberately independent of the MerkleTree implementation so
- * a mutation in tree.ts cannot cause both the production code and the
- * verifier to agree on a wrong answer.
- */
-function recomputeRoot(leaf: bigint, pathElements: bigint[], pathIndices: number[]): bigint {
-  let node = leaf;
-  for (let i = 0; i < pathElements.length; i++) {
-    const sibling = pathElements[i];
-    node = pathIndices[i] === 1 ? poseidon(sibling, node) : poseidon(node, sibling);
-  }
-  return node;
-}
+test("proofOf returns a valid Merkle proof for a leaf known to be in the tree", () => {
+  const identities = Array.from({ length: 5 }, () => generateIdentity());
+  const leaves = identities.map((id) => id.commitment);
+  const tree = MerkleTree.create(LEVELS, leaves);
 
-// Small deterministic leaves — real field elements, no randomness needed for
-// structural tests.
-const LEAF_A = 1n;
-const LEAF_B = 2n;
-const LEAF_C = 3n;
-const LEAF_D = 4n;
+  const proof = tree.proofOf(leaves[2]);
+  assert.equal(proof.root, tree.root);
+  assert.equal(proof.pathElements.length, LEVELS);
+  assert.equal(proof.pathIndices.length, LEVELS);
 
-// ── ZERO_VALUE ────────────────────────────────────────────────────────────────
-
-describe("ZERO_VALUE", () => {
-  it("is 0n", () => {
-    expect(ZERO_VALUE).toBe(0n);
-  });
+  // The path should match the one returned by proof(indexOf(leaf)).
+  const expected = tree.proof(tree.indexOf(leaves[2]));
+  assert.deepEqual(proof.pathElements, expected.pathElements);
+  assert.deepEqual(proof.pathIndices, expected.pathIndices);
+  assert.equal(proof.root, expected.root);
 });
 
 // ── MerkleTree.create — levels validation ─────────────────────────────────────

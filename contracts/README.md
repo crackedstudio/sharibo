@@ -195,18 +195,24 @@ Below is the documentation for all public contract methods.
 
 ## 5. Error Code Reference
 
-When a transaction reverts, Soroban returns a typed contract error of the form `Error(Contract, #Code)`. Below is the complete table of error codes defined in the contract:
+When a transaction reverts, Soroban returns a typed contract error of the form `Error(Contract, #Code)`. The canonical mapping — covering all eight current codes with SDK class, user-facing message, likely cause, and remedy — is in **[`docs/errors.md`](../docs/errors.md)**.
 
-| Code | Error Name | Trigger / Cause | What the Caller Should Do |
-| :---: | :--- | :--- | :--- |
-| **1** | `CircleNotFound` | The specified `circle_id` does not exist in persistent storage. | Verify that the circle ID is correct and was successfully created. |
-| **2** | `RoundNotFunded` | `claim` was called on a circle whose pot has not yet reached the required target size (`contribution * size`). | Ensure that the required number of contributors have successfully called `fund` for this round. |
-| **3** | `WrongRoundTag` | The presented `external_nullifier` does not match the expected SHA-256 round tag (`SHA256(circle_id, round) mod r`) of the current round. | Re-generate the proof with the correct round tag matching the circle's current round number. |
-| **4** | `AlreadyClaimed` | The `nullifier_hash` presented in `claim` has already been recorded in persistent storage as claimed. | Do not attempt to reuse a spent nullifier. Each member may only claim once per circle/round. |
-| **5** | `InvalidProof` | The Groth16 pairing check failed, or the public signal order/values did not match the proof statement. | Verify that the zero-knowledge proof was correctly generated, utilizing the correct secret, nullifier, path elements, and verification key. |
-| **6** | `RoundFull` | `fund` was called on a circle whose pot is already fully funded. | Wait for the current round to be claimed and advanced before attempting to fund the next round. |
-| **7** | `Overflow` | Checked arithmetic failed during contribution calculation or pot addition. | Avoid using absurdly large contribution amounts or circle sizes that overflow integer capacities. |
-| **8** | `CircleCancelled` | `fund`, `claim`, or `cancel_circle` was called on a circle that has already been cancelled. | Do not interact with a cancelled circle. Any funds were already refunded to the contributors. |
+Quick reference:
+
+| Code | Error Name | Raised by |
+| :---: | :--- | :--- |
+| **1** | `CircleNotFound` | `fund`, `claim`, `get_circle`, `cancel_circle` |
+| **2** | `RoundNotFunded` | `claim` |
+| **3** | `WrongRoundTag` | `claim` |
+| **4** | `AlreadyClaimed` | `claim` |
+| **5** | `InvalidProof` | `claim` |
+| **6** | `RoundFull` | `fund` |
+| **7** | `Overflow` | `fund`, `claim` |
+| **8** | `CircleCancelled` | `fund`, `claim`, `cancel_circle` |
+
+See [`docs/errors.md`](../docs/errors.md) for the full table including SDK class, user-facing message, likely cause, and what the caller should do.
+
+The variant count is enforced by the `error_table_variant_count` test in `contracts/sharibo/src/test.rs` — adding a ninth variant without updating `docs/errors.md` and `DOCUMENTED_ERROR_COUNT` will fail that test.
 
 ---
 

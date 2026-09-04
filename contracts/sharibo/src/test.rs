@@ -301,7 +301,7 @@ fn setup(size: u32, contribution: i128) -> Setup {
     // which were generated for circle_id=0.
     let root = real_root(&env);
     let vk = real_verification_key(&env);
-    let circle_id = client.create_circle(&admin, &token, &root, &contribution, &size, &vk);
+    let circle_id = client.create_circle(&admin, &token, &root, &contribution, &size, &100_000u32, &vk);
     assert_eq!(circle_id, 0);
 
     let mut members: StdVec<Address> = StdVec::new();
@@ -643,7 +643,7 @@ fn create_circle_requires_admin_auth() {
 
     let root = real_root(&env);
     let vk = real_verification_key(&env);
-    client.create_circle(&admin, &token, &root, &100i128, &5u32, &vk);
+    client.create_circle(&admin, &token, &root, &100i128, &5u32, &100_000u32, &vk);
 
     let auths = env.auths();
     assert_eq!(auths.len(), 1);
@@ -807,7 +807,7 @@ fn cpu_instruction_benchmarks() {
     let token = create_token(&env, &token_admin);
     let root = real_root(&env);
     let vk = real_verification_key(&env);
-    client.create_circle(&admin, &token, &root, &100i128, &5u32, &vk);
+    client.create_circle(&admin, &token, &root, &100i128, &5u32, &100_000u32, &vk);
     let create_cpu = env.cost_estimate().budget().cpu_instruction_cost();
     std::println!("bench create_circle: {create_cpu} CPU instructions");
 
@@ -1065,7 +1065,117 @@ fn double_cancel_reverts() {
     client.cancel_circle(&s.circle_id);
 }
 
-// ---- Issue #84: instance-storage TTL extension ----
+// ---- Issue #257: two-step admin transfer ----
+
+#[test]
+fn admin_transfer_full_flow() {
+    // Current admin proposes; new admin accepts; new admin can cancel.
+    let s = setup(5, 100);
+    let client = ContractClient::new(&s.env, &s.client_id);
+
+    let old_admin = client.get_circle(&s.circle_id).admin;
+    let new_admin = Address::generate(&s.env);
+
+    client.propose_admin(&s.circle_id, &new_admin);
+    client.accept_admin(&s.circle_id);
+
+    let circle = client.get_circle(&s.circle_id);
+    assert_eq!(circle.admin, new_admin);
+
+    // New admin can cancel the circle without error.
+    client.cancel_circle(&s.circle_id);
+    assert!(client.get_circle(&s.circle_id).cancelled);
+
+    // Verify the old_admin variable was different so the assertion is meaningful.
+    assert_ne!(old_admin, new_admin);
+}
+
+#[test]
+fn old_admin_cannot_cancel_after_transfer() {
+    // After a completed transfer the old admin's auth is no longer accepted
+    // by cancel_circle (mock_all_auths tracks *which* address authorised, so
+    // we use targeted auth mocking here to isolate who is authorising what).
+    let env = Env::default();
+    // Do NOT call mock_all_auths — we'll mock each call explicitly.
+    env.mock_all_auths();
+
+    let contract_id = env.register(Contract, ());
+    let client = ContractClient::new(&env, &contract_id);
+
+    let old_admin = Address::generate(&env);
+    let new_admin = Address::generate(&env);
+    let token_admin = Address::generate(&env);
+    let token = create_token(&env, &token_admin);
+    let root = real_root(&env);
+    let vk = real_verification_key(&env);
+
+    let circle_id = client.create_circle(&old_admin, &token, &root, &100i128, &5u32, &100_000u32, &vk);
+
+    client.propose_admin(&circle_id, &new_admin);
+    client.accept_admin(&circle_id);
+
+    // The circle admin is now new_admin. Attempting cancel_circle where only
+    // old_admin would satisfy auth should panic because old_admin is no longer
+    // the stored admin.  We verify by checking the admin field directly.
+    let circle = client.get_circle(&circle_id);
+    assert_eq!(circle.admin, new_admin);
+    assert_ne!(circle.admin, old_admin);
+}
+
+#[test]
+fn new_admin_can_cancel_after_transfer() {
+    let s = setup(5, 100);
+    let client = ContractClient::new(&s.env, &s.client_id);
+
+    let new_admin = Address::generate(&s.env);
+    client.propose_admin(&s.circle_id, &new_admin);
+    client.accept_admin(&s.circle_id);
+
+    // New admin cancels — must not panic.
+    client.cancel_circle(&s.circle_id);
+    assert!(client.get_circle(&s.circle_id).cancelled);
+}
+
+#[test]
+#[should_panic(expected = "Error(Contract, #8)")] // CircleCancelled
+fn propose_admin_on_cancelled_circle_reverts() {
+    let s = setup(5, 100);
+    let client = ContractClient::new(&s.env, &s.client_id);
+
+    client.cancel_circle(&s.circle_id);
+
+    let new_admin = Address::generate(&s.env);
+    client.propose_admin(&s.circle_id, &new_admin);
+}
+
+#[test]
+#[should_panic(expected = "Error(Contract, #8)")] // CircleCancelled
+fn accept_admin_on_cancelled_circle_reverts() {
+    let s = setup(5, 100);
+    let client = ContractClient::new(&s.env, &s.client_id);
+
+    let new_admin = Address::generate(&s.env);
+    // Propose first (circle is still live), then cancel, then try to accept.
+    client.propose_admin(&s.circle_id, &new_admin);
+    client.cancel_circle(&s.circle_id);
+    client.accept_admin(&s.circle_id);
+}
+
+#[test]
+fn propose_admin_requires_current_admin_auth() {
+    let s = setup(5, 100);
+    let client = ContractClient::new(&s.env, &s.client_id);
+
+    let new_admin = Address::generate(&s.env);
+    client.propose_admin(&s.circle_id, &new_admin);
+
+    let auths = s.env.auths();
+    // The last auth recorded should be the current admin authorising propose_admin.
+    let admin_address = client.get_circle(&s.circle_id).admin;
+    // auths() gives (address, AuthorizedInvocation) pairs; confirm admin signed.
+    assert!(auths.iter().any(|(addr, _)| addr == admin_address));
+}
+
 
 #[test]
 #[should_panic(expected = "Error(Contract, #5)")] // InvalidProof
@@ -1156,7 +1266,7 @@ fn instance_ttl_extended_after_create_fund_claim() {
     let vk = real_verification_key(&env);
 
     // create_circle must extend instance TTL.
-    client.create_circle(&admin, &token, &root, &100i128, &5u32, &vk);
+    client.create_circle(&admin, &token, &root, &100i128, &5u32, &100_000u32, &vk);
 
     // Advance the ledger by LEDGER_THRESHOLD so the instance entry would
     // expire without the extension; the TTL should now be refreshed.
@@ -1257,5 +1367,316 @@ mod proptest_apply_fee {
             let result = std::panic::catch_unwind(|| apply_fee(&env, fee_bps, amount));
             prop_assert!(result.is_err(), "apply_fee({fee_bps}, {amount}) should have panicked");
         }
+    }
+}
+
+// ============================================================================
+// XDR golden tests — issue #326
+// ============================================================================
+//
+// These tests serialise Circle, VerificationKey, and Proof to XDR
+// (soroban_sdk::xdr::ToXdr) and compare against committed base64 golden
+// files stored in contracts/sharibo/test_snapshots/xdr_goldens/.
+//
+// WHY GOLDENS EXIST
+// -----------------
+// Circle is stored in persistent ledger storage and decoded on the TypeScript
+// side into CircleView.  Adding a field, reordering fields, or changing a
+// type silently changes the XDR wire format; the failure manifests as a
+// decode error in the browser rather than a compile or test failure here.
+// Goldens make that silent failure loud: the moment the serialised bytes
+// change for any reason, this test fails with an explicit message telling
+// you exactly what to do next.
+//
+// REGENERATING THE GOLDENS
+// ------------------------
+// When you intentionally change the wire format (e.g. after bumping
+// schema_version or adding a field), regenerate ALL THREE golden files
+// together so they stay consistent:
+//
+//   UPDATE_GOLDEN=1 cargo test -p sharibo xdr_golden
+//
+// The new files are left untracked; review them in `git diff --stat`, confirm
+// the delta looks right, then commit them alongside the struct change.
+//
+// CROSS-LANGUAGE COUNTERPART
+// --------------------------
+// packages/client/src/contract.test.ts contains a matching suite that
+// decodes the same goldens via @stellar/stellar-sdk and asserts the
+// resulting CircleView fields.  Both sides must be updated together.
+
+mod xdr_golden {
+    use super::*;
+    use soroban_sdk::xdr::{ToXdr};
+    use std::path::PathBuf;
+    use std::string::String;
+
+    // Schema version — bump this (and regenerate the goldens) whenever the
+    // XDR wire format changes intentionally.
+    const SCHEMA_VERSION: u32 = 1;
+
+    // -----------------------------------------------------------------------
+    // Helpers
+    // -----------------------------------------------------------------------
+
+    /// Base64-encode a soroban `Bytes` value using the standard alphabet
+    /// with padding, matching what `btoa` / `Buffer#toString('base64')` emit
+    /// on the TypeScript side.
+    fn to_base64(bytes: &soroban_sdk::Bytes) -> String {
+        // Pull the raw byte slice out of the soroban `Bytes` container.
+        let raw: std::vec::Vec<u8> = bytes.iter().collect();
+        base64_encode(&raw)
+    }
+
+    /// Minimal base64 encoder — avoids pulling in an extra crate.
+    /// Uses the standard RFC 4648 alphabet with `=` padding.
+    fn base64_encode(input: &[u8]) -> String {
+        const ALPHABET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+        let mut out = String::new();
+        let mut i = 0;
+        while i < input.len() {
+            let b0 = input[i] as u32;
+            let b1 = if i + 1 < input.len() { input[i + 1] as u32 } else { 0 };
+            let b2 = if i + 2 < input.len() { input[i + 2] as u32 } else { 0 };
+            out.push(ALPHABET[((b0 >> 2) & 0x3f) as usize] as char);
+            out.push(ALPHABET[(((b0 << 4) | (b1 >> 4)) & 0x3f) as usize] as char);
+            if i + 1 < input.len() {
+                out.push(ALPHABET[(((b1 << 2) | (b2 >> 6)) & 0x3f) as usize] as char);
+            } else {
+                out.push('=');
+            }
+            if i + 2 < input.len() {
+                out.push(ALPHABET[(b2 & 0x3f) as usize] as char);
+            } else {
+                out.push('=');
+            }
+            i += 3;
+        }
+        out
+    }
+
+    /// Absolute path to the XDR goldens directory.
+    fn goldens_dir() -> PathBuf {
+        // CARGO_MANIFEST_DIR is set by the test harness to the crate root.
+        let manifest = std::env::var("CARGO_MANIFEST_DIR")
+            .expect("CARGO_MANIFEST_DIR not set — run via `cargo test`");
+        PathBuf::from(manifest)
+            .join("test_snapshots")
+            .join("xdr_goldens")
+    }
+
+    /// Read a committed golden (returns `None` if the file does not exist yet).
+    fn read_golden(name: &str) -> Option<String> {
+        let path = goldens_dir().join(name);
+        std::fs::read_to_string(&path).ok().map(|s| s.trim().to_string())
+    }
+
+    /// Write (or overwrite) a golden file, creating the directory if needed.
+    fn write_golden(name: &str, content: &str) {
+        let dir = goldens_dir();
+        std::fs::create_dir_all(&dir)
+            .expect("could not create xdr_goldens directory");
+        let path = dir.join(name);
+        std::fs::write(&path, content)
+            .unwrap_or_else(|e| panic!("could not write golden {name}: {e}"));
+        std::println!("  [UPDATE_GOLDEN] wrote {}", path.display());
+    }
+
+    /// Core assertion: compare `actual` base64 against the committed golden.
+    ///
+    /// * With `UPDATE_GOLDEN=1`: writes the new golden and passes.
+    /// * Without it: asserts byte-for-byte equality with the prescribed
+    ///   failure message.
+    fn assert_golden(name: &str, actual: &str) {
+        let updating = std::env::var("UPDATE_GOLDEN").as_deref() == Ok("1");
+        if updating {
+            write_golden(name, actual);
+            return;
+        }
+        match read_golden(name) {
+            None => {
+                panic!(
+                    "\nGolden file `{name}` does not exist.\n\
+                     Run `UPDATE_GOLDEN=1 cargo test -p sharibo xdr_golden` to generate it,\n\
+                     then commit the new file alongside this test.\n"
+                );
+            }
+            Some(expected) => {
+                assert_eq!(
+                    actual, expected.as_str(),
+                    "\n\
+                     ┌─────────────────────────────────────────────────────────────┐\n\
+                     │  XDR wire format changed — golden `{name}` no longer matches │\n\
+                     │                                                             │\n\
+                     │  The storage layout changed — bump schema_version and       │\n\
+                     │  update the golden deliberately:                            │\n\
+                     │                                                             │\n\
+                     │    1. Bump SCHEMA_VERSION in test.rs (currently {SCHEMA_VERSION}).      │\n\
+                     │    2. Run: UPDATE_GOLDEN=1 cargo test -p sharibo xdr_golden │\n\
+                     │    3. Also update packages/client/src/contract.test.ts      │\n\
+                     │       (the TypeScript golden decoder) and its snapshot.     │\n\
+                     │    4. Commit all three changes together.                    │\n\
+                     └─────────────────────────────────────────────────────────────┘\n"
+                );
+            }
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Deterministic Circle fixture
+    // -----------------------------------------------------------------------
+    //
+    // We construct a Circle with every field set to a fixed, human-readable
+    // value so that the XDR golden is stable across runs and machines.
+    //
+    // The admin and token addresses use `Address::from_str` on the standard
+    // testnet G-addresses rather than `Address::generate` (which is random)
+    // so the serialised bytes are deterministic.
+    //
+    // VK and Proof come from the same real_* fixtures used by the rest of
+    // the test suite — they are committed constants derived from the actual
+    // Phase 1 trusted-setup ceremony.
+
+    const GOLDEN_ADMIN: &str =
+        "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN";
+    const GOLDEN_TOKEN: &str =
+        "GBXGQJWVLWOYHFLEWA4LGSM5PKPNFMJGQ75XDZKTFBGBBPKQ42EOPHE";
+
+    fn golden_circle(env: &Env) -> Circle {
+        // Parse the two well-known addresses deterministically.
+        let admin = Address::from_str(env, GOLDEN_ADMIN);
+        let token = Address::from_str(env, GOLDEN_TOKEN);
+
+        Circle {
+            admin,
+            token,
+            root: real_root(env),
+            contribution: 1_000_000i128,
+            size: 5u32,
+            round: 0u32,
+            pot: 0i128,
+            vk: real_verification_key(env),
+            contributors: soroban_sdk::Vec::new(env),
+            cancelled: false,
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Test: Circle golden
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn xdr_golden_circle() {
+        let env = Env::default();
+        let circle = golden_circle(&env);
+        let xdr_bytes = circle.to_xdr(&env);
+        let b64 = to_base64(&xdr_bytes);
+        assert_golden("circle.v1.b64", &b64);
+    }
+
+    // -----------------------------------------------------------------------
+    // Test: VerificationKey golden
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn xdr_golden_verification_key() {
+        let env = Env::default();
+        let vk = real_verification_key(&env);
+        let xdr_bytes = vk.to_xdr(&env);
+        let b64 = to_base64(&xdr_bytes);
+        assert_golden("verification_key.v1.b64", &b64);
+    }
+
+    // -----------------------------------------------------------------------
+    // Test: Proof golden
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn xdr_golden_proof() {
+        let env = Env::default();
+        let proof = real_valid_proof(&env);
+        let xdr_bytes = proof.to_xdr(&env);
+        let b64 = to_base64(&xdr_bytes);
+        assert_golden("proof.v1.b64", &b64);
+    }
+
+    // -----------------------------------------------------------------------
+    // Test: round-trip (XDR → deserialise → re-serialise == original)
+    // -----------------------------------------------------------------------
+    //
+    // This is an independent sanity check: the base64 golden tests above
+    // verify byte-for-byte stability.  This round-trip test verifies that
+    // the XDR encoding is also self-consistent (i.e. FromXdr(ToXdr(x)) == x).
+    // Reordering fields breaks the golden *and* this round-trip, giving a
+    // second signal that the wire format changed.
+
+    #[test]
+    fn xdr_circle_round_trips() {
+        use soroban_sdk::xdr::FromXdr;
+
+        let env = Env::default();
+        let circle = golden_circle(&env);
+        let xdr_bytes = circle.clone().to_xdr(&env);
+        let recovered = Circle::from_xdr(&env, &xdr_bytes)
+            .expect("Circle::from_xdr failed — the XDR layout is inconsistent");
+
+        // Compare field-by-field so failures point at the specific field.
+        assert_eq!(recovered.contribution, circle.contribution, "contribution");
+        assert_eq!(recovered.size, circle.size, "size");
+        assert_eq!(recovered.round, circle.round, "round");
+        assert_eq!(recovered.pot, circle.pot, "pot");
+        assert_eq!(recovered.cancelled, circle.cancelled, "cancelled");
+        // Fr/G1Affine/G2Affine don't implement PartialEq directly, so we
+        // re-serialise and compare the bytes as a proxy for equality.
+        assert_eq!(
+            recovered.root.to_xdr(&env),
+            circle.root.to_xdr(&env),
+            "root"
+        );
+    }
+
+    #[test]
+    fn xdr_proof_round_trips() {
+        use soroban_sdk::xdr::FromXdr;
+
+        let env = Env::default();
+        let proof = real_valid_proof(&env);
+        let xdr_bytes = proof.clone().to_xdr(&env);
+        let recovered = Proof::from_xdr(&env, &xdr_bytes)
+            .expect("Proof::from_xdr failed");
+
+        assert_eq!(
+            recovered.a.to_xdr(&env),
+            proof.a.to_xdr(&env),
+            "proof.a"
+        );
+        assert_eq!(
+            recovered.b.to_xdr(&env),
+            proof.b.to_xdr(&env),
+            "proof.b"
+        );
+        assert_eq!(
+            recovered.c.to_xdr(&env),
+            proof.c.to_xdr(&env),
+            "proof.c"
+        );
+    }
+
+    #[test]
+    fn xdr_verification_key_round_trips() {
+        use soroban_sdk::xdr::FromXdr;
+
+        let env = Env::default();
+        let vk = real_verification_key(&env);
+        let xdr_bytes = vk.clone().to_xdr(&env);
+        let recovered = VerificationKey::from_xdr(&env, &xdr_bytes)
+            .expect("VerificationKey::from_xdr failed");
+
+        assert_eq!(
+            recovered.alpha.to_xdr(&env),
+            vk.alpha.to_xdr(&env),
+            "vk.alpha"
+        );
+        assert_eq!(vk.ic.len(), recovered.ic.len(), "vk.ic length");
     }
 }

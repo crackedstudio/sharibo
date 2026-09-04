@@ -35,6 +35,7 @@ import {
   computeExternalNullifier,
   MerkleTree,
   generateProof,
+  estimateClaimFee,
   verificationKeyToContractFormat,
   connect,
   createCircle,
@@ -394,7 +395,7 @@ async function main() {
   console.log("\n6. Claiming the pot to the fresh recipient...");
   const balanceBefore = await nativeBalance(recipient.publicKey());
   verbose("submitting claim transaction...");
-  await withTimeout(
+  const { hash: claimTxHash, feeCharged } = await withTimeout(
     claim(adminClient, {
       circleId,
       recipient: recipient.publicKey(),
@@ -420,6 +421,12 @@ async function main() {
   assert(claimedCircle.pot === 0n, "pot should be empty after claim");
   assert(claimedCircle.round === 1, "round should have advanced to 1");
   console.log("   payout confirmed: pot -> 0, round -> 1");
+  
+  // Log fee estimate vs actual charged delta if available
+  if (feeCharged) {
+    const feeChargedNum = typeof feeCharged === "string" ? BigInt(feeCharged) : feeCharged;
+    console.log("   claim fee charged:", feeChargedNum.toString(), "stroops");
+  }
 
   if (SKIP_REPLAY) {
     console.log("\n--skip-replay: skipping round 2 funding + replay check.");

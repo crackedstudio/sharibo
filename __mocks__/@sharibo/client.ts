@@ -104,10 +104,22 @@ export const generateProof = vi.fn(async () => ({
     b: new Uint8Array(192),
     c: new Uint8Array(96),
   } as ContractProof,
+  snarkjsProof: { pi_a: ["0", "0", "1"], pi_b: [["0","0"],["0","0"],["1","0"]], pi_c: ["0","0","1"] },
+  publicSignals: ["77", "12345", "99"],
   nullifierHash: 77n,
   root: 12345n,
   externalNullifier: 99n,
+  provingTimeMs: 0,
 }));
+
+export const verifyProofLocally = vi.fn(async (): Promise<number> => 1);
+
+export const estimateClaimFee = vi.fn(
+  async (): Promise<import("@sharibo/client").FeeEstimate | null> => ({
+    minResourceFee: 500_000n,
+    totalFee: 600_000n,
+  }),
+);
 
 // ── Contract ──────────────────────────────────────────────────────────────────
 
