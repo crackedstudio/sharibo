@@ -92,6 +92,7 @@ const en = {
   "claim.techline":
     "Groth16 · BLS12-381 · 1,452 constraints · proving locally in your browser, nothing sent anywhere until the proof is done",
   "claim.techlineProving": "· proving… {seconds}s",
+  "claim.elapsed": "{seconds}s elapsed",
 
   "explainer.summary": "How this claim proof works",
   "explainer.sayingTitle": "What the proof is saying",
@@ -162,6 +163,13 @@ const en = {
   "resume.resumeButton": "Resume Circle",
   "resume.discardButton": "Discard",
 
+
+  "errorBoundary.heading": "Something broke",
+  "errorBoundary.body":
+    "The demo hit an unexpected error and can't continue safely from here.",
+  "errorBoundary.reload": "Start over",
+  "errorBoundary.fineprint": "If this keeps happening,",
+  "errorBoundary.issueLink": "file a GitHub issue ↗",
 } as const;
 
 export default en;

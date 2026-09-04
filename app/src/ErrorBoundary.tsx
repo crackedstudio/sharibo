@@ -15,6 +15,10 @@ interface State {
 // Note: error boundaries only catch render-phase errors — they do NOT catch
 // errors in async code or event handlers (those already flow through this
 // app's own setError state in App.tsx).
+//
+// Uses I18nContext.Consumer rather than useI18n because error boundaries must
+// be class components (React requirement), and hooks cannot be called in
+// class component render methods.
 export class ErrorBoundary extends Component<Props, State> {
   state: State = { error: null };
 
@@ -36,6 +40,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   render() {
     if (this.state.error) {
+      const errorMessage = this.state.error.message;
       return (
         <div className={styles.page}>
           <div className={`${styles.card} ${styles.hero}`}>
