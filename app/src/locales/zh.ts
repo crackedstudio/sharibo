@@ -20,6 +20,8 @@ const zh = {
   "landing.previousCirclePrefix": "你之前的 hui 仍然存在于",
   "landing.previousCircleLink": "hui #{id} ↗",
   "landing.testnetFineprint": "仅限测试网。演示身份会在你的浏览器中重新生成，并且不会重复使用。",
+  "pot.fee": "费用 {feePercent}% → {feeRecipient}",
+  "pot.feeUnknown": "未知",
   "circle.onChainLink": "链上的 hui #{id} ↗",
   "common.startNewCircle": "开始新的 hui"
 } as const;

@@ -315,7 +315,7 @@ fn setup(size: u32, contribution: i128) -> Setup {
     // which were generated for circle_id=0.
     let root = real_root(&env);
     let vk = real_verification_key(&env);
-    let circle_id = client.create_circle(&admin, &token, &root, &contribution, &size, &0u32, &vk);
+    let circle_id = client.create_circle(&admin, &token, &root, &contribution, &size, &0u32, &vk, &0u32, &Address::generate(&env));
     assert_eq!(circle_id, 0);
 
     let mut members: StdVec<Address> = StdVec::new();
@@ -334,6 +334,56 @@ fn setup(size: u32, contribution: i128) -> Setup {
         size,
         contribution,
     }
+}
+
+/// Like [`setup`] but creates the circle with a non-zero protocol fee and
+/// returns the fee recipient alongside, so claim tests can assert against
+/// exactly who received the deducted amount.
+fn setup_with_fee(size: u32, contribution: i128, fee_bps: u32) -> (Setup, Address) {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let contract_id = env.register(Contract, ());
+    let client = ContractClient::new(&env, &contract_id);
+
+    let admin = Address::generate(&env);
+    let token_admin = Address::generate(&env);
+    let token = create_token(&env, &token_admin);
+    let token_admin_client = token::StellarAssetClient::new(&env, &token);
+
+    let root = real_root(&env);
+    let vk = real_verification_key(&env);
+    let fee_recipient = Address::generate(&env);
+    let circle_id = client.create_circle(
+        &admin,
+        &token,
+        &root,
+        &contribution,
+        &size,
+        &0u32,
+        &vk,
+        &fee_bps,
+        &fee_recipient,
+    );
+    assert_eq!(circle_id, 0);
+
+    let mut members: StdVec<Address> = StdVec::new();
+    for _ in 0..size {
+        let m = Address::generate(&env);
+        token_admin_client.mint(&m, &contribution);
+        members.push(m);
+    }
+
+    let setup = Setup {
+        env,
+        client_id: contract_id,
+        token,
+        members,
+        circle_id,
+        size,
+        contribution,
+    };
+    (setup, fee_recipient)
 }
 
 #[test]
@@ -371,6 +421,95 @@ fn happy_path_round_pays_out_and_advances() {
     let circle_after = client.get_circle(&s.circle_id);
     assert_eq!(circle_after.pot, 0);
     assert_eq!(circle_after.round, 1);
+}
+
+// ---- Issue #252: protocol fees ----
+
+// Requires a successful claim, which in turn needs a proof that verifies
+// against the committed vk. The committed trusted-setup fixture predates the
+// recipientHash public input (#266/#275), so claim succeeds only after the
+// fixture is regenerated (see docs/adr/006). Marked `#[ignore]` until then.
+#[ignore = "needs regenerated ZK fixtures (docs/adr/006, #275)"]
+#[test]
+fn claim_deducts_fee_and_sends_to_fee_recipient() {
+    // 500 bps = 5% of a 5 * 100 = 500 stroop pot → 25 fee, 475 net.
+    // Asserts the `apply_fee` invariant fee + net == payout on-chain.
+    let (s, fee_recipient) = setup_with_fee(5, 100, 500);
+    let client = ContractClient::new(&s.env, &s.client_id);
+    let token_client = token::Client::new(&s.env, &s.token);
+
+    for m in s.members.iter() {
+        client.fund(&s.circle_id, m);
+    }
+
+    let payout = s.contribution * (s.size as i128);
+    let recipient = Address::generate(&s.env);
+    let nullifier_hash = real_nullifier_hash(&s.env);
+    let external_nullifier = real_external_nullifier_round0(&s.env);
+    let proof = real_valid_proof(&s.env);
+    client.claim(
+        &s.circle_id,
+        &recipient,
+        &nullifier_hash,
+        &external_nullifier,
+        &proof,
+    );
+
+    let fee = 25i128;
+    let net = payout - fee;
+    assert_eq!(fee + net, payout, "apply_fee must preserve the amount");
+    assert_eq!(token_client.balance(&fee_recipient), fee);
+    assert_eq!(token_client.balance(&recipient), net);
+    assert_eq!(token_client.balance(&s.client_id), 0);
+}
+
+#[ignore = "needs regenerated ZK fixtures (docs/adr/006, #275)"]
+#[test]
+fn claim_skips_fee_transfer_when_fee_bps_zero() {
+    // fee_bps = 0 must behave exactly as a pre-fee circle: one payout
+    // transfer to the recipient, nothing to the (ignored) fee recipient.
+    let (s, fee_recipient) = setup_with_fee(5, 100, 0);
+    let client = ContractClient::new(&s.env, &s.client_id);
+    let token_client = token::Client::new(&s.env, &s.token);
+
+    for m in s.members.iter() {
+        client.fund(&s.circle_id, m);
+    }
+
+    let payout = s.contribution * (s.size as i128);
+    let recipient = Address::generate(&s.env);
+    client.claim(
+        &s.circle_id,
+        &recipient,
+        &real_nullifier_hash(&s.env),
+        &real_external_nullifier_round0(&s.env),
+        &real_valid_proof(&s.env),
+    );
+
+    assert_eq!(token_client.balance(&fee_recipient), 0);
+    assert_eq!(token_client.balance(&recipient), payout);
+}
+
+#[test]
+fn fee_is_immutable_after_creation() {
+    // There is deliberately no setter for fee_bps/fee_recipient (ADR 003):
+    // once committed at create_circle, every public entrypoint leaves them
+    // exactly as they were. Funding and claiming both write the circle on
+    // every call; asserting the fee survives fund (and the earlier
+    // create_circle_accepts_maximum_fee_bps / claim tests) pins that down.
+    let (s, fee_recipient) = setup_with_fee(5, 100, 250);
+    let client = ContractClient::new(&s.env, &s.client_id);
+
+    let circle_before = client.get_circle(&s.circle_id);
+    assert_eq!(circle_before.fee_bps, 250);
+    assert_eq!(circle_before.fee_recipient, fee_recipient);
+
+    client.fund(&s.circle_id, &s.members[0]);
+
+    let circle_after = client.get_circle(&s.circle_id);
+    assert_eq!(circle_after.fee_bps, 250);
+    assert_eq!(circle_after.fee_recipient, fee_recipient);
+    assert_eq!(circle_after.pot, s.contribution);
 }
 
 #[test]
@@ -545,7 +684,7 @@ fn same_identity_can_claim_two_consecutive_rounds() {
     let root = real_root(&env);
     let vk = round_reuse_verification_key(&env);
     let contribution: i128 = 100;
-    let circle_id = client.create_circle(&admin, &token, &root, &contribution, &1u32, &0u32, &vk);
+    let circle_id = client.create_circle(&admin, &token, &root, &contribution, &1u32, &0u32, &vk, &0u32, &Address::generate(&env));
 
     // ---- round 0: fund and claim with the real identity ----
     let funder = Address::generate(&env);
@@ -657,11 +796,74 @@ fn create_circle_requires_admin_auth() {
 
     let root = real_root(&env);
     let vk = real_verification_key(&env);
-    client.create_circle(&admin, &token, &root, &100i128, &5u32, &0u32, &vk);
+    client.create_circle(&admin, &token, &root, &100i128, &5u32, &0u32, &vk, &0u32, &Address::generate(&env));
 
     let auths = env.auths();
     assert_eq!(auths.len(), 1);
     assert_eq!(auths[0].0, admin);
+}
+
+#[test]
+#[should_panic(expected = "Error(Contract, #9)")] // InvalidFeeParams
+fn create_circle_rejects_fee_bps_out_of_range() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let contract_id = env.register(Contract, ());
+    let client = ContractClient::new(&env, &contract_id);
+
+    let admin = Address::generate(&env);
+    let token_admin = Address::generate(&env);
+    let token = create_token(&env, &token_admin);
+    let root = real_root(&env);
+    let vk = real_verification_key(&env);
+    let fee_recipient = Address::generate(&env);
+    client.create_circle(
+        &admin,
+        &token,
+        &root,
+        &100i128,
+        &5u32,
+        &0u32,
+        &vk,
+        &10_001u32,
+        &fee_recipient,
+    );
+}
+
+#[test]
+#[should_panic(expected = "Error(Contract, #11)")] // InvalidRecipient
+fn create_circle_rejects_contract_as_fee_recipient() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let contract_id = env.register(Contract, ());
+    let client = ContractClient::new(&env, &contract_id);
+
+    let admin = Address::generate(&env);
+    let token_admin = Address::generate(&env);
+    let token = create_token(&env, &token_admin);
+    let root = real_root(&env);
+    let vk = real_verification_key(&env);
+    client.create_circle(
+        &admin,
+        &token,
+        &root,
+        &100i128,
+        &5u32,
+        &0u32,
+        &vk,
+        &500u32,
+        &contract_id,
+    );
+}
+
+#[test]
+fn create_circle_accepts_maximum_fee_bps() {
+    let (s, fee_recipient) = setup_with_fee(5, 100, 10_000);
+    let circle = ContractClient::new(&s.env, &s.client_id).get_circle(&s.circle_id);
+    assert_eq!(circle.fee_bps, 10_000);
+    assert_eq!(circle.fee_recipient, fee_recipient);
 }
 
 #[test]
@@ -679,7 +881,7 @@ fn create_circle_emits_created_event() {
     let vk = real_verification_key(&env);
     let contribution: i128 = 100;
     let size: u32 = 5;
-    let circle_id = client.create_circle(&admin, &token, &root, &contribution, &size, &0u32, &vk);
+    let circle_id = client.create_circle(&admin, &token, &root, &contribution, &size, &0u32, &vk, &0u32, &Address::generate(&env));
 
     let env_ref = env.clone();
     let events = env.events().all();
@@ -831,10 +1033,10 @@ fn get_circle_count_tracks_next_circle_id() {
     let root = real_root(&env);
     let vk = real_verification_key(&env);
 
-    client.create_circle(&admin, &token, &root, &100i128, &5u32, &0u32, &vk);
+    client.create_circle(&admin, &token, &root, &100i128, &5u32, &0u32, &vk, &0u32, &Address::generate(&env));
     assert_eq!(client.get_circle_count(), 1);
 
-    client.create_circle(&admin, &token, &root, &100i128, &5u32, &0u32, &vk);
+    client.create_circle(&admin, &token, &root, &100i128, &5u32, &0u32, &vk, &0u32, &Address::generate(&env));
     assert_eq!(client.get_circle_count(), 2);
 }
 
@@ -972,7 +1174,7 @@ fn cpu_instruction_benchmarks() {
     let token = create_token(&env, &token_admin);
     let root = real_root(&env);
     let vk = real_verification_key(&env);
-    client.create_circle(&admin, &token, &root, &100i128, &5u32, &0u32, &vk);
+    client.create_circle(&admin, &token, &root, &100i128, &5u32, &0u32, &vk, &0u32, &Address::generate(&env));
     let create_cpu = env.cost_estimate().budget().cpu_instruction_cost();
     std::println!("bench create_circle: {create_cpu} CPU instructions");
 
@@ -1361,7 +1563,7 @@ fn claim_with_truncated_ic_reverts() {
     truncated_vk.ic.pop_back(); // Remove the last ic point; len is now 3.
     assert_eq!(truncated_vk.ic.len(), 3);
 
-    let circle_id = client.create_circle(&admin, &token, &root, &100i128, &5u32, &0u32, &truncated_vk);
+    let circle_id = client.create_circle(&admin, &token, &root, &100i128, &5u32, &0u32, &truncated_vk, &0u32, &Address::generate(&env));
 
     // Fund the circle fully.
     let members: StdVec<Address> = (0..5)
@@ -1415,7 +1617,7 @@ fn instance_ttl_extended_after_create_fund_claim() {
     let vk = real_verification_key(&env);
 
     // create_circle must extend instance TTL.
-    client.create_circle(&admin, &token, &root, &100i128, &5u32, &0u32, &vk);
+    client.create_circle(&admin, &token, &root, &100i128, &5u32, &0u32, &vk, &0u32, &Address::generate(&env));
 
     // Advance the ledger by LEDGER_THRESHOLD so the instance entry would
     // expire without the extension; the TTL should now be refreshed.
@@ -1455,4 +1657,54 @@ fn instance_ttl_extended_after_create_fund_claim() {
     // its TTL expires, so a successful get_circle here is our proof.
     let circle = client.get_circle(&0u64);
     assert_eq!(circle.round, 1, "claim should have advanced round to 1");
+}
+
+// ---- Issue #252: apply_fee helper ----
+
+#[test]
+fn apply_fee_zero_bps_yields_no_fee() {
+    let env = Env::default();
+    assert_eq!(apply_fee(&env, 0, 12_345), (0, 12_345));
+}
+
+#[test]
+fn apply_fee_full_bps_takes_entire_amount() {
+    let env = Env::default();
+    assert_eq!(apply_fee(&env, 10_000, 12_345), (12_345, 0));
+}
+
+#[test]
+fn apply_fee_truncates_toward_zero() {
+    let env = Env::default();
+    // 500 bps = 5%: 12_345 * 500 / 10_000 = 617 (truncated), net 11_728.
+    assert_eq!(apply_fee(&env, 500, 12_345), (617, 11_728));
+    assert_eq!(617 + 11_728, 12_345);
+}
+
+#[test]
+#[should_panic(expected = "Error(Contract, #9)")] // InvalidFeeParams
+fn apply_fee_rejects_out_of_range_bps() {
+    let env = Env::default();
+    apply_fee(&env, 10_001, 100);
+}
+
+mod proptest_apply_fee {
+    use super::*;
+    use proptest::prelude::*;
+
+    proptest! {
+        #[test]
+        fn fee_plus_net_equals_amount(
+            amount  in 0_i128..=(i128::MAX / 2),
+            fee_bps in 0_u32..=10_000_u32,
+        ) {
+            let (fee, net) = apply_fee(&Env::default(), fee_bps, amount);
+            prop_assert_eq!(
+                fee + net,
+                amount,
+                "apply_fee({}, {}) = ({}, {}); fee + net = {}",
+                fee_bps, amount, fee, net, fee + net
+            );
+        }
+    }
 }

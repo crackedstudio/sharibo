@@ -20,6 +20,8 @@ const tl = {
   "landing.previousCirclePrefix": "Ang dati mong paluwagan ay nasa",
   "landing.previousCircleLink": "paluwagan #{id} ↗",
   "landing.testnetFineprint": "Testnet lamang. Ang mga demo identity ay bagong ginagawa sa iyong browser at hindi kailanman muling ginagamit.",
+  "pot.fee": "bayad {feePercent}% → {feeRecipient}",
+  "pot.feeUnknown": "hindi alam",
   "circle.onChainLink": "paluwagan #{id} sa blockchain ↗",
   "common.startNewCircle": "Magsimula ng bagong paluwagan"
 } as const;

@@ -20,6 +20,8 @@ const pt = {
   "landing.previousCirclePrefix": "Seu consórcio anterior continua ativo em",
   "landing.previousCircleLink": "consórcio #{id} ↗",
   "landing.testnetFineprint": "Apenas testnet. As identidades de demonstração são geradas novamente no seu navegador e nunca são reutilizadas.",
+  "pot.fee": "taxa {feePercent}% → {feeRecipient}",
+  "pot.feeUnknown": "desconhecido",
   "circle.onChainLink": "consórcio #{id} na blockchain ↗",
   "common.startNewCircle": "Iniciar um novo consórcio"
 } as const;

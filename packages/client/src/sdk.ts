@@ -29,6 +29,10 @@ export interface CreateCircleArgs {
   contribution: bigint;
   size: number;
   vk: ContractVerificationKey;
+  /** Protocol fee in basis points (0-10_000; 0 = no fee). */
+  feeBps: number;
+  /** Address the protocol fee is paid to (required when feeBps > 0). */
+  feeRecipient: string;
 }
 
 export interface FundArgs {
