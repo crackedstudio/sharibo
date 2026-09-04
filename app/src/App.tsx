@@ -28,11 +28,11 @@ import {
   RpcError,
   ProvingError,
   InvalidInputError,
+  describeError,
 } from "@sharibo/client";
 import { config, configError } from "./config";
 import { useI18n } from "./i18n";
-import { usePoliteLiveRegion, LiveRegion } from "./usePoliteLiveRegion";
-import { explorerTx } from "./lib/explorer";
+import { usePoliteLiveRegion } from "./usePoliteLiveRegion";
 import {
   friendbotFund as fundWithFriendbot,
   FriendbotRetryableError,
@@ -67,7 +67,8 @@ const CIRCLE_SIZE = 5;
 const STROOPS_PER_XLM = 10_000_000n;
 const README_URL = "https://github.com/crackedstudio/sharibo#honest-limitations";
 
-const isTestnet = NETWORK.networkPassphrase.includes("Test SDF Network");
+const isTestnet = Boolean(NETWORK.networkPassphrase?.includes("Test SDF Network"));
+const BANNER_TEXT = isTestnet ? "Stellar testnet — no real funds" : "";
 
 function TestnetBanner() {
   const { t } = useI18n();
@@ -126,6 +127,19 @@ function toUiError(error: unknown, t: (key: string, vars?: Record<string, string
   }
 
   return t("error.generic");
+}
+
+// Same shape as toUiError, but additionally recognizes Sharibo contract
+// rejections — the raw `Error(Contract, #4)` Soroban surfaces gets rendered
+// as "AlreadyClaimed: this proof's nullifier was already used; ..." via
+// describeError() (packages/client/src/errors.ts) instead of the bare error
+// code. Falls back to the same Friendbot special-case and raw-message
+// behavior as toUiError for anything that isn't a recognized contract error.
+function getErrorMessage(error: unknown): string {
+  if (error instanceof FriendbotRetryableError) {
+    return FRIEND_BOT_RATE_LIMIT_MESSAGE;
+  }
+  return describeError(error);
 }
 
 function explorerAccount(address: string): string {
@@ -378,6 +392,28 @@ function MemberRing({ members, revealed }: { members: { funded: boolean }[]; rev
   );
 }
 
+function LanguageSwitcher({ className }: { className?: string }) {
+  const { locale, locales, setLocale, t } = useI18n();
+
+  return (
+    <div className={`language-switcher ${className ?? ""}`.trim()}>
+      <label htmlFor="language-select">{t("lang.label")}</label>
+      <select
+        id="language-select"
+        value={locale}
+        onChange={(e) => setLocale(e.target.value)}
+        aria-label={t("lang.label")}
+      >
+        {locales.map((code) => (
+          <option key={code} value={code}>
+            {t(`lang.${code}`)}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
 function EnvSetupScreen({ errors }: { errors: string[] }) {
   const { t } = useI18n();
 
@@ -480,8 +516,22 @@ export default function App() {
   // just left — it keeps living on-chain even though the UI has moved on.
   const [previousCircleId, setPreviousCircleId] = useState<bigint | null>(null);
 
-  // Track the most recently completed circle so we can show a "lives on-chain" link
-  // after a reset. Stored as { id, explorerUrl } so the fineprint is self-contained.
+  const [resumePrompt, setResumePrompt] = useState<any>(null);
+
+  useEffect(() => {
+    const saved = typeof sessionStorage !== "undefined" ? sessionStorage.getItem("sharibo_demo_state") : null;
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved, reviver);
+        if (parsed && parsed.circleId) {
+          setResumePrompt(parsed);
+        }
+      } catch {
+        sessionStorage.removeItem("sharibo_demo_state");
+      }
+    }
+  }, []);
+
   const [prevCircle, setPrevCircle] = useState<{ id: string; explorerUrl: string } | null>(null);
 
   const contribution = BigInt(contributionXlm) * STROOPS_PER_XLM;
