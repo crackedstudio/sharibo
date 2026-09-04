@@ -86,6 +86,25 @@ If your change is intentional (e.g., renaming a function, adding a new export):
 5. Commit both your code changes and the updated `api-surface.json` together. This makes it easy to see in the PR what the API change is.
 
 If the test fails unexpectedly, it means you've inadvertently changed the public API. Consider whether that's the right fix, or if you should rename more carefully or preserve backward compatibility.
+
+## Where does my code go?
+
+Decide which workspace a new file (or a moved one) belongs to before writing code. The authoritative answer is the ownership map and layer diagram in **[docs/architecture.md](docs/architecture.md)**; as a quick decision list:
+
+| What you're writing | Where it lives |
+| ------------------- | -------------- |
+| Pure crypto — Poseidon hashing, Merkle trees, identity/nullifier derivation, field arithmetic, no I/O | `packages/core` |
+| Anything touching Stellar RPC — contract calls, proof generation, amount/address encoding, network config | `packages/client` |
+| Anything touching the DOM — React components, browser-only UI state | `app/` |
+| One-off operator tooling — smoke probes, the e2e round runner, migrations | `scripts/` |
+
+Two rules are load-bearing and will be enforced in review:
+
+- **The SDK stays Node-importable with no DOM.** `packages/client` (and its dependency `packages/core`) must import cleanly in Node with `document` deliberately undefined — `packages/client/src/node-import.test.ts` guards this. Reaching for `window`, `document`, or `node:*` inside the SDK is a review blocker.
+- **Shared constants are imported, never re-typed.** A constant meaningful to more than one workspace lives in the SDK (`packages/core` if it's pure crypto, otherwise `packages/client`), is exported from its entry point, and is imported by consumers. Duplicating a value "just to keep the change local" is how the circuit/contract/client invariants silently drift apart.
+
+Still unsure where a file belongs? Ask on the issue before opening the PR — a reviewer should be able to cite this section (or [Import rules](#import-rules) below) when asking for a file to be moved.
+
 ## Import rules
 
 Each package layer has defined boundaries about what it may import. Before adding a new `import`
