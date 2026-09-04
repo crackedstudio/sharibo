@@ -7,7 +7,7 @@ import { dirname } from "node:path";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const REPO_ROOT = resolve(__dirname, "..");
+const REPO_ROOT = resolve(__dirname, "../..");
 
 const ALL = process.argv.includes("--all");
 
