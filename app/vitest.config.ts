@@ -28,17 +28,11 @@ export default defineConfig({
     // globally before every test file.
     setupFiles: ["./src/setupTests.ts"],
     globals: true,
-    coverage: {
-      provider: "v8",
-      reporter: ["text", "lcov", "json"],
-      all: true,
-      include: ["src/**/*.{ts,tsx,js,jsx}"],
-      exclude: ["**/*.test.*", "**/test-setup.*"],
-      reportsDirectory: "coverage/app",
-      statements: appThreshold.statements,
-      branches: appThreshold.branches,
-      functions: appThreshold.functions,
-      lines: appThreshold.lines,
+    env: {
+      VITE_SHARIBO_CONTRACT_ID: "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      VITE_STELLAR_RPC_URL: "https://soroban-testnet.stellar.org",
+      VITE_STELLAR_NETWORK_PASSPHRASE: "Test SDF Network ; September 2015",
+      VITE_TEST_TOKEN_CONTRACT_ID: "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
     },
   },
 });

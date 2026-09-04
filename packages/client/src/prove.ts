@@ -1,8 +1,14 @@
+// No `node:*` imports and no `Buffer` at module scope (deliberately) — this
+// file is used both from Node (scripts/e2e.ts, passing filesystem paths)
+// and from the browser app (Phase 5, passing fetchable URLs under
+// /circuits/). snarkjs's fullProve accepts either transparently, and
+// Uint8Array (unlike Buffer) needs no polyfill in the browser.
+
 import { groth16 } from "snarkjs";
 import {
   prefetchMembershipArtifacts,
   type ProverArtifacts,
-} from "./artifacts";
+} from "./artifacts.js";
 import { ProvingError, InvalidInputError } from "./errors.js";
 import { TREE_LEVELS } from "./config.js";
 import { FR_MODULUS } from "./identity.js";
@@ -40,6 +46,7 @@ export interface ContractVerificationKey {
   ic: Uint8Array[];
 }
 
+
 export interface ProofResult {
   proof: unknown;
   publicSignals: string[];
@@ -65,7 +72,7 @@ export interface GenerateProofResult {
 
 let artifactPromise: Promise<ProverArtifacts> | undefined;
 
-function getArtifacts(): Promise<ProverArtifacts> {
+export function getArtifacts(): Promise<ProverArtifacts> {
   if (!artifactPromise) {
     artifactPromise = prefetchMembershipArtifacts();
   }
@@ -140,7 +147,7 @@ const perf: { now(): number } =
 // snarkjs returns G1 and G2 points as arrays of decimal strings. We encode
 // them to the BLS12-381 compressed-point format that the Soroban contract
 // expects (matching soroban-sdk's Bls12_381G1Affine / G2Affine layout).
-function encodeG1(point: string[]): Uint8Array {
+export function encodeG1(point: string[]): Uint8Array {
   const x = BigInt(point[0]);
   const y = BigInt(point[1]);
   // BLS12-381 G1 uncompressed: 48 bytes x || 48 bytes y, big-endian.
@@ -157,7 +164,7 @@ function encodeG1(point: string[]): Uint8Array {
 }
 
 /** Encode a snarkjs G2 affine point [[x0,x1],[y0,y1]] to 192-byte uncompressed form. */
-function encodeG2(point: string[][]): Uint8Array {
+export function encodeG2(point: string[][]): Uint8Array {
   // G2 is a point over Fp2; x = x0 + x1*u, y = y0 + y1*u.
   // Contract expects 192 bytes: x1||x0||y1||y0, each 48 bytes big-endian.
   const [x, y] = point;
@@ -323,3 +330,4 @@ export async function prove(
 ): Promise<ProofResult> {
   return fullProve(input);
 }
+

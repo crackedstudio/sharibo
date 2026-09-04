@@ -1,4 +1,11 @@
 import { poseidon, FR_MODULUS } from "./identity.js";
+import { InvalidInputError } from "./errors.js";
+
+// Must match `component main = Sharibo(4)` in circuits/membership.circom
+// (generated from circuits/config.json). The circuit is the source of truth.
+// No `node:*` imports — this file runs unmodified in both Node and the browser.
+export const TREE_LEVELS = 4;
+export const MAX_CIRCLE_SIZE = 2 ** TREE_LEVELS;
 
 /**
  * Fixed placeholder for unused leaves when padding the tree out to full capacity (2**levels).
@@ -48,7 +55,9 @@ export class MerkleTree {
    * @param levels - The number of levels in the tree (capacity = 2^levels).
    * @param leaves - The leaf values (identity commitments).
    * @returns A new MerkleTree instance.
-   * @throws {Error} If the number of leaves exceeds the tree capacity.
+   * @throws {RangeError} If levels is not a valid integer in [1, 32].
+   * @throws {RangeError} If any leaf is outside [0, FR_MODULUS).
+   * @throws {InvalidInputError} If the number of leaves exceeds the tree capacity.
    */
   static create(levels: number, leaves: bigint[]): MerkleTree {
     // Validate `levels` before computing capacity (Issue #50).
@@ -128,7 +137,7 @@ export class MerkleTree {
    *
    * @param leafIndex - The index of the leaf in the tree.
    * @returns A MerkleProof containing the root, path elements, and path indices.
-   * @throws {Error} If the leaf index is out of range.
+   * @throws {InvalidInputError} If the leaf index is out of range.
    */
   proof(leafIndex: number): MerkleProof {
     if (leafIndex < 0 || leafIndex >= this.layers[0].length) {
@@ -149,5 +158,28 @@ export class MerkleTree {
     }
 
     return { root: this.root, pathElements, pathIndices };
+  }
+
+  /**
+   * Generates a Merkle proof for a leaf by its value.
+   *
+   * Convenience wrapper around {@link indexOf} and {@link proof} that throws a
+   * descriptive error if the leaf is not found, instead of returning -1.
+   *
+   * @param leaf - The leaf value to prove membership for.
+   * @returns A MerkleProof for the leaf.
+   * @throws {InvalidInputError} If the leaf is not found in the tree.
+   */
+  proofOf(leaf: bigint): MerkleProof {
+    const index = this.indexOf(leaf);
+    if (index === -1) {
+      const hexShort = "0x" + leaf.toString(16).slice(0, 16) + "…";
+      const capacity = this.layers[0].length;
+      const occupied = this.leaves.length;
+      throw new InvalidInputError(
+        `leaf ${hexShort} not found in this tree (${capacity} slots, ${occupied} occupied)`,
+      );
+    }
+    return this.proof(index);
   }
 }

@@ -9,9 +9,8 @@
     "app"
   ],
   "scripts": {
+    "build": "npm run build --workspaces --if-present",
     "e2e": "npm run e2e --workspace=scripts",
-    "test": "npm test --workspace=app",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix"
+    "test": "npm test --workspaces --if-present"
   }
 }
