@@ -208,6 +208,12 @@ Circuit: `circuits/membership.circom`. Contract: `contracts/sharibo/src/lib.rs`.
 
 Fresh-machine steps, in order. Everything below targets **Stellar testnet only**.
 
+> **One command instead of the walkthrough:** if you already have the
+> toolchains below installed, `./scripts/bootstrap.sh` checks versions,
+> runs `npm install`, compiles the circuit + runs the trusted setup, runs the
+> circuit tests, creates `.env` from `.env.example`, and prints exactly which
+> variables still need filling. It never deploys contracts or spends funds.
+
 > Setup a problem? See [docs/troubleshooting.md](docs/troubleshooting.md).
 
 ### 0. Prerequisites
