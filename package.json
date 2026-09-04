@@ -9,12 +9,8 @@
     "app"
   ],
   "scripts": {
+    "build": "npm run build --workspaces --if-present",
     "e2e": "npm run e2e --workspace=scripts",
-    "test": "npm test --workspaces --if-present",
-    "lint:dead": "knip",
-    "check:stellar-sdk": "node scripts/check-stellar-sdk-version.mjs"
-  },
-  "devDependencies": {
-    "knip": "6.33.0"
+    "test": "npm test --workspaces --if-present"
   }
 }

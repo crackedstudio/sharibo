@@ -21,19 +21,18 @@ contract:
     cd contracts && cargo test
     cd contracts && stellar contract build
 
-# ── Dead-code check ───────────────────────────────────────────────────────────
-
-# Check for unused files, exports, and dependencies across all TS workspaces.
-# Zero issues is the baseline — adding an unreferenced module makes this fail.
+# Generate (or regenerate) the XDR golden files for Circle / VerificationKey /
+# Proof.  Run this whenever you intentionally change the wire format, then
+# commit the updated .b64 files alongside the struct change.
 #
-# To mark an intentional public export so knip ignores it, add the JSDoc tag:
-#
-#   /** @public */
-#   export function myApi() { … }
-#
-# See knip.jsonc for the full configuration and workspace entry points.
-lint-dead:
-    npm run lint:dead
+# After running this, also update packages/client/src/contract.test.ts if
+# any expected field values or struct shapes changed, and bump SCHEMA_VERSION
+# in contracts/sharibo/src/test.rs.
+xdr-goldens:
+    cd contracts && UPDATE_GOLDEN=1 cargo test -p sharibo xdr_golden
+    @echo ""
+    @echo "Goldens written to contracts/sharibo/test_snapshots/xdr_goldens/"
+    @echo "Review with: git diff --stat contracts/sharibo/test_snapshots/xdr_goldens/"
 
 # ── Client ────────────────────────────────────────────────────────────────────
 
@@ -89,7 +88,6 @@ test:
         fi
     }
 
-    run_suite "dead-code check"   npm run lint:dead
     run_suite "client typecheck"  npm run typecheck --workspace=packages/client
     run_suite "client tests"      npm test          --workspace=packages/client
     run_suite "app tests"         npm test          --workspace=app

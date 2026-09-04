@@ -28,13 +28,11 @@ import {
   RpcError,
   ProvingError,
   InvalidInputError,
+  describeError,
 } from "@sharibo/client";
 import { config, configError } from "./config";
 import { useI18n } from "./i18n";
-import { useCircleFlow } from "./hooks/useCircleFlow";
 import { usePoliteLiveRegion } from "./usePoliteLiveRegion";
-import { configError, NETWORK, CIRCLE_SIZE } from "./config";
-import { explorerContract } from "./lib/explorer";
 import {
   friendbotFund as fundWithFriendbot,
   FriendbotRetryableError,
@@ -69,7 +67,7 @@ const CIRCLE_SIZE = 5;
 const STROOPS_PER_XLM = 10_000_000n;
 const README_URL = "https://github.com/crackedstudio/sharibo#honest-limitations";
 
-const isTestnet = NETWORK.networkPassphrase.includes("Test SDF Network");
+const isTestnet = Boolean(NETWORK.networkPassphrase?.includes("Test SDF Network"));
 const BANNER_TEXT = isTestnet ? "Stellar testnet — no real funds" : "";
 
 function TestnetBanner() {
@@ -109,6 +107,19 @@ function toUiError(error: unknown): string {
   }
 
   return "Something went wrong. Please retry.";
+}
+
+// Same shape as toUiError, but additionally recognizes Sharibo contract
+// rejections — the raw `Error(Contract, #4)` Soroban surfaces gets rendered
+// as "AlreadyClaimed: this proof's nullifier was already used; ..." via
+// describeError() (packages/client/src/errors.ts) instead of the bare error
+// code. Falls back to the same Friendbot special-case and raw-message
+// behavior as toUiError for anything that isn't a recognized contract error.
+function getErrorMessage(error: unknown): string {
+  if (error instanceof FriendbotRetryableError) {
+    return FRIEND_BOT_RATE_LIMIT_MESSAGE;
+  }
+  return describeError(error);
 }
 
 function explorerAccount(address: string): string {
@@ -303,6 +314,28 @@ function MemberRing({ members, revealed }: { members: { funded: boolean }[]; rev
 
 // ── Setup-error screen ──────────────────────────────────────────────────────
 
+function LanguageSwitcher({ className }: { className?: string }) {
+  const { locale, locales, setLocale, t } = useI18n();
+
+  return (
+    <div className={`language-switcher ${className ?? ""}`.trim()}>
+      <label htmlFor="language-select">{t("lang.label")}</label>
+      <select
+        id="language-select"
+        value={locale}
+        onChange={(e) => setLocale(e.target.value)}
+        aria-label={t("lang.label")}
+      >
+        {locales.map((code) => (
+          <option key={code} value={code}>
+            {t(`lang.${code}`)}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
 function EnvSetupScreen({ errors }: { errors: string[] }) {
   const { t } = useI18n();
   return (
@@ -389,8 +422,61 @@ function ClaimExplainer() {
 export default function App() {
   const { t } = useI18n();
 
-  // All circle state and on-chain calls live in the hook.
-  const flow = useCircleFlow();
+  if (configError.length > 0) {
+    return <EnvSetupScreen errors={configError} />;
+  }
+
+  const [screen, setScreen] = useState<"landing" | "circle">("landing");
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const [contributionXlm, setContributionXlm] = useState(10);
+  const [admin, setAdmin] = useState<Keypair | null>(null);
+  const [members, setMembers] = useState<Member[]>([]);
+  const [tree, setTree] = useState<MerkleTree | null>(null);
+  const [circleId, setCircleId] = useState<bigint | null>(null);
+  const [hasFreighter, setHasFreighter] = useState(false);
+
+  useEffect(() => {
+    isConnected().then((res) => setHasFreighter(res.isConnected)).catch(() => setHasFreighter(false));
+  }, []);
+  const [round, setRound] = useState(0);
+  const [pot, setPot] = useState(0n);
+  const [claimantIndex, setClaimantIndex] = useState(0);
+  const [proof, setProof] = useState<ContractProof | null>(null);
+  const [nullifierHash, setNullifierHash] = useState<bigint | null>(null);
+  const [claimResult, setClaimResult] = useState<ClaimResult | null>(null);
+  const [isProving, setIsProving] = useState(false);
+  const [provingElapsedMs, setProvingElapsedMs] = useState<number | null>(null);
+  const [nullifierClaimed, setNullifierClaimed] = useState(false);
+  const [rejection, setRejection] = useState<string | null>(null);
+  const [claimStage, setClaimStage] = useState<ClaimStage | null>(null);
+  const [proveElapsedSeconds, setProveElapsedSeconds] = useState(0);
+  // Survives a reset so the landing screen can point back at the circle you
+  // just left — it keeps living on-chain even though the UI has moved on.
+  const [previousCircleId, setPreviousCircleId] = useState<bigint | null>(null);
+
+  const [resumePrompt, setResumePrompt] = useState<any>(null);
+
+  useEffect(() => {
+    const saved = typeof sessionStorage !== "undefined" ? sessionStorage.getItem("sharibo_demo_state") : null;
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved, reviver);
+        if (parsed && parsed.circleId) {
+          setResumePrompt(parsed);
+        }
+      } catch {
+        sessionStorage.removeItem("sharibo_demo_state");
+      }
+    }
+  }, []);
+
+  const [prevCircle, setPrevCircle] = useState<{ id: string; explorerUrl: string } | null>(null);
+
+  const contribution = BigInt(contributionXlm) * STROOPS_PER_XLM;
+  const fundedCount = members.filter((m) => m.funded).length;
+  const fullyFunded = pot === contribution * BigInt(CIRCLE_SIZE);
   const { announce, message: liveRegionMessage } = usePoliteLiveRegion(120);
 
   // ── Focus management ──────────────────────────────────────────────────────

@@ -233,3 +233,4 @@ export function installIndicatorAndPrefetch(): void {
     // here so an unhandled rejection doesn't abort the page.
   });
 }
+
