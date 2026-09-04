@@ -16,7 +16,15 @@ import {
   computeExternalNullifier,
 } from "./identity.js";
 
-// ── FR_MODULUS ────────────────────────────────────────────────────────────────
+// Issue #63: pin FR_MODULUS against independent sources so a transcription
+// error in the hex literal fails the suite instead of silently corrupting
+// every identity and nullifier.
+test("FR_MODULUS matches the known BLS12-381 scalar field modulus", () => {
+  // Decimal value from the BLS12-381 spec.
+  const expectedDecimal =
+    52435875175126190479447740508185965837690552500527637822603658699938581184513n;
+  assert.equal(FR_MODULUS, expectedDecimal);
+});
 
 describe("FR_MODULUS", () => {
   // Issue #63: pin against independent sources so a transcription error in
