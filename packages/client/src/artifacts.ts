@@ -214,5 +214,23 @@ function installIndicator(): void {
   else document.addEventListener("DOMContentLoaded", add, { once: true });
 }
 
-installIndicator();
-prefetchMembershipArtifacts();
+// NOTE: This module no longer runs any side effects on import.
+// Browser entry points that want the "Preparing prover…" toast and background
+// prefetch should call installIndicatorAndPrefetch() explicitly after import,
+// or import from the browser-specific entry point.
+
+/**
+ * Installs the "Preparing prover…" DOM toast and starts pre-fetching the
+ * circuit artifacts in the background.
+ *
+ * Call this once from a browser entry point (e.g. main.tsx or index.browser.ts).
+ * It is a no-op in Node (document is undefined).
+ */
+export function installIndicatorAndPrefetch(): void {
+  installIndicator();
+  prefetchMembershipArtifacts().catch(() => {
+    // Errors are surfaced through subscribeToArtifactPrefetch; swallow
+    // here so an unhandled rejection doesn't abort the page.
+  });
+}
+

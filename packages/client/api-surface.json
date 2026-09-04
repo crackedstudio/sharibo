@@ -1,0 +1,63 @@
+{
+  "constants": {
+    "FR_MODULUS": "bigint",
+    "ZERO_VALUE": "bigint",
+    "MEMBERSHIP_WASM_URL": "string",
+    "MEMBERSHIP_ZKEY_URL": "string"
+  },
+  "functions": {
+    "randomFieldElement": "function",
+    "poseidon": "function",
+    "generateIdentity": "function",
+    "computeExternalNullifier": "function",
+    "computeNullifierHash": "function",
+    "getArtifacts": "function",
+    "validateCircuitInput": "function",
+    "encodeG1": "function",
+    "encodeG2": "function",
+    "generateProof": "function",
+    "verifyProofLocally": "function",
+    "verificationKeyToContractFormat": "function",
+    "fullProve": "function",
+    "prove": "function",
+    "connect": "function",
+    "explorerTxUrl": "function",
+    "estimateClaimFee": "function",
+    "createCircle": "function",
+    "fund": "function",
+    "claim": "function",
+    "getCircle": "function",
+    "getCircleCount": "function",
+    "hasClaimed": "function",
+    "prefetchMembershipArtifacts": "function",
+    "getArtifactPrefetchProgress": "function",
+    "subscribeToArtifactPrefetch": "function",
+    "installIndicatorAndPrefetch": "function"
+  },
+  "types": {
+    "Identity": "interface",
+    "MerkleProof": "interface",
+    "MerkleTree": "class",
+    "CircuitInput": "interface",
+    "ContractProof": "interface",
+    "ContractVerificationKey": "interface",
+    "ProofResult": "interface",
+    "GenerateProofResult": "interface",
+    "ShariboNetworkConfig": "interface",
+    "ShariboClient": "type",
+    "ShariboSigner": "interface",
+    "FeeEstimate": "interface",
+    "TxResult": "interface",
+    "CircleView": "interface",
+    "ArtifactPrefetchStatus": "type",
+    "ArtifactPrefetchProgress": "interface",
+    "ProverArtifacts": "interface"
+  },
+  "errors": {
+    "ShariboError": "class",
+    "InvalidInputError": "class",
+    "ProvingError": "class",
+    "RpcError": "class",
+    "ContractError": "class"
+  }
+}

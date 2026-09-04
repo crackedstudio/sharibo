@@ -1,8 +1,38 @@
-import { describe, it, expect } from "vitest";
-import * as fc from "fast-check";
+import { test } from "node:test";
+import assert from "node:assert/strict";
 import { MerkleTree, ZERO_VALUE } from "./tree.js";
 import { generateIdentity, FR_MODULUS } from "./identity.js";
-import { referenceRoot, referenceProof, referenceVerify } from "./tree.reference.js";
+
+const LEVELS = 4;
+
+test("proofOf returns a valid Merkle proof for a leaf known to be in the tree", () => {
+  const identities = Array.from({ length: 5 }, () => generateIdentity());
+  const leaves = identities.map((id) => id.commitment);
+  const tree = MerkleTree.create(LEVELS, leaves);
+
+  const proof = tree.proofOf(leaves[2]);
+  assert.equal(proof.root, tree.root);
+  assert.equal(proof.pathElements.length, LEVELS);
+  assert.equal(proof.pathIndices.length, LEVELS);
+
+  // The path should match the one returned by proof(indexOf(leaf)).
+  const expected = tree.proof(tree.indexOf(leaves[2]));
+  assert.deepEqual(proof.pathElements, expected.pathElements);
+  assert.deepEqual(proof.pathIndices, expected.pathIndices);
+  assert.equal(proof.root, expected.root);
+});
+
+test("proofOf returns a valid proof for the first and last occupied leaf", () => {
+  const identities = Array.from({ length: 5 }, () => generateIdentity());
+  const leaves = identities.map((id) => id.commitment);
+  const tree = MerkleTree.create(LEVELS, leaves);
+
+  for (const leaf of [leaves[0], leaves[identities.length - 1]]) {
+    const proof = tree.proofOf(leaf);
+    assert.equal(proof.root, tree.root);
+    assert.equal(proof.pathElements.length, LEVELS);
+  }
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Existing unit tests (unchanged)
@@ -87,6 +117,8 @@ describe("MerkleTree.proofOf", () => {
     );
   });
 });
+
+// ---- levels validation ----
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MerkleTree.create — levels validation

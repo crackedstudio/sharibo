@@ -13,6 +13,7 @@ import {
   computeExternalNullifier,
   MerkleTree,
   generateProof,
+  verifyProofLocally,
   verificationKeyToContractFormat,
   connect,
   createCircle,
@@ -27,9 +28,11 @@ import {
   RpcError,
   ProvingError,
   InvalidInputError,
+  describeError,
 } from "@sharibo/client";
 import { config, configError } from "./config";
 import { useI18n } from "./i18n";
+import { usePoliteLiveRegion } from "./usePoliteLiveRegion";
 import {
   friendbotFund as fundWithFriendbot,
   FriendbotRetryableError,
@@ -64,7 +67,7 @@ const CIRCLE_SIZE = 5;
 const STROOPS_PER_XLM = 10_000_000n;
 const README_URL = "https://github.com/crackedstudio/sharibo#honest-limitations";
 
-const isTestnet = NETWORK.networkPassphrase.includes("Test SDF Network");
+const isTestnet = Boolean(NETWORK.networkPassphrase?.includes("Test SDF Network"));
 const BANNER_TEXT = isTestnet ? "Stellar testnet — no real funds" : "";
 
 function TestnetBanner() {
@@ -104,6 +107,19 @@ function toUiError(error: unknown): string {
   }
 
   return "Something went wrong. Please retry.";
+}
+
+// Same shape as toUiError, but additionally recognizes Sharibo contract
+// rejections — the raw `Error(Contract, #4)` Soroban surfaces gets rendered
+// as "AlreadyClaimed: this proof's nullifier was already used; ..." via
+// describeError() (packages/client/src/errors.ts) instead of the bare error
+// code. Falls back to the same Friendbot special-case and raw-message
+// behavior as toUiError for anything that isn't a recognized contract error.
+function getErrorMessage(error: unknown): string {
+  if (error instanceof FriendbotRetryableError) {
+    return FRIEND_BOT_RATE_LIMIT_MESSAGE;
+  }
+  return describeError(error);
 }
 
 function explorerAccount(address: string): string {
@@ -165,22 +181,24 @@ interface ClaimResult {
   recipient: string;
   hash: string;
   proofDurationMs: number;
+  verifyTimeMs: number;
 }
 
 // The visible stages of doClaim, in the order they actually occur. snarkjs's
 // fullProve is one opaque call, so "proving" covers witness computation +
 // proof generation together — it gets its own elapsed timer instead of a
 // substage breakdown, since we can't observe a finer boundary inside it.
-type ClaimStage = "artifacts" | "proving" | "funding" | "submitting";
+type ClaimStage = "artifacts" | "proving" | "verifying" | "funding" | "submitting";
 
 const CLAIM_STAGE_LABELS: Record<ClaimStage, string> = {
   artifacts: "Fetching proving artifacts (wasm + zkey)…",
   proving: "Proving…",
+  verifying: "Verifying proof locally…",
   funding: "Funding a fresh, unlinked recipient…",
   submitting: "Submitting the claim…",
 };
 
-const CLAIM_STAGES: ClaimStage[] = ["artifacts", "proving", "funding", "submitting"];
+const CLAIM_STAGES: ClaimStage[] = ["artifacts", "proving", "verifying", "funding", "submitting"];
 
 // So a claim never reads as a hung tab: each real substage of doClaim gets
 // its own line here (fullProve itself stays one opaque "proving" step, per
@@ -347,6 +365,28 @@ function MemberRing({ members, revealed }: { members: { funded: boolean }[]; rev
   );
 }
 
+function LanguageSwitcher({ className }: { className?: string }) {
+  const { locale, locales, setLocale, t } = useI18n();
+
+  return (
+    <div className={`language-switcher ${className ?? ""}`.trim()}>
+      <label htmlFor="language-select">{t("lang.label")}</label>
+      <select
+        id="language-select"
+        value={locale}
+        onChange={(e) => setLocale(e.target.value)}
+        aria-label={t("lang.label")}
+      >
+        {locales.map((code) => (
+          <option key={code} value={code}>
+            {t(`lang.${code}`)}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
 function EnvSetupScreen({ errors }: { errors: string[] }) {
   const { t } = useI18n();
 
@@ -455,8 +495,22 @@ export default function App() {
   // just left — it keeps living on-chain even though the UI has moved on.
   const [previousCircleId, setPreviousCircleId] = useState<bigint | null>(null);
 
-  // Track the most recently completed circle so we can show a "lives on-chain" link
-  // after a reset. Stored as { id, explorerUrl } so the fineprint is self-contained.
+  const [resumePrompt, setResumePrompt] = useState<any>(null);
+
+  useEffect(() => {
+    const saved = typeof sessionStorage !== "undefined" ? sessionStorage.getItem("sharibo_demo_state") : null;
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved, reviver);
+        if (parsed && parsed.circleId) {
+          setResumePrompt(parsed);
+        }
+      } catch {
+        sessionStorage.removeItem("sharibo_demo_state");
+      }
+    }
+  }, []);
+
   const [prevCircle, setPrevCircle] = useState<{ id: string; explorerUrl: string } | null>(null);
 
   const contribution = BigInt(contributionXlm) * STROOPS_PER_XLM;
@@ -749,7 +803,7 @@ export default function App() {
     setRejection(null);
     setBusy("Claiming…");
     try {
-      const [{ Keypair }, { computeExternalNullifier, generateProof, connect, claim, getCircle }] = await Promise.all([
+      const [{ Keypair }, { computeExternalNullifier, generateProof, verifyProofLocally, connect, claim, getCircle }] = await Promise.all([
         import("@stellar/stellar-sdk"),
         import("@sharibo/client")
       ]);
@@ -758,13 +812,14 @@ export default function App() {
       const externalNullifier = await computeExternalNullifier(circleId, BigInt(round));
 
       setClaimStage("artifacts");
-      const [wasm, zkey] = await Promise.all([
+      const [wasm, zkey, vkJson] = await Promise.all([
         fetch("/circuits/membership.wasm")
           .then((r) => r.arrayBuffer())
           .then((b) => new Uint8Array(b)),
         fetch("/circuits/membership_final.zkey")
           .then((r) => r.arrayBuffer())
           .then((b) => new Uint8Array(b)),
+        fetch("/circuits/verification_key.json").then((r) => r.json()),
       ]);
 
       setClaimStage("proving");
@@ -788,6 +843,13 @@ export default function App() {
         clearInterval(proveTimer);
       }
 
+      setClaimStage("verifying");
+      const verifyTimeMs = await verifyProofLocally(
+        vkJson,
+        generated.publicSignals,
+        generated.snarkjsProof,
+      );
+
       setClaimStage("funding");
       const recipient = Keypair.random();
       await fundWithFriendbot(recipient.publicKey());
@@ -804,7 +866,12 @@ export default function App() {
 
       setProof(generated.proof);
       setNullifierHash(generated.nullifierHash);
-      setClaimResult({ recipient: recipient.publicKey(), hash, proofDurationMs });
+      setClaimResult({
+        recipient: recipient.publicKey(),
+        hash,
+        proofDurationMs: generated.provingTimeMs,
+        verifyTimeMs,
+      });
       setNullifierClaimed(await hasClaimed(adminClient, circleId, generated.nullifierHash));
 
       const circle = await getCircle(adminClient, circleId);
@@ -1008,6 +1075,20 @@ export default function App() {
         </p>
 
         <h2>Fund</h2>
+        <p className="token-notice">
+          Token:{" "}
+          <a
+            className="link"
+            href={`https://stellar.expert/explorer/testnet/contract/${TOKEN}`}
+            target="_blank"
+            rel="noreferrer"
+            title="Verify this token contract before funding"
+          >
+            <code>{TOKEN.slice(0, 6)}…{TOKEN.slice(-4)}</code> ↗
+          </a>{" "}
+          <CopyButton value={TOKEN} label="token contract address" />
+          <span className="token-notice-tip"> — verify this address before funding</span>
+        </p>
         <div className="members">
           {members.map((m, i) => (
             <div key={i} className={`member ${m.funded ? "funded" : ""}`}>
@@ -1112,6 +1193,10 @@ export default function App() {
             <p className="callout">
               Compare the 5 funding transactions above to this claim — same
               contract, no shared address, no visible link.
+            </p>
+            <p className="techline">
+              proof generated in {(claimResult.proofDurationMs / 1000).toFixed(1)}s ·
+              local verify {claimResult.verifyTimeMs.toFixed(0)}ms ✓
             </p>
             <button
               className="btn btn-danger"

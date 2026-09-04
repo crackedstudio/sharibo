@@ -1,9 +1,20 @@
 {
   "name": "@sharibo/client",
   "version": "0.0.0",
-  "private": true,
   "type": "module",
-  "main": "src/index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "browser": "./dist/index.browser.js",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
   "description": "Client SDK for interacting with Sharibo ROSCA on Stellar Soroban",
   "license": "MIT",
   "repository": {
@@ -20,9 +31,10 @@
     "client"
   ],
   "scripts": {
+    "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "test:watch": "vitest",
+    "test": "node --import tsx --test src/*.test.ts",
+    "test:watch": "node --import tsx --test --watch src/*.test.ts",
     "bench:prove": "tsx bench/prove.bench.ts"
   },
   "dependencies": {

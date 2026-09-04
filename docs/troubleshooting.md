@@ -248,3 +248,62 @@ Then hard-refresh the browser tab. If it still misbehaves, delete
 **Still stuck?** Re-read [`CONTRIBUTING.md`](../CONTRIBUTING.md) for the dev loop and
 the [README "Run it" section](../README.md#run-it) for the step order; open an issue if
 your symptom isn't here.
+
+---
+
+## Proof passes local verification but fails on-chain (`InvalidProof`)
+
+**Symptom**
+
+The claim flow completes the "Verifying proof locally…" stage and shows
+`local verify Xms ✓` in the result card — but the on-chain `claim` call is still
+rejected with an `InvalidProof` error.
+
+**What this means**
+
+Local verification (snarkjs `groth16.verify`) checks the mathematical proof
+against the public signals. On-chain verification checks the same proof but
+expects it in a specific **binary wire format** (BLS12-381 compressed G1/G2
+points, big-endian, in the exact byte layout Soroban's `bls12_381_g1_msm` /
+`g2_msm` host functions consume).
+
+If local passes and on-chain fails, **the proof itself is valid** — the mismatch is
+almost certainly in the encoding, not the cryptography. Common causes:
+
+- **Wrong point encoding** — G1 should be 96 bytes (x‖y uncompressed, big-endian);
+  G2 should be 192 bytes (x₁‖x₀‖y₁‖y₀, each 48 bytes big-endian). Swapping
+  coordinate order or using the compressed (48/96 byte) form causes a silent
+  mismatch.
+- **Wrong public signal order** — the contract expects `[nullifierHash, root,
+  externalNullifier]` in that order. If `publicSignals` is passed in a different
+  order the encoded `pi_a`/`pi_b`/`pi_c` will be correct but the IC combination
+  will mismatch on-chain.
+- **Mismatched verification key** — the VK stored in the contract at
+  `create_circle` time must match the one used during `groth16.verify`. If you
+  re-ran `npm run setup` after deploying, the on-chain VK is stale.
+- **Wrong curve** — the circuit uses BLS12-381, not BN128. A snarkjs build or VK
+  from a BN128 ceremony will verify locally (snarkjs is curve-aware) but produce
+  byte offsets the Soroban BLS12-381 host rejects.
+
+**How to diagnose**
+
+1. Check `packages/client/src/prove.ts` — the `encodeG1` / `encodeG2` helpers are
+   the single point-of-truth for the wire encoding. Log the raw `snarkjsProof` from
+   `generateProof` and compare `pi_a`, `pi_b`, `pi_c` lengths against what the
+   contract receives.
+2. Confirm the VK on-chain matches `circuits/verification_key.json` — re-deploy with
+   a fresh `verificationKeyToContractFormat(vkJson)` call if in doubt.
+3. Add a temporary log of `publicSignals` just before `claim()` and verify the order
+   is `[nullifierHash, root, externalNullifier]`.
+
+**Fix**
+
+Correct the encoding in `encodeG1` / `encodeG2` or the `vk` passed to
+`createCircle`. Once the encoding is right, both local verify and on-chain verify
+will agree.
+
+---
+
+**Still stuck?** Re-read [`CONTRIBUTING.md`](../CONTRIBUTING.md) for the dev loop and
+the [README "Run it" section](../README.md#run-it) for the step order; open an issue if
+your symptom isn't here.

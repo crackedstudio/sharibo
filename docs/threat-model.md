@@ -74,6 +74,37 @@ Scope: `contracts/sharibo/src/lib.rs`, `circuits/membership.template.circom`, `p
 | No double claim | `lib.rs:213-217,231` | `test.rs:284,548` | recipient not bound to proof (front-run/hijack risk) |
 | Round binding | `identity.ts:63-90`; `lib.rs:207-211,325-331` | `test.rs:328`; `membership.test.js:98` | binding is on-chain equality, not an in-circuit constraint |
 | Unlinkability | `lib.rs:236-237` (unconstrained `recipient`) | `scripts/e2e.ts` fresh-recipient assertions | funding side is fully public; admin relays the claim tx in the demo |
+| Token contract trust | `lib.rs:82` (`Circle.token` stored unvalidated) | none — accepted design risk | hostile token can refuse transfers, charge fees, or reenter; mitigation is out-of-band address verification by members |
+
+## Token contract trust
+
+**Status: accepted risk, documented mitigation.**
+
+`create_circle` accepts a `token: Address` argument and stores it in `Circle.token` with no on-chain validation (`lib.rs:82`). Every subsequent `fund` and `claim` call invokes `token::Client::transfer` against that address unconditionally.
+
+### Attacks a hostile token enables
+
+| Attack | Mechanism | Consequence |
+|---|---|---|
+| **Selective transfer refusal** | Token's `transfer` succeeds for funders but reverts for the contract-as-sender during `claim`. | Pot is permanently stranded — members paid in but the payout is blocked. |
+| **Fee-on-transfer** | Token silently credits the recipient less than the nominal amount (e.g. charges 0.1 % on each `transfer`). | `fund` deposits fall 1–N stroops short of `contribution`; `Circle.pot` is incremented by the full `contribution` but the contract's token balance is lower. `claim` requires `pot == contribution * size` *exactly* — even a 1-stroop shortfall means this equality never holds and the circle is permanently bricked. |
+| **Reentrancy** | Token's `transfer` implementation calls back into `fund`, `claim`, or `cancel_circle` before returning. | The contract has no reentrancy guard. Soroban executes contracts in a single-threaded call stack so reentrancy is observable in the call tree, but it is not prevented. A carefully crafted token could re-enter `claim` before the nullifier is recorded (lines `lib.rs:431` records nullifier, `:441` calls transfer — the transfer happens *after* the nullifier write, which means the current ordering is safe against nullifier-based reentrancy; however the ordering is an implementation detail, not a contract invariant, and it should be documented as such). |
+| **Silent no-op transfer** | Token's `transfer` returns `()` without moving any value. | `fund` increments `Circle.pot` in-memory and writes it back; `claim` pays out `circle.pot` stroops it believes are held. A no-op token decouples the accounting from the actual balance, allowing the pot to appear funded when no real tokens were ever deposited. |
+| **Admin-extractable balance** | Token has a backdoor that lets its deployer drain balances held by other contracts. | The circle's entire pot can be extracted by the token's deployer at any time, independently of the nullifier/ZK checks. |
+
+### Interaction with reentrancy ordering
+
+In `claim` (`lib.rs`), the current execution order is: (1) record nullifier → (2) call `token.transfer`. Because the nullifier write happens *before* the external call, a reentrant `claim` with the same nullifier would be rejected by the `AlreadyClaimed` check on reentry. This ordering is load-bearing for reentrancy safety. Any future refactor that moves the `transfer` call before the `persistent().set(&nullifier_key, &true)` write would open a classic reentrancy window. This is noted here so reviewers know to treat that ordering as intentional.
+
+### Mitigation
+
+**Members** must verify the token address out of band before funding a circle. The expected check is: confirm the address matches a known, audited token contract (e.g. the native XLM SAC on testnet, or a well-known stablecoin on mainnet).
+
+**The demo** pins the native XLM Stellar Asset Contract (`VITE_TEST_TOKEN_CONTRACT_ID`) and surfaces the token address with an explorer link in the funding UI so users can verify it before clicking Fund. The native XLM SAC is implemented in the Stellar host itself and cannot charge fees, refuse transfers, or reenter.
+
+**The contract** cannot enforce this — validating a token address would require either a whitelist (centralisation) or an on-chain oracle for "is this a standard SAC?" (which doesn't exist). The correct boundary is social/UI: the circle creator publishes the token address; members verify it before joining.
+
+This risk is analogous to the vk trust assumption (§1 above): the creator chooses the token, and members must trust or verify that choice.
 
 ## Out of scope
 
