@@ -7,7 +7,7 @@ import path from "node:path";
 
 const DEP = "@stellar/stellar-sdk";
 const WORKSPACES = ["app", "packages/client", "scripts"];
-const repoRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
+const repoRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
 const versions = new Map();
 let missing = false;
