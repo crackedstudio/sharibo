@@ -235,8 +235,7 @@ function ClaimProgress({ stage, elapsedSeconds }: { stage: ClaimStage; elapsedSe
       </div>
       {stage === "proving" && (
         <p className="techline">
-          <span className="spinner" aria-hidden="true" /> {t("claim.techline")} · {elapsedSeconds}s
-          elapsed
+          <span className="spinner" aria-hidden="true" /> {t("claim.techline")} · {t("claim.elapsed", { seconds: elapsedSeconds })}
         </p>
       )}
     </div>

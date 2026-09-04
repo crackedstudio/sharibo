@@ -71,7 +71,8 @@ const es = {
   "claim.stage.submitting": "Enviando la reclamaci\u00f3n\u2026",
   "claim.techline":
     "Groth16 \u00b7 BLS12-381 \u00b7 1,452 restricciones \u00b7 probando localmente en tu navegador; no se env\u00eda nada hasta que la prueba est\u00e9 lista",
-  "claim.techlineProving": "\u00b7 probando\u2026 {seconds}s",
+  "claim.techlineProving": "· probando… {seconds}s",
+  "claim.elapsed": "{seconds}s transcurridos",
 
   "explainer.summary": "C\u00f3mo funciona esta prueba de reclamaci\u00f3n",
   "explainer.sayingTitle": "Qu\u00e9 est\u00e1 diciendo la prueba",
@@ -144,6 +145,13 @@ const es = {
   "resume.discardButton": "Descartar",
 
   "common.startNewCircle": "Iniciar una nueva tanda",
+
+  "errorBoundary.heading": "Algo se rompió",
+  "errorBoundary.body":
+    "La demo encontró un error inesperado y no puede continuar de forma segura desde aquí.",
+  "errorBoundary.reload": "Empezar de nuevo",
+  "errorBoundary.fineprint": "Si esto sigue ocurriendo,",
+  "errorBoundary.issueLink": "abre un issue en GitHub ↗",
 } as const;
 
 export default es;

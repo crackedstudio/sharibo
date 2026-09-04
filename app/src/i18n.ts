@@ -31,7 +31,7 @@ interface I18nContextValue {
   t: (key: string, vars?: Record<string, string | number>) => string;
 }
 
-const I18nContext = createContext<I18nContextValue | null>(null);
+export const I18nContext = createContext<I18nContextValue | null>(null);
 
 function chooseInitialLocale(): LocaleCode {
   const stored = localStorage.getItem("sharibo.locale");
