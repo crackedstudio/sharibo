@@ -19,7 +19,10 @@ use std::vec::Vec as StdVec;
 // The vk/proof/public-signal decimal coordinates below were produced by the
 // real Phase 1 pipeline (circuits/scripts/{compile,setup,prove}.sh) for a
 // genuine member of a 3-member circle at circle_id=0, round=0 — see
-// circuits/verification_key.json and circuits/build/{proof,public}.json.
+// circuits/verification_key.json and circuits/SETUP_TRANSCRIPT.md (entry
+// 2026-09-04). The recipientHash public input (#266) is bound to the fixed
+// payout recipients in real_recipient_r0/real_recipient_r1, so claim
+// succeeds only when the recipient matches the proof's registered hash.
 // This mirrors the pattern in Stellar's own groth16_verifier reference
 // example (stellar/soroban-examples), which also hand-copies snarkjs
 // decimal coordinates into ark_bls12_381 test fixtures.
@@ -52,15 +55,15 @@ fn real_verification_key(env: &Env) -> VerificationKey {
     VerificationKey {
         alpha: g1_from_coords(
             env,
-            "1151103813686702670269560426972537615253723909179986658696264230739792718498157532050816457434960302183816446643642",
-            "2264278419421030329175907976054147167790018368373903507517289863181729348732997145562393982010652254896115276313615",
+            "749582537839343753662662092450452397832509643622354603215105997794324965974939825437185114316129745783000679419786",
+            "349962341132122890724568751232889453699201095759070405617825002476699798173144003754632387388100339536150581215244",
         ),
         beta: g2_from_coords(
             env,
-            "234715770815633506086876921775332881288881052225543236297905676400069922158500877154699132474175457598380425222782",
-            "3305393283011938985382092861733522723974543802747257178218608747718267902286556196852282734837644244360170541159935",
-            "218541127215008476487596590292634126552582077478272530353193596224995381682430953762052403998127371323829472216931",
-            "3472177617825914068429071422901138564916107942636399548688833555975205972364256420268690345427377488835425312495997",
+            "3880057797060520124320578764877315797540700415384043973769078971696515610163457289102411638052268730945509440648302",
+            "3777314379925758442990512187413923812964245102202468031112766319752244038246687083607245318069508267135278455348947",
+            "1050410361212406767716359668205231057458158288436209166038545299426881545468977171139347619446018726197388473923235",
+            "2493412734090615878237556198351488937361522748982892294901084973296832797018771262475192943991186743848961306012498",
         ),
         gamma: g2_from_coords(
             env,
@@ -71,45 +74,39 @@ fn real_verification_key(env: &Env) -> VerificationKey {
         ),
         delta: g2_from_coords(
             env,
-            "1505663480440247367152274210534686704190808084502194263833763278218856322654435528468927287357012676094418832423740",
-            "2217923485159127127358054503577598077067766532546569462988068791681035084120318859382637751335894429351377069493125",
-            "201312034288505666799421355352986088320094318705596465895187137127289771723259790407432255968766382867575840805717",
-            "2346025562149068308649760588360970027304594675678744818331923474605513300552094262642782296771200201388233281265374",
+            "3103645666922550361111901561944701284006750573312632567332559875331690914403420941599818706436045124448669974250790",
+            "3892473957942423684853166161187107959564012482950189624261130947444530209444107817942442732442430331490982000756874",
+            "3860930287635271697415179879375689624186819560916850902324686817327713655307663181135121813555053936247373929272638",
+            "1609784541431292060270585748736180809687860649556710589001468182944600766631512130414063743752599919312580581028322",
         ),
         ic: Vec::from_array(
             env,
             [
                 g1_from_coords(
-                    env,
-                    "2221368706166660739597546727074260123281775003540941966931835158612081330822382179488852200096434901680516793712392",
-                    "2404014037212414881167456460714355715416704233282862833716099779331158640973633758980226197491483021600744297772191",
-                ),
+            env,
+            "1948681912634771776347271243697269400762251716937532457452923581348369025432509442708890118552407975194237752144664",
+            "1526361214863697803897508994557674006711987536500572772987868823818838123020499567392825827003234526229256592150572",
+        ),
                 g1_from_coords(
-                    env,
-                    "1198160149030616374398274215183513043584950980067873401134193238044496098609747659763085151397985797374645000957006",
-                    "3614419462164841247653425346411975433607429668303430144210238084452200375330796493724357191539115142864347073904259",
-                ),
+            env,
+            "1996879509684005423562585401688654576575161232087490077625494204747032957766974172044086894908053378253904401755730",
+            "938418458954158369731701829218837465333564171691282976128469021105681510590706886645753016371048743646878192443694",
+        ),
                 g1_from_coords(
-                    env,
-                    "852316935886900058982967980013011638039951973864299630550149495121850204895787786975443699750375111333318850419951",
-                    "1230987228089004764819399384472966074704351230098676072845721586570076864863307052458464544670345593450273305129595",
-                ),
+            env,
+            "2398560985381871540380692463907950405589737572830547852061272016965957189219825831650864260209629954479961889180470",
+            "3729714988371021735287567888627375815455285341680858179816835152338786038727026139819308628040992976171935801237270",
+        ),
                 g1_from_coords(
-                    env,
-                    "1139639735249734389716550152334771925368743101551174618639126933146950882148738629034742548110661371468474272052506",
-                    "602183753303311254514069927726945031108676267537368074300846024773039689216672925642441569139153167028473300165854",
-                ),
-                // Placeholder 5th ic point. The committed trusted-setup fixture
-                // above predates the recipientHash public input added by #266/#275,
-                // so it only has 4 points. Padding keeps create_circle's
-                // length guard satisfied for the non-proof tests; the claim
-                // tests still fail verification until the circuit is
-                // recompiled and the setup re-run (see docs/adr/006).
+            env,
+            "3403520263757154130275502090118802462849944469065463024473044329672057262363304773273195369185323624254346567471289",
+            "3805601893891695262958779295252389984767576447401674048318515899983086904483008660041019394945622372012874842387532",
+        ),
                 g1_from_coords(
-                    env,
-                    "1139639735249734389716550152334771925368743101551174618639126933146950882148738629034742548110661371468474272052506",
-                    "602183753303311254514069927726945031108676267537368074300846024773039689216672925642441569139153167028473300165854",
-                ),
+            env,
+            "2654953448148255763590886035502807670705030137324598581800079858885547885080731505086166634735365119851769808844281",
+            "3824601767367754127584601901985396184116989525023722408076886085818232017543800657331496265505592063050199138090712",
+        ),
             ],
         ),
     }
@@ -119,20 +116,20 @@ fn real_valid_proof(env: &Env) -> Proof {
     Proof {
         a: g1_from_coords(
             env,
-            "2907069310268506927967653105234275070128268344932018799202307568638524243743685053819117893057927396712794237316271",
-            "373130779600397549851649388857830331983209375623014019669740756591312681846818289558274106749604172549278685616298",
+            "1708349714640132990116341818099964791395935613547019890172791631283252314514288166731033918417312755095039285019843",
+            "3285460062824873754925050999595431551059036641146200280516246640127434556217703173184316895681654718481463021120032",
         ),
         b: g2_from_coords(
             env,
-            "88687641291656924342265046438282117906532557593586688258818110902634093761012368761408789865139551195758735245472",
-            "2931727804921883042059339460132555811421644726178059935370544903705955682853915205767903973665758044084730052160807",
-            "2495955506873325069736028596530775888523406662790722846362297674001660972217424902520084516088106660827329404981087",
-            "493319590447739050326655214026524052634978631462133268976994138913317832516574873176083417782594509620067368433873",
+            "3461515140738367304484452093316171207098333521504934047864391267237205115923604207656136593549663497639960424315782",
+            "393491027553521445187155884887801269497626412922068420673562699995765222927347934435695079142060868819232246104637",
+            "3981742205559613706898623056751215992912828763233405579982160644558619024771303681944429856866144261251325320172945",
+            "1143950950053112767246721891107648338869439135157952217329223294149907281346748974986679982543924761919300573028673",
         ),
         c: g1_from_coords(
             env,
-            "1428615700984090449265189612110816848213500721015641443537106955299716003865429364687909580866203102480536327191699",
-            "3928728866305584943415909200313916008044539956249419707814958809263031740910968235443475490085625971983080252158446",
+            "2010730659768333791961548028276904949853697805224240152059270689203856732296067246426446940151551538588615585749195",
+            "285401301347906869760402273560056020351528454436494587933276390880604851069804928520340988317916344941437093763888",
         ),
     }
 }
@@ -156,6 +153,31 @@ fn real_external_nullifier_round0(env: &Env) -> Fr {
         "9916401131788634118796694467337109503795060207059715207260235684299224251787",
     )
 }
+
+fn fixture_recipient_xdr(env: &Env, k: u8) -> Address {
+    let mut b = [0u8; 40];
+    b[3] = 18; // SCVAL_ADDRESS
+    b[7] = 1; // ScAddress::Contract
+    for byte in b.iter_mut().skip(8) {
+        *byte = k;
+    }
+    use soroban_sdk::xdr::FromXdr as _;
+    Address::from_xdr(env, &Bytes::from_array(env, &b)).unwrap()
+}
+
+// Fixed payout recipients for the committed proofs. Contract addresses are
+// used (not account addresses) so the token payout needs no trustline, and
+// each proof's recipientHash public input is the XDR SHA-256 (mod r) of the
+// recipient address — a claim pays out only to the exact registered
+// recipient (issue #266), a same-proof replay to any other address is
+// rejected.
+fn real_recipient_r0(env: &Env) -> Address {
+    fixture_recipient_xdr(env, 1)
+}
+
+fn real_recipient_r1(env: &Env) -> Address {
+    fixture_recipient_xdr(env, 2)
+}
 // ---- Issue #91: second trusted-setup ceremony, same identity, two rounds ----
 //
 // The fixtures above (real_verification_key/real_valid_proof) came from one
@@ -168,23 +190,23 @@ fn real_external_nullifier_round0(env: &Env) -> Fr {
 // externalNullifier/nullifierHash are unchanged (they don't depend on the
 // ceremony), so those still match real_root()/real_external_nullifier_round0()
 // /real_nullifier_hash() above — only the vk and both proofs are new.
-// Regenerated via circuits/scripts/{compile,setup,prove}.sh with
-// circuits/input.example.json, and again with only `externalNullifier`
-// swapped to round 1's value (SHA-256(circle_id=0, round=1) mod r).
+// Regenerated 2026-09-04 from the same ceremony shape as the canonical key,
+// proving round 0 (recipientHash = real_recipient_r0) and round 1
+// (recipientHash = real_recipient_r1).
 
 fn round_reuse_verification_key(env: &Env) -> VerificationKey {
     VerificationKey {
         alpha: g1_from_coords(
             env,
-            "1143665083818615041767541856901679869941278580726073286804430705884063101000208927402744730602695492653378282624984",
-            "748285674816982858737712297797680518627538282085945152802848359403901518206912094500745837398043271266919577629216",
+            "749582537839343753662662092450452397832509643622354603215105997794324965974939825437185114316129745783000679419786",
+            "349962341132122890724568751232889453699201095759070405617825002476699798173144003754632387388100339536150581215244",
         ),
         beta: g2_from_coords(
             env,
-            "1113315217763957428180440386032056530560500269908411071856833723086353854194486402770390902151091121945866936100510",
-            "2760998709966299869370994344331715937455759219494562721872794295659218681364448418918962561937079434219314347702218",
-            "1801836595818797083031585320915177599078939049414790742001316069355994020350598448495334995469403868086698650116758",
-            "204186841581643251759671320883531956105595260061994136957779126769894364955590117334464172275793401578886899949590",
+            "3880057797060520124320578764877315797540700415384043973769078971696515610163457289102411638052268730945509440648302",
+            "3777314379925758442990512187413923812964245102202468031112766319752244038246687083607245318069508267135278455348947",
+            "1050410361212406767716359668205231057458158288436209166038545299426881545468977171139347619446018726197388473923235",
+            "2493412734090615878237556198351488937361522748982892294901084973296832797018771262475192943991186743848961306012498",
         ),
         gamma: g2_from_coords(
             env,
@@ -195,34 +217,39 @@ fn round_reuse_verification_key(env: &Env) -> VerificationKey {
         ),
         delta: g2_from_coords(
             env,
-            "2425516649678713691278554565996641133352628810206908676831692313278065836574915397233395171095775864958097391271409",
-            "2219566770936465039531188467571068557153850032392430610063061701902587926544616603105408598080310710693185348061141",
-            "3353716483940990087809703601265584267158106420409108918030581670419469306301607904612432166606809764814831365178821",
-            "451961511606720924735761855712043158131196429578280427994017344116061467518760085592416200256545825791301061642097",
+            "2782199162700541151590293642305149245941133573304292014026613340245638150528884723912279081423150251910370591011667",
+            "1667965123321298419005404721536913286386696704243087897513376035401180460494271888014230149112884014846330935711274",
+            "1565021075436299422171230555707527033313444826682266793248045102362668248763197924515903636436166901362990664872853",
+            "1301042207180221059048456631035486481878699810584841268580403698129799558708961199014061692730926219821072491819436",
         ),
         ic: Vec::from_array(
             env,
             [
                 g1_from_coords(
-                    env,
-                    "2583722955058606480023614618224115544681427397366282963373853411758149422416599123211999205608797472753932752044931",
-                    "2277089169595602900544493160093025446558508622791409540342145781766044828489170857630774429434482637483444825187977",
-                ),
+            env,
+            "1948681912634771776347271243697269400762251716937532457452923581348369025432509442708890118552407975194237752144664",
+            "1526361214863697803897508994557674006711987536500572772987868823818838123020499567392825827003234526229256592150572",
+        ),
                 g1_from_coords(
-                    env,
-                    "2232186210069681320529344807621203229894328991222993849015747210779378457413466393569635413543283875310263194138563",
-                    "2439132622433380756393523393134242097300086551209684536346934880835099159116837019524272676455477459323244206046064",
-                ),
+            env,
+            "1996879509684005423562585401688654576575161232087490077625494204747032957766974172044086894908053378253904401755730",
+            "938418458954158369731701829218837465333564171691282976128469021105681510590706886645753016371048743646878192443694",
+        ),
                 g1_from_coords(
-                    env,
-                    "937633315774964495372536440496988057244193397604656684717039902799418942341264241199515497041857189512372180038882",
-                    "1488644122379748194872562477765862836738933445252458037217457341926854804650810386051689121715472767160265403752323",
-                ),
+            env,
+            "2398560985381871540380692463907950405589737572830547852061272016965957189219825831650864260209629954479961889180470",
+            "3729714988371021735287567888627375815455285341680858179816835152338786038727026139819308628040992976171935801237270",
+        ),
                 g1_from_coords(
-                    env,
-                    "1857706103438354462367780395025149200939687896845180808195448343134378345262995063491000226821373865657641583931284",
-                    "819606822891256058698220415854708502066183244596733489098083313886280470201827343305141917943558148205715439208552",
-                ),
+            env,
+            "3403520263757154130275502090118802462849944469065463024473044329672057262363304773273195369185323624254346567471289",
+            "3805601893891695262958779295252389984767576447401674048318515899983086904483008660041019394945622372012874842387532",
+        ),
+                g1_from_coords(
+            env,
+            "2654953448148255763590886035502807670705030137324598581800079858885547885080731505086166634735365119851769808844281",
+            "3824601767367754127584601901985396184116989525023722408076886085818232017543800657331496265505592063050199138090712",
+        ),
             ],
         ),
     }
@@ -232,20 +259,20 @@ fn round_reuse_proof_round0(env: &Env) -> Proof {
     Proof {
         a: g1_from_coords(
             env,
-            "248180271476573779982052430828815763402654173993477893084487178481653613451696253816826540430909445979272666656753",
-            "1726654572623216170877996725662292766987458234553563499767082430652419134601995876937881006911178672289039156405640",
+            "1179578184163156892844953836318474739505515114028407946368752959862089427076975950437844441984714924047364307847863",
+            "2583995179439786185863343706418614460828012726716846426469291464531647132875583069209284530385467167077510517431464",
         ),
         b: g2_from_coords(
             env,
-            "2188557303759461558670750086788610607088329458797547319975922451785630997217687108031508076863755423146264181569495",
-            "3208680174316194780399022828071709631977405194294884678741170412450537800416727396534878298456564486331702476619743",
-            "106575994787976233811598101824350150438875400130834510353686553612575513417421054833345682176286149039822861277053",
-            "660141928006000080613213337320605502696286672571982829073901144481798779240678971908761015150436391973678381909897",
+            "1920751719822233711150824646590740142717678302792535050571729467730768891093744404284949819503387275798927443923355",
+            "124465706171730484358811411088691374480907355110955487591297440269986196202043034949007840913693506577700901283194",
+            "191938888254396250424327753572876070853434510184296114789260973311208360847831491902413009556679539921059487239469",
+            "1915328193537518749159774035793016002622296408759565409172262384698272482567353958935792552018927550307377882090837",
         ),
         c: g1_from_coords(
             env,
-            "230133753952224692336982928899306578075264547639402914207469923973183917846314169624342251445795589245545569532281",
-            "3201842407752881471771749882804291693219859251182875698632663159804616208971873838561878362345966347024799515143571",
+            "408855853864300316978244656938054243943785534531632258533970983721911975793255750228934363325235221011705844280084",
+            "395039523976183092096857501060693098057945786098473832406182006360727832694088099078790128822447850049805133834510",
         ),
     }
 }
@@ -254,20 +281,20 @@ fn round_reuse_proof_round1(env: &Env) -> Proof {
     Proof {
         a: g1_from_coords(
             env,
-            "3111751482072092814735178414871434342560457219862833925600714605596967953895020128429002502832378348641952039789681",
-            "394430723763417132192644880686372844435604016284118678726959499693274773011033834459902047246938369957807186381282",
+            "2259786221683330276448460747884024526358991497498766135291354295974316045857153370560319455949928693033238640483031",
+            "2750965138868310651203252825504066124952916510389725216535389255918703661503224948700993333529663443908054242479485",
         ),
         b: g2_from_coords(
             env,
-            "2405582312044095606944520131561422053123609681341903698442951637974695972478535160742587776725793684068574554146768",
-            "2227181376293242644657742277059093639640831471802372650863311762849604517388982748154146238344201071568415251625629",
-            "3373427607092519704478862452488697125823253032190100319473524196560092232201889428375217506343935560601697373177163",
-            "1100753122234739331868366508880645270728523162592506778143407955100077865329667072025422162079240378361349704704284",
+            "2322563613659181235994800405865062759176883970411493460425571582089472681017959229785441374668923947053244898012845",
+            "2358430731731540087145362278871412082851015655584284286088467993942564122027476225965526543589705890441987808199293",
+            "3446991522716431602868665297839399750125541751205912418318077422548321793726702078433261268281283713226307388135815",
+            "1119685591655926824955137167858243200982240024134106163140054532280280570088946835362790782396378497914289964467140",
         ),
         c: g1_from_coords(
             env,
-            "1991031174096115083247725504766772121448891398757251410451787263083003801254277982375284516836167681744524609729351",
-            "405329845292242010215484577921319975969790832483947968143783980672681308684198726932490554526460590033640646828843",
+            "187577619091086741012027511381398604995130001598429994322148675806800970453563435482945857655437707265982183306533",
+            "2839619480605558288618111614154617437743057244363440683332637490316036895668277129425209099977654348071334913651039",
         ),
     }
 }
@@ -399,7 +426,7 @@ fn happy_path_round_pays_out_and_advances() {
     let circle = client.get_circle(&s.circle_id);
     assert_eq!(circle.pot, s.contribution * (s.size as i128));
 
-    let recipient = Address::generate(&s.env); // fresh, unrelated to any funder
+    let recipient = real_recipient_r0(&s.env); // fixed fixture recipient bound to real_valid_proof
     let nullifier_hash = real_nullifier_hash(&s.env);
     let external_nullifier = real_external_nullifier_round0(&s.env);
     let proof = real_valid_proof(&s.env);
@@ -425,11 +452,10 @@ fn happy_path_round_pays_out_and_advances() {
 
 // ---- Issue #252: protocol fees ----
 
-// Requires a successful claim, which in turn needs a proof that verifies
-// against the committed vk. The committed trusted-setup fixture predates the
-// recipientHash public input (#266/#275), so claim succeeds only after the
-// fixture is regenerated (see docs/adr/006). Marked `#[ignore]` until then.
-#[ignore = "needs regenerated ZK fixtures (docs/adr/006, #275)"]
+// Requires a successful claim: the proof must verify against the committed
+// vk AND its recipientHash public input must match the payout address
+// (issue #266/#275) — satisfied by the regenerated fixtures and the fixed
+// real_recipient_r0 payout address below.
 #[test]
 fn claim_deducts_fee_and_sends_to_fee_recipient() {
     // 500 bps = 5% of a 5 * 100 = 500 stroop pot → 25 fee, 475 net.
@@ -443,7 +469,7 @@ fn claim_deducts_fee_and_sends_to_fee_recipient() {
     }
 
     let payout = s.contribution * (s.size as i128);
-    let recipient = Address::generate(&s.env);
+    let recipient = real_recipient_r0(&s.env);
     let nullifier_hash = real_nullifier_hash(&s.env);
     let external_nullifier = real_external_nullifier_round0(&s.env);
     let proof = real_valid_proof(&s.env);
@@ -463,7 +489,6 @@ fn claim_deducts_fee_and_sends_to_fee_recipient() {
     assert_eq!(token_client.balance(&s.client_id), 0);
 }
 
-#[ignore = "needs regenerated ZK fixtures (docs/adr/006, #275)"]
 #[test]
 fn claim_skips_fee_transfer_when_fee_bps_zero() {
     // fee_bps = 0 must behave exactly as a pre-fee circle: one payout
@@ -477,7 +502,7 @@ fn claim_skips_fee_transfer_when_fee_bps_zero() {
     }
 
     let payout = s.contribution * (s.size as i128);
-    let recipient = Address::generate(&s.env);
+    let recipient = real_recipient_r0(&s.env);
     client.claim(
         &s.circle_id,
         &recipient,
@@ -522,7 +547,7 @@ fn claim_reverts_on_tampered_public_input() {
         client.fund(&s.circle_id, m);
     }
 
-    let recipient = Address::generate(&s.env);
+    let recipient = real_recipient_r0(&s.env);
     // the real proof's actual output is real_nullifier_hash(); claiming
     // with a different nullifier_hash means the pairing check is being
     // asked to verify a statement the proof doesn't attest to.
@@ -557,7 +582,7 @@ fn claim_reverts_when_underfunded() {
         client.fund(&s.circle_id, m);
     }
 
-    let recipient = Address::generate(&s.env);
+    let recipient = real_recipient_r0(&s.env);
     let nullifier_hash = real_nullifier_hash(&s.env);
     let external_nullifier = real_external_nullifier_round0(&s.env);
     let proof = real_valid_proof(&s.env);
@@ -584,7 +609,7 @@ fn claim_immediately_after_round_advance_reverts() {
         client.fund(&s.circle_id, m);
     }
 
-    let recipient = Address::generate(&s.env);
+    let recipient = real_recipient_r0(&s.env);
     let nullifier_hash = real_nullifier_hash(&s.env);
     let external_nullifier = real_external_nullifier_round0(&s.env);
     let proof = real_valid_proof(&s.env);
@@ -627,7 +652,7 @@ fn second_claim_with_same_nullifier_reverts() {
     let proof = real_valid_proof(&s.env);
 
     // round 0: claim succeeds and marks the nullifier used
-    let recipient_a = Address::generate(&s.env);
+    let recipient_a = real_recipient_r0(&s.env);
     let external_nullifier_0 = real_external_nullifier_round0(&s.env);
     client.claim(
         &s.circle_id,
@@ -696,7 +721,7 @@ fn same_identity_can_claim_two_consecutive_rounds() {
     let proof_r0 = round_reuse_proof_round0(&env);
 
     assert!(!client.has_claimed(&circle_id, &nullifier_hash_r0));
-    let recipient_r0 = Address::generate(&env);
+    let recipient_r0 = real_recipient_r0(&env);
     client.claim(
         &circle_id,
         &recipient_r0,
@@ -725,7 +750,7 @@ fn same_identity_can_claim_two_consecutive_rounds() {
     assert_ne!(nullifier_hash_r0, nullifier_hash_r1);
     assert!(!client.has_claimed(&circle_id, &nullifier_hash_r1));
 
-    let recipient_r1 = Address::generate(&env);
+    let recipient_r1 = real_recipient_r1(&env);
     client.claim(
         &circle_id,
         &recipient_r1,
@@ -751,7 +776,7 @@ fn claim_reverts_on_stale_round_tag() {
         client.fund(&s.circle_id, m);
     }
 
-    let recipient = Address::generate(&s.env);
+    let recipient = real_recipient_r0(&s.env);
     let nullifier_hash = real_nullifier_hash(&s.env);
     // wrong: this circle is still on round 0, but we tag the proof for round 1
     let external_nullifier = expected_external_nullifier(&s.env, s.circle_id, 1);
@@ -948,7 +973,7 @@ fn claim_emits_claimed_event() {
         client.fund(&s.circle_id, m);
     }
 
-    let recipient = Address::generate(&s.env);
+    let recipient = real_recipient_r0(&s.env);
     let nullifier_hash = real_nullifier_hash(&s.env);
     let external_nullifier = real_external_nullifier_round0(&s.env);
     let proof = real_valid_proof(&s.env);
@@ -1053,7 +1078,7 @@ fn fund_unknown_circle_reverts() {
 fn claim_unknown_circle_reverts() {
     let s = setup(5, 100);
     let client = ContractClient::new(&s.env, &s.client_id);
-    let recipient = Address::generate(&s.env);
+    let recipient = real_recipient_r0(&s.env);
     client.claim(
         &999u64,
         &recipient,
@@ -1193,8 +1218,8 @@ fn cpu_instruction_benchmarks() {
         client.fund(&0u64, &m);
     }
 
-    // ---- claim (current: 3 public inputs, ic.len() == 4) ----
-    let recipient = Address::generate(&env);
+    // ---- claim (current: 4 public inputs, ic.len() == 5) ----
+    let recipient = real_recipient_r0(&env);
     let nullifier_hash = real_nullifier_hash(&env);
     let external_nullifier = real_external_nullifier_round0(&env);
     let proof = real_valid_proof(&env);
@@ -1215,12 +1240,12 @@ fn cpu_instruction_benchmarks() {
     );
 
     // ---- larger IC (simulate 5 public inputs → ic.len() == 6) ----
-    // Runs the same Groth16 path with 2 extra g1_mul terms. Proof will not
-    // verify (dummy inputs); we only care about instruction cost.
+    // Runs the same Groth16 path with one extra g1_mul term (5 instead of
+    // 4). Proof will not verify (dummy inputs); we only care about the
+    // instruction cost.
     env.cost_estimate().budget().reset_default();
     let mut big_vk = real_verification_key(&env);
     let pad = big_vk.ic.get(0).unwrap();
-    big_vk.ic.push_back(pad.clone());
     big_vk.ic.push_back(pad);
     let zero = Fr::from_u256(U256::from_u32(&env, 0));
     let big_inputs = vec![
@@ -1287,7 +1312,7 @@ fn claim_works_on_fully_funded_round_after_cap() {
         s.contribution * (s.size as i128)
     );
 
-    let recipient = Address::generate(&s.env);
+    let recipient = real_recipient_r0(&s.env);
     let nullifier_hash = real_nullifier_hash(&s.env);
     let external_nullifier = real_external_nullifier_round0(&s.env);
     let proof = real_valid_proof(&s.env);
@@ -1316,7 +1341,7 @@ fn has_claimed_false_before_true_after() {
         client.fund(&s.circle_id, m);
     }
 
-    let recipient = Address::generate(&s.env);
+    let recipient = real_recipient_r0(&s.env);
     let external_nullifier = real_external_nullifier_round0(&s.env);
     let proof = real_valid_proof(&s.env);
     client.claim(
@@ -1331,12 +1356,12 @@ fn has_claimed_false_before_true_after() {
 }
 
 #[test]
-#[should_panic(expected = "Error(Contract, #7)")] // Overflow
-fn fund_reverts_on_pot_target_overflow() {
-    // contribution * size overflows i128 → typed Overflow before any transfer.
-    let s = setup(2, i128::MAX);
-    let client = ContractClient::new(&s.env, &s.client_id);
-    client.fund(&s.circle_id, &s.members[0]);
+#[should_panic(expected = "Error(Contract, #10)")] // InvalidCircleParams
+fn create_circle_rejects_pot_target_overflow() {
+    // contribution * size overflows i128, so create_circle rejects the
+    // circle at creation time (checked pot-target arithmetic,
+    // InvalidCircleParams) before any funds move.
+    let _ = setup(2, i128::MAX);
 }
 
 #[test]
@@ -1472,7 +1497,7 @@ fn claim_after_zero_contributor_cancel_reverts() {
 
     client.cancel_circle(&s.circle_id);
 
-    let recipient = Address::generate(&s.env);
+    let recipient = real_recipient_r0(&s.env);
     client.claim(
         &s.circle_id,
         &recipient,
@@ -1507,7 +1532,7 @@ fn claim_after_cancel_reverts() {
     }
     client.cancel_circle(&s.circle_id);
 
-    let recipient = Address::generate(&s.env);
+    let recipient = real_recipient_r0(&s.env);
     client.claim(
         &s.circle_id,
         &recipient,
@@ -1529,22 +1554,14 @@ fn double_cancel_reverts() {
 // ---- Issue #84: instance-storage TTL extension ----
 
 #[test]
-#[should_panic(expected = "Error(Contract, #5)")] // InvalidProof
-fn claim_with_truncated_ic_reverts() {
-    // Defense-in-depth: verify_groth16 guards against a malformed vk where
-    // ic.len() != public_inputs.len() + 1. This guards would be unreachable
-    // once create_circle validates vk shape, but we test it anyway.
-    //
-    // Scenario: manually create a circle with a truncated ic (3 entries
-    // instead of 4). The vk matches the real proof's alpha/beta/gamma/delta,
-    // but has fewer ic points. When claim runs with the same proof and
-    // 3 public inputs, verify_groth16 sees public_inputs.len() + 1 == 4 but
-    // vk.ic.len() == 3, returns false, and claim reverts with InvalidProof.
-    //
-    // Link: this test becomes obsolete once create_circle validates
-    // vk.ic.len() == size + 1 (GitHub issue #XX). Until then, nothing
-    // prevents a malicious or buggy admin from creating a circle with
-    // a wrong-shaped verification key.
+#[should_panic(expected = "Error(Contract, #10)")] // InvalidCircleParams
+fn create_circle_rejects_truncated_ic() {
+    // create_circle validates vk shape up front: the circuit exposes
+    // [nullifierHash, root, externalNullifier, recipientHash], so ic must
+    // hold one point per public signal plus one (5 total). A truncated ic
+    // is rejected at creation (InvalidCircleParams) before any circle or
+    // funds exist. verify_groth16 keeps its own length guard as
+    // defense-in-depth against a hand-crafted vk ever reaching claim.
     let env = Env::default();
     env.mock_all_auths();
 
@@ -1554,43 +1571,24 @@ fn claim_with_truncated_ic_reverts() {
     let admin = Address::generate(&env);
     let token_admin = Address::generate(&env);
     let token = create_token(&env, &token_admin);
-    let token_admin_client = token::StellarAssetClient::new(&env, &token);
 
-    let root = real_root(&env);
-    // Start with the real vk and truncate its ic to 3 entries (missing the 4th).
     let mut truncated_vk = real_verification_key(&env);
+    assert_eq!(truncated_vk.ic.len(), 5);
+    truncated_vk.ic.pop_back(); // Remove the last ic point; len is now 4.
     assert_eq!(truncated_vk.ic.len(), 4);
-    truncated_vk.ic.pop_back(); // Remove the last ic point; len is now 3.
-    assert_eq!(truncated_vk.ic.len(), 3);
 
-    let circle_id = client.create_circle(&admin, &token, &root, &100i128, &5u32, &0u32, &truncated_vk, &0u32, &Address::generate(&env));
-
-    // Fund the circle fully.
-    let members: StdVec<Address> = (0..5)
-        .map(|_| {
-            let m = Address::generate(&env);
-            token_admin_client.mint(&m, &100i128);
-            m
-        })
-        .collect();
-    for m in members.iter() {
-        client.fund(&circle_id, m);
-    }
-
-    // Attempt claim with the real proof (which was generated for ic.len() == 4
-    // and 3 public inputs). The mismatch triggers verify_groth16's guard.
-    let recipient = Address::generate(&env);
-    let nullifier_hash = real_nullifier_hash(&env);
-    let external_nullifier = real_external_nullifier_round0(&env);
-    let proof = real_valid_proof(&env);
-
-    client.claim(
-        &circle_id,
-        &recipient,
-        &nullifier_hash,
-        &external_nullifier,
-        &proof,
+    client.create_circle(
+        &admin,
+        &token,
+        &real_root(&env),
+        &100i128,
+        &5u32,
+        &0u32,
+        &truncated_vk,
+        &0u32,
+        &Address::generate(&env),
     );
+    unreachable!("create_circle with a truncated vk must revert");
 }
 
 #[test]
@@ -1641,7 +1639,7 @@ fn instance_ttl_extended_after_create_fund_claim() {
     }
 
     // claim must also extend instance TTL.
-    let recipient = Address::generate(&env);
+    let recipient = real_recipient_r0(&env);
     client.claim(
         &0u64,
         &recipient,
@@ -1708,3 +1706,4 @@ mod proptest_apply_fee {
         }
     }
 }
+

@@ -15,6 +15,7 @@ circuits/build/
 # membership.template.circom + config.json (see README "Changing the Merkle
 # tree depth") — the template is the committed source, this is a build output.
 circuits/membership.circom
+circuits/*.sha256
 # app/public/circuits/ is populated by `npm run sync-circuit` (see
 # app/scripts/sync-circuit.mjs) from circuits/build/ — same reasoning.
 app/public/circuits/

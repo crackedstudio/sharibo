@@ -428,7 +428,7 @@ function ClaimProgress({ stage, elapsedSeconds }: { stage: ClaimStage; elapsedSe
       </div>
       {stage === "proving" && (
         <p className={styles.techline}>
-          <span className={styles.spinner} aria-hidden="true" /> Groth16 · BLS12-381 · 1,452 constraints ·
+          <span className={styles.spinner} aria-hidden="true" /> Groth16 · BLS12-381 · 3,757 constraints ·
           proving locally in your browser, nothing sent anywhere until the proof is done ·{" "}
           {elapsedSeconds}s elapsed
         </p>
@@ -1589,7 +1589,7 @@ export default function App() {
             {busy && (
               <p className={styles.techline}>
                 {/* Constraint count: update this AND circuits/README.md if the circuit changes. */}
-                Groth16 · BLS12-381 · 1,452 constraints · proving locally in your browser, nothing
+                Groth16 · BLS12-381 · 3,757 constraints · proving locally in your browser, nothing
                 sent anywhere until the proof is done
                 {isProving && proveElapsedSeconds !== null ? ` · proving… ${proveElapsedSeconds}s` : ""}
               </p>
