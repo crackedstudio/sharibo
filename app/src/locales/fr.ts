@@ -20,6 +20,8 @@ const fr = {
   "landing.previousCirclePrefix": "Votre tontine précédente est toujours active sur",
   "landing.previousCircleLink": "tontine #{id} ↗",
   "landing.testnetFineprint": "Testnet uniquement. Les identités de démonstration sont générées à nouveau dans votre navigateur et ne sont jamais réutilisées.",
+  "pot.fee": "frais {feePercent}% → {feeRecipient}",
+  "pot.feeUnknown": "inconnu",
   "circle.onChainLink": "tontine #{id} sur la chaîne ↗",
   "common.startNewCircle": "Démarrer une nouvelle tontine"
 } as const;

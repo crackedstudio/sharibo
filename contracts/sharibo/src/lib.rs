@@ -73,14 +73,15 @@ pub struct Proof {
 ///   the serialised layout changes without a deliberate version bump, making
 ///   accidental breakage impossible to land unnoticed.
 ///
-/// Current version: **1** (initial versioned struct).
+/// Current version: **2** (adds `fee_bps`/`fee_recipient` — breaking, needs
+/// a testnet reset for pre-existing circles; see `docs/runbook-testnet-reset.md`).
 #[contracttype]
 #[derive(Clone)]
 pub struct Circle {
     /// Schema version for this stored struct. Must be the first field.
     /// Increment whenever a field is added, removed, or reordered, and
     /// provide a migration path or explicit testnet-reset note.
-    /// Current value: 1.
+    /// Current value: 2.
     pub schema_version: u32,
     /// Owner of the circle. Required to call [`Contract::cancel_circle`];
     /// does **not** gate funding or claiming — those are permissionless
@@ -159,6 +160,19 @@ pub struct Circle {
     /// Reset to the current ledger after each successful `claim` or
     /// `expire_round`.
     pub round_started_ledger: u32,
+    /// Protocol fee in basis points (`0..=10_000`, where `10_000` = 100% of
+    /// the pot) deducted from every [`Contract::claim`] payout.
+    ///
+    /// Committed at circle creation — there is deliberately **no setter**, so
+    /// members can read [`Contract::get_circle`] before funding and know
+    /// exactly what will be deducted (see `docs/adr/003-protocol-fees.md`).
+    /// A `0` fee costs nothing extra on `claim` (the fee transfer is skipped).
+    pub fee_bps: u32,
+    /// Address that receives the [`Self::fee_bps`] deduction on every
+    /// [`Contract::claim`]. Must not be the contract's own address when
+    /// `fee_bps > 0` (enforced at creation — mirror of the `claim` recipient
+    /// guard); ignored when `fee_bps == 0`. Immutable after creation.
+    pub fee_recipient: Address,
 }
 
 /// Storage keys for the contract's persistent and instance storage.
@@ -210,8 +224,7 @@ pub enum Error {
     Overflow = 7,
     /// `cancel_circle` or `fund`/`claim` called on a cancelled circle.
     CircleCancelled = 8,
-    /// Reserved: previously `apply_fee`'s parameter guard. Kept so the
-    /// on-the-wire error codes below it stay stable (see ADR on protocol fees).
+    /// `create_circle` rejected a `fee_bps` outside `0..=10_000`.
     InvalidFeeParams = 9,
     /// `create_circle` rejected invalid setup parameters: zero size,
     /// non-positive contribution, or a verification key length mismatch.
@@ -236,6 +249,10 @@ pub enum Error {
 /// Number of public signals the membership circuit exposes:
 /// [nullifierHash, root, externalNullifier, recipientHash].
 const PUBLIC_INPUT_COUNT: u32 = 4;
+
+/// Upper bound for [`Circle::fee_bps`]: 10_000 basis points = 100% of a pot.
+/// `apply_fee` and `create_circle` share this single source of truth.
+const MAX_FEE_BASIS_POINTS: u32 = 10_000;
 
 const LEDGER_THRESHOLD: u32 = 100;
 
@@ -305,6 +322,13 @@ impl Contract {
     ///   contribution * size`. Stored in [`Circle::size`].
     /// * `vk` — Groth16 verification key for the membership circuit.
     ///   Stored in [`Circle::vk`].
+    /// * `fee_bps` — protocol fee in basis points (`0..=10_000`; `10_000`
+    ///   = 100% of the pot). Committed at creation and immutable. Stored in
+    ///   [`Circle::fee_bps`].
+    /// * `fee_recipient` — address that receives the fee deduction on every
+    ///   [`Self::claim`]. Must be a real recipient (not the contract itself)
+    ///   when `fee_bps > 0`; ignored when `fee_bps == 0`. Stored in
+    ///   [`Circle::fee_recipient`].
     ///
     /// # State effects
     ///
@@ -318,6 +342,9 @@ impl Contract {
     /// * [`Error::InvalidCircleConfig`] — `size == 0` or `contribution <= 0`.
     ///   A non-positive target would let an empty pot count as already-funded
     ///   during the first claim and advance a round without any real deposits.
+    /// * [`Error::InvalidFeeParams`] — `fee_bps` outside `0..=10_000`.
+    /// * [`Error::InvalidRecipient`] — `fee_bps > 0` but `fee_recipient` is
+    ///   the contract's own address, which would strand the fee forever.
     pub fn create_circle(
         env: Env,
         admin: Address,
@@ -327,6 +354,8 @@ impl Contract {
         size: u32,
         round_deadline_ledgers: u32,
         vk: VerificationKey,
+        fee_bps: u32,
+        fee_recipient: Address,
     ) -> u64 {
         admin.require_auth();
 
@@ -335,6 +364,13 @@ impl Contract {
         // recipientHash], so 4 + 1 = 5. Recount this if the circuit changes.
         if size == 0 || contribution <= 0 || vk.ic.len() != PUBLIC_INPUT_COUNT + 1 {
             panic_with_error!(&env, Error::InvalidCircleParams);
+        }
+
+        if fee_bps > MAX_FEE_BASIS_POINTS {
+            panic_with_error!(&env, Error::InvalidFeeParams);
+        }
+        if fee_bps > 0 && fee_recipient == env.current_contract_address() {
+            panic_with_error!(&env, Error::InvalidRecipient);
         }
 
         let target = contribution
@@ -350,7 +386,7 @@ impl Contract {
 
         let round_started_ledger = env.ledger().sequence();
         let circle = Circle {
-            schema_version: 1,
+            schema_version: 2,
             admin,
             token,
             root,
@@ -364,6 +400,8 @@ impl Contract {
             cancelled: false,
             round_deadline_ledgers,
             round_started_ledger,
+            fee_bps,
+            fee_recipient,
         };
         let key = DataKey::Circle(circle_id);
         env.storage().persistent().set(&key, &circle);
@@ -520,8 +558,9 @@ impl Contract {
     ///
     /// * Sets [`DataKey::Nullifier`]`(circle_id, nullifier_hash) = true`
     ///   and extends TTL — idempotent double-claim fence.
-    /// * Transfers the entire [`Circle::pot`] to `recipient` via the
-    ///   token client.
+    /// * Splits [`Circle::pot`] via `apply_fee` into the protocol fee and the
+    ///   net payout; transfers the fee to [`Circle::fee_recipient`] (skipped
+    ///   entirely when the fee is zero) and the net to `recipient`.
     /// * Zeros [`Circle::pot`], increments [`Circle::round`], clears
     ///   [`Circle::contributors`], and writes the updated circle back.
     /// * Extends both instance and persistent TTLs.
@@ -607,8 +646,16 @@ impl Contract {
             .instance()
             .extend_ttl(LEDGER_THRESHOLD, LEDGER_EXTEND_TO);
 
+        let (fee, net) = apply_fee(&env, circle.fee_bps, payout);
         let token_client = token::Client::new(&env, &circle.token);
-        token_client.transfer(&env.current_contract_address(), &recipient, &payout);
+        if fee > 0 {
+            token_client.transfer(
+                &env.current_contract_address(),
+                &circle.fee_recipient,
+                &fee,
+            );
+        }
+        token_client.transfer(&env.current_contract_address(), &recipient, &net);
 
         env.events().publish(
             (symbol_short!("circle"), symbol_short!("claimed"), circle_id),
@@ -1098,6 +1145,59 @@ fn pot_target(env: &Env, circle: &Circle) -> i128 {
         .contribution
         .checked_mul(circle.size as i128)
         .unwrap_or_else(|| panic_with_error!(env, Error::Overflow))
+}
+
+/// Split `amount` into a protocol fee and the net payout.
+///
+/// # Formula
+///
+/// ```text
+/// fee = fee_bps * amount / 10_000   (integer truncation — rounds down)
+/// net = amount - fee
+/// ```
+///
+/// Because `fee` is truncated, the sum `fee + net` is always exactly
+/// equal to `amount` — no tokens are created or destroyed.
+///
+/// # Overflow safety
+///
+/// The intermediate product `fee_bps * amount` would overflow `i128` for
+/// large amounts if computed naively. The implementation avoids this by
+/// splitting `amount` into a quotient and remainder:
+///
+/// ```text
+/// fee = (amount / 10_000) * fee_bps + (amount % 10_000) * fee_bps / 10_000
+/// ```
+///
+/// Both terms fit in `i128` for all `amount >= 0` and `fee_bps <= 10_000`.
+///
+/// # Arguments
+///
+/// * `fee_bps` — fee in basis points; must be in `0..=10_000` (i.e.
+///   0 % – 100 %). `create_circle` rejects anything outside this range
+///   with [`Error::InvalidFeeParams`].
+/// * `amount` — gross token amount to split. Non-negative; the round-trip
+///   invariant `fee + net == amount` holds for it.
+///
+/// # Returns
+///
+/// `(fee, net)` where `fee + net == amount`.
+fn apply_fee(env: &Env, fee_bps: u32, amount: i128) -> (i128, i128) {
+    if fee_bps > MAX_FEE_BASIS_POINTS {
+        panic_with_error!(env, Error::InvalidFeeParams);
+    }
+    // Split to avoid overflow: amount = q * 10_000 + r, so
+    //   fee_bps * amount = fee_bps * q * 10_000 + fee_bps * r
+    // Dividing by 10_000:
+    //   fee = fee_bps * q + fee_bps * r / 10_000
+    // Both `fee_bps * q` and `fee_bps * r` fit in i128 for all valid inputs
+    // (q <= i128::MAX / 10_000 and r < 10_000, fee_bps <= 10_000).
+    let bps = fee_bps as i128;
+    let q = amount / 10_000;
+    let r = amount % 10_000;
+    let fee = bps * q + bps * r / 10_000;
+    let net = amount - fee;
+    (fee, net)
 }
 
 mod test;

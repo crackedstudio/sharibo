@@ -27,16 +27,16 @@ The smart contract includes automated instruction-budget tests in [`contracts/sh
 
 | Operation | Inputs / Parameters | Measured CPU Instructions | Protocol Limit | % of Limit |
 | :--- | :--- | :--- | :--- | :--- |
-| **`create_circle`** | Admin auth, SAC token address, Merkle root, contribution, size, BLS12-381 VK | **73,843** (~74K) | 100,000,000 | <0.1% |
-| **`fund`** | Member auth, single SAC token transfer, vector push, pot update | **272,095** (~272K) | 100,000,000 | ~0.3% |
-| **`claim` (Standard)** | Real Groth16 proof, 3 public inputs (`nullifier_hash`, `root`, `external_nullifier`), SAC transfer | **48,083,521** (~48.1M) | 100,000,000 | ~48.1% |
-| **`verify_groth16` (Synthetic Large IC)** | 5 public inputs (`ic.len() == 6`), 5 scalar multiplications | **54,589,346** (~54.6M) | 100,000,000 | ~54.6% |
+| **`create_circle`** | Admin auth, SAC token address, Merkle root, contribution, size, BLS12-381 VK | **89,425** (~89K) | 100,000,000 | <0.1% |
+| **`fund`** | Member auth, single SAC token transfer, vector push, pot update | **300,506** (~301K) | 100,000,000 | ~0.3% |
+| **`claim` (Standard)** | Real Groth16 proof, 4 public inputs (`nullifier_hash`, `root`, `external_nullifier`, `recipient_hash`), SAC transfer | **51,507,065** (~51.5M) | 100,000,000 | ~51.5% |
+| **`verify_groth16` (Synthetic Large IC)** | 5 public inputs (`ic.len() == 6`), 5 scalar multiplications | **54,589,179** (~54.6M) | 100,000,000 | ~54.6% |
 
 ---
 
 ## 3. Breakdown of the `claim` Operation
 
-The `claim` entrypoint executes the complete zero-knowledge payout pipeline. Its ~48M CPU instruction budget is distributed as follows:
+The `claim` entrypoint executes the complete zero-knowledge payout pipeline. Its ~51.5M CPU instruction budget is distributed as follows:
 
 1. **Host Pairing Check (`bls12_381().pairing_check`)**:
    - Computes the 4-pairing product:
@@ -44,11 +44,12 @@ The `claim` entrypoint executes the complete zero-knowledge payout pipeline. Its
    - Consumes **~30.3M instructions**.
 2. **Linear Combination for Public Inputs (`g1_mul` / `g1_add`)**:
    - Computes $vk_x = ic[0] + \sum_{i=0}^{n-1} public\_input_i \cdot ic[i+1]$
-   - For 3 public inputs, two `g1_mul` calls consume **~7.4M instructions each (~14.8M total)**, plus minimal additions.
+   - For 4 public inputs, one scalar multiplication per signal, consuming **~18.3M instructions** total, plus minimal additions.
 3. **Contract Logic, Authorization, & Asset Transfer**:
    - Target pot equality check (`pot == contribution * size`)
    - Round tag validation (`SHA256(circle_id, round) mod r`)
    - Nullifier double-claim check in persistent storage
+   - Recipient hash binding check and fee settlement (if any)
    - Stellar Asset Contract (SAC) token transfer to `recipient`
    - State updates (pot zeroed, round incremented, contributors cleared) and storage TTL extension (`extend_ttl`)
    - Consumes **~2.9M instructions**.
@@ -57,9 +58,9 @@ The `claim` entrypoint executes the complete zero-knowledge payout pipeline. Its
 
 ## 4. Headroom & Safety Margin
 
-- **Tested assertion**: The test suite enforces an explicit assertion that `claim()` CPU instructions remain strictly below **60,000,000** (a 40% margin below the 100M protocol ceiling).
+- **Tested assertion**: The test suite enforces an explicit assertion that `claim()` CPU instructions remain strictly below **80,000,000** (a 20% margin below the 100M protocol ceiling).
 - **Tree depth invariance**: The Merkle tree depth (e.g. depth 4 for 16 members, depth 7 for 100 members) only impacts circuit constraint count and proof generation time in the client; it does **not** increase on-chain verification cost because the contract only verifies the single Merkle root scalar.
-- **Public input scaling**: Each additional public input in the circuit increases the contract verification cost by one scalar multiplication in $G_1$ (~7.4M instructions). With 3 public inputs, Sharibo operates comfortably in the ~48M range.
+- **Public input scaling**: Each additional public input in the circuit increases the contract verification cost by one scalar multiplication in $G_1$ (~4.6M instructions). With 4 public inputs, Sharibo operates comfortably in the ~51.5M range.
 
 ---
 
@@ -85,10 +86,10 @@ reviewed whenever contract logic or dependencies change.
 
 | Entrypoint | CPU instructions | Budget headroom |
 | --- | ---: | ---: |
-| `create_circle` | pending refresh | pending refresh |
-| `fund` | pending refresh | pending refresh |
-| `claim` | pending refresh | pending refresh |
-| `verify_groth16` (5 public inputs) | pending refresh | pending refresh |
+| `create_circle` | 89425 | 99.9% |
+| `fund` | 300506 | 99.7% |
+| `claim` | 51507065 | 48.5% |
+| `verify_groth16` (5 public inputs) | 54589179 | 45.4% |
 
 `claim` must remain below 80,000,000 instructions. Stellar's transaction CPU
 budget is 100,000,000 instructions.

@@ -54,7 +54,7 @@ what groundwork already exists, as opposed to being silent about it:
 ## 4. Product
 
 - [ ] **Enforced turn ordering.** [ADR 002](adr/002-multi-round-turn-ordering.md) (status: **Proposed**) documents that today the same identity can claim every round of a cycle back to back — nothing on-chain enforces "one claim per member per cycle." The design issue (#91) is closed; there is no open issue for actually implementing the enforcement it specifies. *Not yet filed.*
-- [ ] **Fees.** `apply_fee` exists as dead code today — wire it into `claim` or delete it (#251); add `fee_bps`/`fee_recipient` to `Circle` with a protocol-fee ADR (#252); guard against `fee_bps > 10_000` (#253) rather than just documenting the footgun.
+- [x] **Fees.** Shipped in [#252](https://github.com/crackedstudio/sharibo/issues/252): `apply_fee` wired into `claim`, `fee_bps`/`fee_recipient` added to `Circle` (immutable at creation) with the protocol-fee ADR ([003](adr/003-protocol-fees.md)), and a `fee_bps > 10_000` guard (`MAX_FEE_BASIS_POINTS` → `InvalidFeeParams`).
 - [ ] **A way out of a stuck circle beyond admin-only cancel.** Add a round deadline so a stalled circle can be force-cancelled without depending on the admin key being available (#258). A fuller dispute-handling path (contested claims, partial rounds) beyond "cancel and refund" — *not yet filed.*
 
 ---

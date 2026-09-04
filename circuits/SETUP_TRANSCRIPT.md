@@ -46,3 +46,26 @@ to be considered canonical.
 > `verification_key.json` and this transcript are committed.
 
 ---
+
+## Entry — 2026-09-04T21:41:32Z
+
+| Field              | Value |
+|--------------------|-------|
+| Date (UTC)         | `2026-09-04T21:41:32Z` |
+| snarkjs version    | `0.7.6` |
+| Curve              | `bls12381` |
+| Powers-of-Tau power | 12 |
+| `verification_key.json` SHA-256 | `2e439890c63dcb186d2a8a3220c980eb989e705ea4b2c75600a33a8a9bf8f53c` |
+| `membership_final.zkey` SHA-256  | `24826303f11c36d4aef68012c12c11878f2d7be8fe8c7520c78ea9004f61b966` |
+| `pot12_bls12381_final.ptau` SHA-256  | `b993e45aa34edefc504c1050bfc057128710059175a5a0bd36cdddbdec5b5154` |
+
+> Note: this entry follows a full re-verification of the recipient-binding
+> pipeline (#266/#275). The 2025-07-01 canonical key predates the
+> `recipientHash` public input; this ceremony is the first one bound to it.
+> Generated from the deduplicated circuit (duplicate `recipientHash` /
+> `recipientSquare` signals removed — new circom versions reject them).
+> Recipient addresses for the committed test fixtures are fixed ed25519
+> account addresses whose XDR SHA-256 hashes are baked into the proofs.
+
+---
+

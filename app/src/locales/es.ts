@@ -69,6 +69,8 @@ const es = {
   "ring.check": "\u2713",
 
   "pot.label": "fondo: {pot} / {total} XLM \u00b7 ronda {round}",
+  "pot.fee": "comisi\u00f3n {feePercent}% \u2192 {feeRecipient}",
+  "pot.feeUnknown": "desconocido",
 
   "fund.heading": "Aportar",
   "fund.memberLabel": "miembro {index}",

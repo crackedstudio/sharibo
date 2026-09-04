@@ -17,6 +17,7 @@ strings from Stellar RPC failures and maps them to typed subclasses in
 | 6    | `RoundFull`           | `RoundFullError`          | Pot is already at `contribution × size`; no more funds accepted.     |
 | 7    | `Overflow`            | `OverflowError`           | Checked pot arithmetic overflowed (absurd contribution / size).       |
 | 8    | `CircleCancelled`     | `CircleCancelledError`    | `cancel_circle` or `fund`/`claim` called on a cancelled circle.     |
+| 9    | `InvalidFeeParams`    | — (generic `ContractError`) | `create_circle` rejected a `fee_bps` outside `0..=10_000`.         |
 
 All subclasses extend `ContractError`, which in turn extends `ShariboError`.
 
