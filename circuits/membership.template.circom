@@ -96,15 +96,6 @@ template Sharibo(levels) {
     // signal-binding pattern.
     signal input recipientHash;
 
-    // Recipient-binding signal (issue #266). A squaring constraint binds
-    // recipientHash into the proof without adding a Poseidon evaluation.
-    // The verifier (contract) checks this public signal against the
-    // expected payout-address hash, preventing proof transfer to an
-    // arbitrary recipient.
-    signal input recipientHash;
-    signal recipientSquare;
-    recipientSquare <== recipientHash * recipientHash;
-
     // public output (recorded by the contract)
     signal output nullifierHash;    // Poseidon(identityNullifier, externalNullifier)
 
