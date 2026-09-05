@@ -707,6 +707,85 @@ fn create_circle_emits_created_event() {
 }
 
 #[test]
+#[should_panic(expected = "Error(Contract, #10)")] // InvalidCircleParams
+fn create_circle_rejects_size_above_max_capacity() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let contract_id = env.register(Contract, ());
+    let client = ContractClient::new(&env, &contract_id);
+
+    let admin = Address::generate(&env);
+    let token_admin = Address::generate(&env);
+    let token = create_token(&env, &token_admin);
+    let root = real_root(&env);
+    let vk = real_verification_key(&env);
+
+    // The Merkle tree holds at most 2^4 = 16 commitments (circuits/config.json);
+    // a larger size can never be fully claimed.
+    let oversized = MAX_CIRCLE_SIZE + 1;
+    client.create_circle(&admin, &token, &root, &100i128, &oversized, &0u32, &vk);
+}
+
+#[test]
+fn create_circle_accepts_max_capacity_size() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let contract_id = env.register(Contract, ());
+    let client = ContractClient::new(&env, &contract_id);
+
+    let admin = Address::generate(&env);
+    let token_admin = Address::generate(&env);
+    let token = create_token(&env, &token_admin);
+    let root = real_root(&env);
+    let vk = real_verification_key(&env);
+
+    let circle_id = client.create_circle(&admin, &token, &root, &100i128, &MAX_CIRCLE_SIZE, &0u32, &vk);
+    let circle = client.get_circle(&circle_id);
+    assert_eq!(circle.size, MAX_CIRCLE_SIZE);
+}
+
+#[test]
+fn max_circle_size_matches_circuit_levels() {
+    // The bound is asserted against the source of truth, not just commented:
+    // bumping `levels` in circuits/config.json without updating MAX_CIRCLE_SIZE
+    // fails this test, forcing a deliberate review of the contract constant
+    // (and a redeploy, since the bound is compiled into the WASM).
+    let config_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../circuits/config.json");
+    let contents = std::fs::read_to_string(&config_path)
+        .expect("circuits/config.json not found; run tests from a full checkout");
+
+    let levels = parse_config_levels(&contents)
+        .unwrap_or_else(|| panic!("circuits/config.json must contain a numeric \"levels\" field: {contents}"));
+
+    // 2^levels computed in u64 so an absurdly deep circuit still yields a
+    // clean assertion failure instead of an integer-overflow panic.
+    let capacity = 1u64 << levels;
+    assert_eq!(
+        MAX_CIRCLE_SIZE as u64,
+        capacity,
+        "MAX_CIRCLE_SIZE must equal 2^levels ({capacity}) from circuits/config.json \
+         — update the constant (and redeploy the contract) when the circuit depth changes",
+    );
+}
+
+/// Extract the numeric `levels` value from the JSON file contents.
+/// The config is `{ "levels": 4 }`; parsed by hand to keep tests dependency-free.
+fn parse_config_levels(contents: &str) -> Option<u32> {
+    let needle = "\"levels\"";
+    let after_key = &contents[contents.find(needle)? + needle.len()..];
+    let after_colon = &after_key[after_key.find(':')? + 1..];
+    let after_ws = after_colon.trim_start();
+    let digits: std::string::String = after_ws
+        .chars()
+        .take_while(|c| c.is_ascii_digit())
+        .collect();
+    digits.parse::<u32>().ok()
+}
+
+#[test]
 fn fund_emits_funded_event() {
     let s = setup(5, 100);
     let client = ContractClient::new(&s.env, &s.client_id);
