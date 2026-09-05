@@ -335,6 +335,12 @@ export async function generateProof(
   const { signal, onEvent } = options ?? {};
   signal?.throwIfAborted();
   onEvent?.({ type: "proof:started" });
+  // Reject out-of-range / malformed circuit inputs BEFORE the un-interruptible
+  // WASM proving phase. The circuit itself has no range check on
+  // pathElements — the wasm witness generator wraps non-canonical values mod
+  // FR_MODULUS on assignment (issue #269) — so this is the defense that keeps
+  // a non-canonical encoding from ever reaching the prover.
+  validateCircuitInput(input);
   // Serialise bigints to strings for snarkjs
   const snarkInput: Record<string, unknown> = {
     identityNullifier: input.identityNullifier.toString(),

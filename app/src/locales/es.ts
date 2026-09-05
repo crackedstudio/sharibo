@@ -90,7 +90,7 @@ const es = {
   "claim.stage.funding": "Financiando un destinatario nuevo, no vinculado\u2026",
   "claim.stage.submitting": "Enviando la reclamaci\u00f3n\u2026",
   "claim.techline":
-    "Groth16 \u00b7 BLS12-381 \u00b7 1,452 restricciones \u00b7 probando localmente en tu navegador; no se env\u00eda nada hasta que la prueba est\u00e9 lista",
+    "Groth16 \u00b7 BLS12-381 \u00b7 3,757 restricciones \u00b7 probando localmente en tu navegador; no se env\u00eda nada hasta que la prueba est\u00e9 lista",
   "claim.techlineProving": "· probando… {seconds}s",
   "claim.elapsed": "{seconds}s transcurridos",
 

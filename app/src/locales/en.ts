@@ -90,7 +90,7 @@ const en = {
   "claim.stage.funding": "Funding a fresh, unlinked recipient…",
   "claim.stage.submitting": "Submitting the claim…",
   "claim.techline":
-    "Groth16 · BLS12-381 · 1,452 constraints · proving locally in your browser, nothing sent anywhere until the proof is done",
+    "Groth16 · BLS12-381 · 3,757 constraints · proving locally in your browser, nothing sent anywhere until the proof is done",
   "claim.techlineProving": "· proving… {seconds}s",
   "claim.elapsed": "{seconds}s elapsed",
 
