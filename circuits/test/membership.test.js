@@ -166,6 +166,24 @@ describe("Sharibo membership circuit (BLS12-381)", function () {
     expect(witnessA[varIdx].toString()).to.not.equal(witnessNextRound[varIdx].toString());
   });
 
+  // Issue #268 — property not covered by the determinism/round-trip test
+  // above: two *different* identities must not collide even when they share
+  // the same externalNullifier (same circle + round). This is what lets the
+  // contract tell distinct members apart on one shared round-gate; a
+  // collision here would let two members reuse a single nullifier.
+  it("different identities with the same externalNullifier produce different nullifierHash", async () => {
+    await circuit.loadSymbols();
+    const varIdx = circuit.symbols["main.nullifierHash"].varIdx;
+
+    const inputA = await buildInput(2, 9, 1);
+    const inputB = await buildInput(3, 9, 1);
+
+    const witnessA = await circuit.calculateWitness(inputA, true);
+    const witnessB = await circuit.calculateWitness(inputB, true);
+
+    expect(witnessA[varIdx].toString()).to.not.equal(witnessB[varIdx].toString());
+  });
+
   it("rejects a non-boolean pathIndices entry", async () => {
     const input = await buildInput(2, 1, 0);
     input.pathIndices[0] = 2;
