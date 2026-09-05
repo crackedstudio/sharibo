@@ -64,6 +64,28 @@ The compatibility check lives in `scripts/check-poseidon-constants.mjs`; see als
 
 (See `NOTES.md` at the repo root for more context.)
 
+## `pathElements` are not range-checked in the circuit (issue #269)
+
+`MerkleTreeChecker` constrains `pathIndices[i]` to be boolean with an explicit
+quadratic constraint, but `pathElements[i]` is fed straight into
+`Poseidon255` with **no range check**. The behavior is pinned by tests in
+`circuits/test/membership.test.js`:
+
+- **The wasm witness generator wraps any input mod FR_MODULUS on assignment.**
+  A non-canonical value is an alias for its canonical residue:
+  - `FR_MODULUS` itself (≡ 0) is rejected, because a 0 sibling is never the
+    real sibling and the Merkle root check fails.
+  - A non-canonical alias of the **true** sibling (`sibling + k*FR_MODULUS`)
+    wraps to that sibling and produces a **valid** proof — the circuit
+    cannot and does not reject it (verified by
+    "accepts a non-canonical alias of the true sibling").
+- **This is not a forgery vector**: the wrapped value is the same witness,
+  so proving soundness is unaffected. But because the circuit has no native
+  range gate, the defense is the SDK: `validateCircuitInput()` in
+  `packages/client/src/prove.ts` rejects any `pathElements[i] >= FR_MODULUS`
+  **before** the WASM proving phase runs (wired into `generateProof`, tested
+  in `packages/client/src/prove.test.ts`).
+
 ## Expected outputs
 
 When a contributor runs the workflow scripts (compile → setup → prove):
@@ -77,7 +99,7 @@ When a contributor runs the workflow scripts (compile → setup → prove):
 
 ## Constraint count
 
-**Current count: 1,452 constraints** (Merkle depth 4, 3 Poseidon instances).
+**Current count: 3,757 constraints** (Merkle depth 4, 3 Poseidon instances + recipient-binding square).
 
 ### How to reproduce
 
@@ -96,12 +118,13 @@ slot is the circuit output followed by the declared `signal input` order.
 The relevant line in the output is:
 
 ```
-# of Constraints: 1452
+# of Constraints: 3757
 ```
 
 > **Keep in sync**: if you change `circuits/config.json` (tree depth) or the
 > circuit template, re-run the command above and update the count here _and_
-> in `app/src/App.tsx` (search for "1,452 constraints").
+> in `app/src/App.tsx`, `app/src/components/ClaimSection.tsx` and the
+> `app/src/locales/*.ts` techline strings (search for "3,757 constraints").
 
 ### Automated guard
 
@@ -116,13 +139,18 @@ during compilation — the two numbers differ.
 
 ### Breakdown estimate
 
+> Note: the per-component figures below are a rough historical estimate and
+> no longer sum to the measured count (they predate the Poseidon-BLS12-381
+> parameterization used today). The authoritative figure is the guard's
+> `constraints.json` for the current tree depth — see "Current count".
+
 | Component                                                             | Constraints (approx.) |
 | --------------------------------------------------------------------- | --------------------- |
 | `commitmentHasher` — Poseidon(identityNullifier, identitySecret)      | ~315                  |
 | `nullifierHasher` — Poseidon(identityNullifier, externalNullifier)    | ~315                  |
 | `MerkleTreeChecker` (4 levels × Poseidon + mux per level)             | ~820                  |
 | Booleanity checks (4 × `pathIndices[i] * (1 − pathIndices[i]) === 0`) | 4                     |
-| **Total**                                                             | **~1,452**            |
+| **Total (measured, today)**                                           | **3,757**             |
 
 Each `Poseidon255(2)` instance costs roughly 315 constraints (BLS12-381
 Poseidon with a 3-element state and 8 full + 57 partial rounds — see the
@@ -156,7 +184,7 @@ The script writes `build/benchmark-results.json` with one object per depth.
 
 | levels | capacity (2^levels) | constraints | .zkey size (bytes) | wasm size (bytes) | browser prove (ms) | claim CPU (% of 100M) |
 |-------:|---------------------:|------------:|-------------------:|------------------:|-------------------:|----------------------:|
-| 4     | 16                  | 1452        | (measured)         | (measured)        | (measured)         | 48%                   |
+| 4     | 16                  | 3757        | (measured)         | (measured)        | (measured)         | 48%                   |
 | 8     | 256                 | (to-run)    | (to-run)           | (to-run)          | (to-run)           | (to-run)              |
 | 16    | 65536               | (to-run)    | (to-run)           | (to-run)          | (to-run)           | (to-run)              |
 | 20    | 1,048,576           | (to-run)    | (to-run)           | (to-run)          | (to-run)           | (to-run)              |
