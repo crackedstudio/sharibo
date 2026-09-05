@@ -18,7 +18,7 @@ For more details, see the inline comments in `membership.template.circom`.
 The `scripts/` directory handles the complete zero-knowledge pipeline:
 
 - `scripts/compile.sh`: Runs circom compilation. Uses `--prime bls12381` to target the correct curve.
-- `scripts/setup.sh`: Runs the Powers-of-Tau ceremony (Phase 1 & 2) and generates Groth16 proving keys (`*.zkey`).
+- `scripts/setup.sh`: Runs the Powers-of-Tau ceremony (Phase 1 & 2), generates Groth16 proving keys (`*.zkey`), then verifies the result. Idempotent — if `build/membership_final.zkey` already exists the ceremony is skipped and only verification runs. See [Setup verification](#setup-verification).
 - `scripts/prove.sh`: Generates Groth16 proofs locally and runs the verification flow against `verification_key.json`.
 - `scripts/gen-example-input.cjs`: Generates example circuit inputs (`input.example.json`) for testing.
 
@@ -52,10 +52,71 @@ The compatibility check lives in `scripts/check-poseidon-constants.mjs`; see als
 
 ## Artifact management
 
-- **Committed**: `verification_key.json`
+- **Committed**: `verification_key.json` (+ its `verification_key.json.sha256`)
   The verification key is small, required by the contract, and needed to verify proofs.
 - **Ignored**: `build/`, `*.zkey`, `*.ptau`
   The `build/` folder contains generated compilation artifacts. `*.zkey` and `*.ptau` are massive cryptographic keys generated locally via `setup.sh` and shouldn't bloat the repository.
+
+## Setup verification
+
+`setup.sh` (and the `npm run verify-setup` front-end) runs **two automated checks**
+after the final `.zkey` is produced, so the ceremony fingerprints recorded in
+`SETUP_TRANSCRIPT.md` actually mean something:
+
+1. **`snarkjs zkey verify`** — checks `membership_final.zkey` against
+   `membership.r1cs` and the Powers-of-Tau file. Any corruption or a mismatch
+   between the three aborts the script with a non-zero exit
+   (`Arithmetic error` / `ZKey not ok` instead of `ZKey Ok!`).
+2. **Verification-key drift check** — exports the verification key from the
+   freshly built zkey and diffs it against the committed
+   `circuits/verification_key.json`. A difference means the key was silently
+   regenerated ( ceremony run draws fresh `/dev/urandom` entropy), which
+   would silently invalidate every on-chain circle: each circle stores the key
+   it was created with and would stop accepting new proofs. The script fails
+   loudly and points at the intentional path.
+
+### What it proves
+
+- The artefacts in `build/` are internally consistent (zkey ↔ r1cs ↔ ptau).
+- Whatever key is in `build/` *is* the key recorded in `verification_key.json`
+  — i.e. `npm run setup` is reproducible and nothing rotated the key silently.
+
+### What it does not prove
+
+- The Powers-of-Tau file is honestly built. This demo uses a single trusted
+  contributor with self-supplied entropy; there is no multi-party ceremony and
+  no verification of contribution transcripts (see "Honest limitations").
+- The circuit constraints are correct. `zkey verify` validates the key against
+  the *given* `membership.r1cs`; it cannot tell that `membership.r1cs` itself
+  is the circuit the contract intends. Constraint correctness is covered by the
+  circuit tests (`npm test`) and `check-constants`.
+- The transcript isn't the authority. The committed `verification_key.json` and
+  its `.sha256` are the authority; the transcript just records history.
+
+### Expected output
+
+```text
+→ snarkjs zkey verify (build/membership.r1cs + pot12_bls12381_final.ptau → build/membership_final.zkey)
+...
+ZKey Ok!
+→ verification key matches the committed verification_key.json
+→ verification OK: build artifacts are consistent with the committed verification_key.json.
+```
+
+### Rotating the key (intentional)
+
+To run a fresh ceremony and knowingly install the resulting key
+( existing circles), pass the explicit flag:
+
+```bash
+cd circuits
+npm run setup -- --rotate      # or: npm run setup:rotate
+```
+
+This is the only way `setup.sh` overwrites `verification_key.json`; it also
+refreshes the `.sha256` files and appends a `SETUP_TRANSCRIPT.md` entry.
+Commit , with an
+explicit note about the rotation.
 
 ## Cryptographic choices
 
@@ -72,6 +133,7 @@ When a contributor runs the workflow scripts (compile → setup → prove):
 - After setup: `pot12_final.ptau`, `membership_final.zkey`, and `verification_key.json` are created.
 - After prove: `proof.json` and `public.json` are created.
 - A contributor knows the workflow succeeded when `prove.sh` prints a successful validation message without errors.
+- `npm run verify-setup` is the fast gate: it reruns the two setup checks against the existing `build/` artefacts without a ceremony. It fails (non-zero exit) if the zkey is corrupted or if `build/` no longer reproduces the committed `verification_key.json`.
 
 ---
 

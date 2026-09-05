@@ -17,10 +17,11 @@ doctor:
 
 # ── Circuits ──────────────────────────────────────────────────────────────────
 
-# Compile circuit, run trusted setup, and run circuit tests
+# Compile circuit, run trusted setup, verify the key material, and run circuit tests
 circuits:
     cd circuits && npm run compile
     cd circuits && npm run setup
+    cd circuits && npm run verify-setup
     cd circuits && npm test
 
 # ── Contract ──────────────────────────────────────────────────────────────────
