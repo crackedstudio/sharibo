@@ -2,11 +2,15 @@
 #[cfg(test)]
 extern crate std;
 
+
+mod storage;
 use soroban_sdk::{
     contract, contracterror, contractimpl, contracttype,
     crypto::bls12_381::{Fr, G1Affine, G2Affine},
     panic_with_error, symbol_short, token, vec, xdr::ToXdr, Address, Bytes, Env, Vec,
 };
+
+use crate::storage::{load_circle, save_circle, bump_instance, LEDGER_EXTEND_TO, LEDGER_THRESHOLD};
 
 /// Groth16 verification key over BLS12-381.
 ///
@@ -224,45 +228,11 @@ pub enum Error {
     RoundNotExpired = 12,
 }
 
-/// Minimum remaining TTL (in ledgers) that triggers a `extend_ttl` call.
-///
-/// Every write entrypoint (`create_circle`, `fund`, `claim`, `cancel_circle`)
-/// calls `extend_ttl(LEDGER_THRESHOLD, LEDGER_EXTEND_TO)`. The Soroban host
-/// only performs the extension when the entry's current TTL has fallen below
-/// `LEDGER_THRESHOLD`; if it is already higher, the call is a no-op. Setting
-/// this to 100 ledgers (≈ 8 minutes at ~5 s/ledger) means that any write
-/// performed in the last few minutes of a circle's live window will refresh it
-/// to the full `LEDGER_EXTEND_TO` budget.
+
 /// Number of public signals the membership circuit exposes:
 /// [nullifierHash, root, externalNullifier, recipientHash].
 const PUBLIC_INPUT_COUNT: u32 = 4;
 
-const LEDGER_THRESHOLD: u32 = 100;
-
-/// TTL (in ledgers) that persistent and instance entries are extended to on
-/// each write.
-///
-/// 500,000 ledgers × 5 s/ledger ≈ **29 days** of activity-triggered liveness.
-///
-/// The Soroban network cap for persistent entry TTL is **535,679 ledgers**
-/// (≈ 30 days; see <https://developers.stellar.org/docs/tools/cli/cookbook/extend-contract-wasm>).
-/// `LEDGER_EXTEND_TO` is intentionally set just below that ceiling to leave a
-/// small safety margin while still giving circles close to the maximum window.
-///
-/// If a circle goes dormant (no `fund`, `claim`, or `cancel_circle` call) for
-/// longer than this window, its persistent entry will be archived. An operator
-/// must then submit a `RestoreFootprintOp` (via `stellar contract restore`)
-/// before any further interaction is possible. See `contracts/README.md §Storage
-/// lifetime` for the runbook.
-const LEDGER_EXTEND_TO: u32 = 500_000;
-
-// Compile-time sanity check: the threshold at which we re-extend must be
-// strictly less than the target we extend to, or the extension can never
-// make progress.
-const _: () = assert!(
-    LEDGER_THRESHOLD < LEDGER_EXTEND_TO,
-    "LEDGER_THRESHOLD must be strictly less than LEDGER_EXTEND_TO",
-);
 
 /// Sharibo contract: permissionless Semaphore-style contribution circles on
 /// Soroban.
@@ -365,23 +335,15 @@ impl Contract {
             round_deadline_ledgers,
             round_started_ledger,
         };
-        let key = DataKey::Circle(circle_id);
-        env.storage().persistent().set(&key, &circle);
-        env.storage()
-            .persistent()
-            .extend_ttl(&key, LEDGER_THRESHOLD, LEDGER_EXTEND_TO);
+        save_circle(&env, circle_id, &circle);
         env.storage()
             .instance()
             .set(&DataKey::NextCircleId, &(circle_id + 1));
-        // Extend instance-storage TTL every time a new circle is created.
-        // NextCircleId lives in instance storage; if the instance entry
-        // is archived on a quiet network and later restored, NextCircleId
-        // would reset to 0 and create_circle would silently overwrite
-        // circle 0. Extending here ensures the counter outlives quiet
-        // periods (see contracts/README.md §Instance-storage archival).
-        env.storage()
-            .instance()
-            .extend_ttl(LEDGER_THRESHOLD, LEDGER_EXTEND_TO);
+        // Instance TTL is already bumped by save_circle. NextCircleId lives
+        // in instance storage; if archived on a quiet network and later
+        // restored, it would reset to 0 and create_circle would silently
+        // overwrite circle 0. save_circle's bump_instance ensures the
+        // counter outlives quiet periods.
 
         env.events().publish(
             (symbol_short!("circle"), symbol_short!("created"), circle_id),
@@ -429,7 +391,6 @@ impl Contract {
     pub fn fund(env: Env, circle_id: u64, from: Address) {
         from.require_auth();
 
-        let key = DataKey::Circle(circle_id);
         let mut circle = load_active_circle(&env, circle_id);
 
         // Reject funding into an already-expired round: the pot will never
@@ -456,13 +417,7 @@ impl Contract {
             .checked_add(circle.contribution)
             .unwrap_or_else(|| panic_with_error!(&env, Error::Overflow));
         circle.contributors.push_back(from.clone());
-        env.storage().persistent().set(&key, &circle);
-        env.storage()
-            .persistent()
-            .extend_ttl(&key, LEDGER_THRESHOLD, LEDGER_EXTEND_TO);
-        env.storage()
-            .instance()
-            .extend_ttl(LEDGER_THRESHOLD, LEDGER_EXTEND_TO);
+        save_circle(&env, circle_id, &circle);
         env.events().publish(
             (symbol_short!("circle"), symbol_short!("funded"), circle_id),
             (from, circle.pot, target),
@@ -544,7 +499,6 @@ impl Contract {
         external_nullifier: Fr,
         proof: Proof,
     ) {
-        let key = DataKey::Circle(circle_id);
         let mut circle = load_active_circle(&env, circle_id);
 
         // 1. round must be fully funded
@@ -599,13 +553,7 @@ impl Contract {
         circle.contributors = Vec::new(&env);
         circle.round_started_ledger = env.ledger().sequence();
         circle.nullifiers.push_back(nullifier_hash);
-        env.storage().persistent().set(&key, &circle);
-        env.storage()
-            .persistent()
-            .extend_ttl(&key, LEDGER_THRESHOLD, LEDGER_EXTEND_TO);
-        env.storage()
-            .instance()
-            .extend_ttl(LEDGER_THRESHOLD, LEDGER_EXTEND_TO);
+        save_circle(&env, circle_id, &circle);
 
         let token_client = token::Client::new(&env, &circle.token);
         token_client.transfer(&env.current_contract_address(), &recipient, &payout);
@@ -656,11 +604,7 @@ impl Contract {
     ///
     /// * [`Error::CircleNotFound`] — `circle_id` does not exist.
     pub fn get_round(env: Env, circle_id: u64) -> u32 {
-        let circle: Circle = env
-            .storage()
-            .persistent()
-            .get(&DataKey::Circle(circle_id))
-            .unwrap_or_else(|| panic_with_error!(&env, Error::CircleNotFound));
+        let circle: Circle = load_circle(&env, circle_id);
         circle.round
     }
 
@@ -673,11 +617,7 @@ impl Contract {
     ///
     /// * [`Error::CircleNotFound`] — `circle_id` does not exist.
     pub fn get_pot(env: Env, circle_id: u64) -> i128 {
-        let circle: Circle = env
-            .storage()
-            .persistent()
-            .get(&DataKey::Circle(circle_id))
-            .unwrap_or_else(|| panic_with_error!(&env, Error::CircleNotFound));
+        let circle: Circle = load_circle(&env, circle_id);
         circle.pot
     }
 
@@ -697,11 +637,7 @@ impl Contract {
     /// * [`Error::Overflow`] — `contribution * size` overflows `i128`
     ///   (absurd parameters set at circle creation).
     pub fn get_status(env: Env, circle_id: u64) -> (u32, i128, i128, bool) {
-        let circle: Circle = env
-            .storage()
-            .persistent()
-            .get(&DataKey::Circle(circle_id))
-            .unwrap_or_else(|| panic_with_error!(&env, Error::CircleNotFound));
+        let circle: Circle = load_circle(&env, circle_id);
         let target = pot_target(&env, &circle);
         (circle.round, circle.pot, target, circle.cancelled)
     }
@@ -717,11 +653,7 @@ impl Contract {
     ///
     /// * [`Error::CircleNotFound`] — `circle_id` does not exist.
     pub fn get_contributors(env: Env, circle_id: u64) -> Vec<Address> {
-        let circle: Circle = env
-            .storage()
-            .persistent()
-            .get(&DataKey::Circle(circle_id))
-            .unwrap_or_else(|| panic_with_error!(&env, Error::CircleNotFound));
+        let circle: Circle = load_circle(&env, circle_id);
         circle.contributors
     }
 
@@ -761,12 +693,7 @@ impl Contract {
     /// Reverts with [`Error::CircleCancelled`] on a cancelled circle — there
     /// is no point transferring admin rights once the circle is closed.
     pub fn propose_admin(env: Env, circle_id: u64, new_admin: Address) {
-        let key = DataKey::Circle(circle_id);
-        let circle: Circle = env
-            .storage()
-            .persistent()
-            .get(&key)
-            .unwrap_or_else(|| panic_with_error!(&env, Error::CircleNotFound));
+        let circle = load_circle(&env, circle_id);
 
         circle.admin.require_auth();
 
@@ -792,12 +719,7 @@ impl Contract {
     /// Only the address stored by [`Self::propose_admin`] may call this.
     /// Reverts with [`Error::CircleCancelled`] on a cancelled circle.
     pub fn accept_admin(env: Env, circle_id: u64) {
-        let circle_key = DataKey::Circle(circle_id);
-        let mut circle: Circle = env
-            .storage()
-            .persistent()
-            .get(&circle_key)
-            .unwrap_or_else(|| panic_with_error!(&env, Error::CircleNotFound));
+        let mut circle = load_circle(&env, circle_id);
 
         if circle.cancelled {
             panic_with_error!(&env, Error::CircleCancelled);
@@ -814,10 +736,7 @@ impl Contract {
 
         let old_admin = circle.admin.clone();
         circle.admin = new_admin.clone();
-        env.storage().persistent().set(&circle_key, &circle);
-        env.storage()
-            .persistent()
-            .extend_ttl(&circle_key, LEDGER_THRESHOLD, LEDGER_EXTEND_TO);
+        save_circle(&env, circle_id, &circle);
         env.storage().persistent().remove(&pending_key);
 
         env.events().publish(
@@ -848,12 +767,7 @@ impl Contract {
     /// - Resets `pot`, `contributors`, and `round_started_ledger`.
     /// - Emits a `rnd_exp` event.
     pub fn expire_round(env: Env, circle_id: u64) {
-        let key = DataKey::Circle(circle_id);
-        let mut circle: Circle = env
-            .storage()
-            .persistent()
-            .get(&key)
-            .unwrap_or_else(|| panic_with_error!(&env, Error::CircleNotFound));
+        let mut circle = load_circle(&env, circle_id);
 
         if circle.cancelled {
             panic_with_error!(&env, Error::CircleCancelled);
@@ -887,13 +801,7 @@ impl Contract {
         circle.round += 1;
         circle.contributors = Vec::new(&env);
         circle.round_started_ledger = env.ledger().sequence();
-        env.storage().persistent().set(&key, &circle);
-        env.storage()
-            .persistent()
-            .extend_ttl(&key, LEDGER_THRESHOLD, LEDGER_EXTEND_TO);
-        env.storage()
-            .instance()
-            .extend_ttl(LEDGER_THRESHOLD, LEDGER_EXTEND_TO);
+        save_circle(&env, circle_id, &circle);
 
         env.events().publish(
             (soroban_sdk::symbol_short!("rnd_exp"), circle_id),
@@ -937,7 +845,6 @@ impl Contract {
     /// * [`Error::CircleNotFound`] — `circle_id` does not exist.
     /// * [`Error::CircleCancelled`] — circle was already cancelled.
     pub fn cancel_circle(env: Env, circle_id: u64) {
-        let key = DataKey::Circle(circle_id);
         let mut circle = load_active_circle(&env, circle_id);
 
         circle.admin.require_auth();
@@ -952,10 +859,10 @@ impl Contract {
         circle.pot = 0;
         circle.cancelled = true;
         circle.contributors = Vec::new(&env);
-        env.storage().persistent().set(&key, &circle);
-        env.storage()
-            .persistent()
-            .extend_ttl(&key, LEDGER_THRESHOLD, LEDGER_EXTEND_TO);
+        // cancel_circle writes the cancelled state and must also bump the
+        // instance TTL so that NextCircleId does not drift. The original
+        // code forgot the instance extension; save_circle corrects that.
+        save_circle(&env, circle_id, &circle);
 
         // Refund every contributor for the current (stuck) round only after
         // the circle's cancelled state has been persisted; otherwise a hostile
@@ -1054,18 +961,6 @@ impl Contract {
 
 /// Load a [`Circle`] from persistent storage, or revert with
 /// [`Error::CircleNotFound`].
-///
-/// This is the single authoritative source of that error; no call site should
-/// open-code the storage lookup.
-fn load_circle(env: &Env, circle_id: u64) -> Circle {
-    env.storage()
-        .persistent()
-        .get(&DataKey::Circle(circle_id))
-        .unwrap_or_else(|| panic_with_error!(env, Error::CircleNotFound))
-}
-
-/// Load a [`Circle`] and additionally reject it if it has been cancelled,
-/// reverting with [`Error::CircleCancelled`].
 ///
 /// Used by every entrypoint that must not operate on a closed circle:
 /// [`Contract::fund`], [`Contract::claim`], and [`Contract::cancel_circle`].
