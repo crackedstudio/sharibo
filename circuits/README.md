@@ -18,7 +18,8 @@ For more details, see the inline comments in `membership.template.circom`.
 The `scripts/` directory handles the complete zero-knowledge pipeline:
 
 - `scripts/compile.sh`: Runs circom compilation. Uses `--prime bls12381` to target the correct curve.
-- `scripts/setup.sh`: Runs the Powers-of-Tau ceremony (Phase 1 & 2) and generates Groth16 proving keys (`*.zkey`).
+- `scripts/setup.sh`: Runs the Powers-of-Tau ceremony (Phase 1 & 2) and generates Groth16 proving keys (`*.zkey`). After producing the final zkey it runs `snarkjs zkey verify` (see "Setup verification" below) and refuses to silently overwrite a differing committed verification key.
+- `scripts/verify-setup.sh` (`npm run verify-setup`): Standalone, non-mutating re-check of the setup artifacts — valid zkey against the r1cs + powers-of-tau, and exported vk matching the committed `verification_key.json`.
 - `scripts/prove.sh`: Generates Groth16 proofs locally and runs the verification flow against `verification_key.json`.
 - `scripts/gen-example-input.cjs`: Generates example circuit inputs (`input.example.json`) for testing.
 
@@ -35,7 +36,9 @@ Treat any Poseidon dependency bump as a cryptographic migration, not a routine p
 3. **Recompile the circuit**
    - `cd circuits && npm run compile`
 4. **Re-run the trusted setup**
-   - `cd circuits && ./scripts/setup.sh`
+   - `cd circuits && ALLOW_KEY_ROTATION=1 ./scripts/setup.sh`
+   - A Poseidon bump necessarily changes the circuit (and constraint count), so the regenerated key **will differ** from the committed one — that is a deliberate rotation, hence the `ALLOW_KEY_ROTATION=1`. Inspect the warning output and confirm the recorded transcript hash.
+   - If the new key accidentally matches (no rotation needed) the script proceeds without the flag.
 5. **Regenerate the verification key**
    - `cd circuits && ./scripts/prove.sh`
    - or regenerate the Groth16 verification key from the new `.zkey` and commit the resulting `verification_key.json`.
@@ -57,6 +60,47 @@ The compatibility check lives in `scripts/check-poseidon-constants.mjs`; see als
 - **Ignored**: `build/`, `*.zkey`, `*.ptau`
   The `build/` folder contains generated compilation artifacts. `*.zkey` and `*.ptau` are massive cryptographic keys generated locally via `setup.sh` and shouldn't bloat the repository.
 
+## Setup verification
+
+`setup.sh` runs two automated checks (issue #271), and `npm run verify-setup` re-runs them
+standalone without regenerating anything:
+
+1. **`snarkjs zkey verify`** — after the final zkey is produced, it is checked against
+   `build/membership.r1cs` and the powers-of-tau file. This is the only automated way to catch
+   a corrupted or mismatched key before it is baked into a deployed circle's `VerificationKey`,
+   so a non-zero exit aborts `setup.sh`. Expected output on success:
+
+   ```text
+   [INFO]  snarkJS: ZKey Valid!
+   ```
+
+2. **Committed-key divergence guard** — `setup.sh` snapshots the committed
+   `circuits/verification_key.json` before regenerating. If the newly exported key differs from
+   it, the script fails loudly instead of silently replacing the canonical key — unless the
+   operator acknowledges the rotation with `ALLOW_KEY_ROTATION=1`. `verify-setup.sh` performs the
+   same comparison against whatever is currently committed and has no escape hatch.
+   `SETUP_TRANSCRIPT.md` records the resulting `verification_key.json` SHA-256 for every run.
+
+   Every ceremony run reshuffles entropy, so the very first `setup.sh` on a fresh clone yields a
+   key that differs from the committed one and trips the guard on purpose. To bootstrap a local
+   copy: `cd circuits && ALLOW_KEY_ROTATION=1 ./scripts/setup.sh`. Afterwards `just circuits`
+   and `npm run setup` short-circuit (an existing valid key that already matches is left alone),
+   so they are safe to re-run for CI-style development loops.
+
+### What it proves — and what it does not
+
+- **Proves**: the final zkey is a self-consistent Groth16 key for *this* r1cs under *this*
+  powers-of-tau file (detecting corruption, or a key assembled from a different circuit or ptau);
+  and the exported vk faithfully reproduces the committed canonical key (detecting a silent
+  regeneration).
+- **Does not prove**: that the powers-of-tau ceremony was performed honestly — the trusted-setup
+  assumption still holds (single-contributor entropy from `/dev/urandom`, see the transcript
+  header); that the committed vk is what a deployed contract actually stored (that is verified
+  on-chain, at circle creation); or that the circuit constraints are correct (that is the job of
+  the circuit tests and the cross-implementation vectors).
+- **Does not prove trustlessness**: `snarkjs zkey verify` is structural consistency checking, not a
+  proof-of-honesty for the ceremony participants.
+
 ## Cryptographic choices
 
 - **Why BLS12-381**: Soroban provides native host functions for BLS12-381 curve pairings.
@@ -69,7 +113,7 @@ The compatibility check lives in `scripts/check-poseidon-constants.mjs`; see als
 When a contributor runs the workflow scripts (compile → setup → prove):
 
 - `build/` directory is created with `membership.r1cs`, `membership.sym`, `membership_js/`
-- After setup: `pot12_final.ptau`, `membership_final.zkey`, and `verification_key.json` are created.
+- After setup: `pot12_final.ptau`, `membership_final.zkey`, and `verification_key.json` are created; `setup.sh` prints `[INFO]  snarkJS: ZKey Valid!` and exits only if the key also matches the committed `verification_key.json` (or the rotation was acknowledged).
 - After prove: `proof.json` and `public.json` are created.
 - A contributor knows the workflow succeeded when `prove.sh` prints a successful validation message without errors.
 
