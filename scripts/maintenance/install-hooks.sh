@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # Opt-in pre-commit hook installer.
 #
-# Symlinks scripts/check-secrets.mjs into .git/hooks/pre-commit so that
-# every `git commit` scans staged files for accidentally-included Stellar
+# Symlinks scripts/maintenance/check-secrets.mjs into .git/hooks/pre-commit so
+# that every `git commit` scans staged files for accidentally-included Stellar
 # secret keys (S...).
 #
 # Usage:
-#   bash scripts/install-hooks.sh
+#   bash scripts/maintenance/install-hooks.sh
 #
 # To uninstall:
 #   rm .git/hooks/pre-commit
