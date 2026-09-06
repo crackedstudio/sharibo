@@ -287,6 +287,8 @@ export async function estimateClaimFee(
  * @param args.contribution - The required contribution amount per participant.
  * @param args.size - The maximum number of participants.
  * @param args.vk - The verification key for the zero-knowledge proof circuit.
+ * @param args.feeBps - The protocol fee in basis points (0-10_000; 0 = no fee).
+ * @param args.feeRecipient - The address the protocol fee is paid to.
  * @returns The circle ID and transaction hash.
  */
 export async function createCircle(
@@ -298,12 +300,24 @@ export async function createCircle(
     contribution: bigint;
     size: number;
     vk: ContractVerificationKey;
+    feeBps: number;
+    feeRecipient: string;
   },
   retryPolicy: RetryPolicy = DEFAULT_RETRY_POLICY,
 ): Promise<TxResult<bigint>> {
   if (args.size === 0 || args.contribution <= 0n || args.vk.ic.length !== 4) {
     throw new InvalidInputError(
       "InvalidCircleParams: size must be > 0, contribution must be > 0, and vk.ic must have length 4",
+    );
+  }
+  if (args.feeBps < 0 || args.feeBps > 10_000) {
+    throw new InvalidInputError(
+      "InvalidFeeParams: feeBps must be between 0 and 10_000",
+    );
+  }
+  if (args.feeBps > 0 && args.feeRecipient === '') {
+    throw new InvalidInputError(
+      "InvalidFeeParams: feeRecipient is required when feeBps > 0",
     );
   }
   validateContractVerificationKey(args.vk);
@@ -315,6 +329,8 @@ export async function createCircle(
       contribution: args.contribution,
       size: args.size,
       vk: args.vk,
+      fee_bps: args.feeBps,
+      fee_recipient: args.feeRecipient,
     }), retryPolicy, client.emitter);
     const sent = await tx.signAndSend();
     return populateTxResult(sent.result as bigint, sent);
@@ -397,6 +413,8 @@ export async function claim(
  * @property pot - The total amount in the prize pot.
  * @property contributors - Addresses that have funded the current round in order.
  * @property cancelled - Whether the circle has been cancelled.
+ * @property fee_bps - The protocol fee in basis points (0-10_000; 0 = no fee).
+ * @property fee_recipient - The address the protocol fee is paid to.
  */
 export interface CircleView {
   admin: string;
@@ -406,11 +424,11 @@ export interface CircleView {
   size: number;
   round: number;
   pot: bigint;
-  // Newly added fields in the on-chain `Circle` struct — keep in sync
-  // with the contract to surface them to the application layer.
   vk: ContractVerificationKey;
   contributors: string[];
   cancelled: boolean;
+  fee_bps: number;
+  fee_recipient: string;
 }
 
 /**

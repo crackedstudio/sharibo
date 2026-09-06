@@ -20,6 +20,8 @@ const yo = {
   "landing.previousCirclePrefix": "Ajo rẹ tó kọjá ṣì wà ní",
   "landing.previousCircleLink": "ajo #{id} ↗",
   "landing.testnetFineprint": "Testnet nìkan. Àwọn ìdánimọ̀ àpẹẹrẹ ni a ń dá sílẹ̀ tuntun nínú aṣàwákiri rẹ, a kò sì tún lò wọ́n.",
+  "pot.fee": "ẹ̀sún {feePercent}% → {feeRecipient}",
+  "pot.feeUnknown": "àìmọ̀",
   "circle.onChainLink": "ajo #{id} lórí blockchain ↗",
   "common.startNewCircle": "Bẹ̀rẹ̀ ajo tuntun"
 } as const;
