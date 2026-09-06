@@ -139,6 +139,8 @@ export function useCircleFlow() {
         contribution,
         size: CIRCLE_SIZE,
         vk,
+        feeBps: 0,
+        feeRecipient: adminKp.publicKey(),
       });
 
       setAdmin(adminKp);
