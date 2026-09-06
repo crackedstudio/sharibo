@@ -77,7 +77,8 @@ When a contributor runs the workflow scripts (compile → setup → prove):
 
 ## Constraint count
 
-**Current count: 1,452 constraints** (Merkle depth 4, 3 Poseidon instances).
+**Current count: 3,757 constraints** (Merkle depth 4, 3 Poseidon instances,
+plus the recipient-binding square).
 
 ### How to reproduce
 
@@ -96,12 +97,12 @@ slot is the circuit output followed by the declared `signal input` order.
 The relevant line in the output is:
 
 ```
-# of Constraints: 1452
+# of Constraints: 3757
 ```
 
 > **Keep in sync**: if you change `circuits/config.json` (tree depth) or the
 > circuit template, re-run the command above and update the count here _and_
-> in `app/src/App.tsx` (search for "1,452 constraints").
+> in `app/src/App.tsx` (search for "3,757 constraints").
 
 ### Automated guard
 
@@ -116,13 +117,19 @@ during compilation — the two numbers differ.
 
 ### Breakdown estimate
 
-| Component                                                             | Constraints (approx.) |
-| --------------------------------------------------------------------- | --------------------- |
-| `commitmentHasher` — Poseidon(identityNullifier, identitySecret)      | ~315                  |
-| `nullifierHasher` — Poseidon(identityNullifier, externalNullifier)    | ~315                  |
-| `MerkleTreeChecker` (4 levels × Poseidon + mux per level)             | ~820                  |
-| Booleanity checks (4 × `pathIndices[i] * (1 − pathIndices[i]) === 0`) | 4                     |
-| **Total**                                                             | **~1,452**            |
+> The recipient binding (issue #266) was folded into the circuit after this
+> table was originally written, so component-level figures below are rough
+> upper bounds from the pre-binding analysis and no longer sum to the total.
+> Use the committed `constraints.json` (or `snarkjs r1cs info`) for the exact
+> constraint count.
+
+| Component                                                              | Constraints (approx.) |
+| ---------------------------------------------------------------------- | --------------------- |
+| `commitmentHasher` — Poseidon(identityNullifier, identitySecret)       | ~315                  |
+| `nullifierHasher` — Poseidon(identityNullifier, externalNullifier)     | ~315                  |
+| `MerkleTreeChecker` (4 levels × Poseidon + mux per level)              | ~820                  |
+| Booleanity + recipient-binding plumbing (rest)                         | the remainder         |
+| **Total (measured, `snarkjs r1cs info`)**                              | **3,757**             |
 
 Each `Poseidon255(2)` instance costs roughly 315 constraints (BLS12-381
 Poseidon with a 3-element state and 8 full + 57 partial rounds — see the
@@ -156,7 +163,7 @@ The script writes `build/benchmark-results.json` with one object per depth.
 
 | levels | capacity (2^levels) | constraints | .zkey size (bytes) | wasm size (bytes) | browser prove (ms) | claim CPU (% of 100M) |
 |-------:|---------------------:|------------:|-------------------:|------------------:|-------------------:|----------------------:|
-| 4     | 16                  | 1452        | (measured)         | (measured)        | (measured)         | 48%                   |
+| 4     | 16                  | 3757        | (measured)         | (measured)        | (measured)         | 51.5%                |
 | 8     | 256                 | (to-run)    | (to-run)           | (to-run)          | (to-run)           | (to-run)              |
 | 16    | 65536               | (to-run)    | (to-run)           | (to-run)          | (to-run)           | (to-run)              |
 | 20    | 1,048,576           | (to-run)    | (to-run)           | (to-run)          | (to-run)           | (to-run)              |

@@ -428,7 +428,7 @@ function ClaimProgress({ stage, elapsedSeconds }: { stage: ClaimStage; elapsedSe
       </div>
       {stage === "proving" && (
         <p className={styles.techline}>
-          <span className={styles.spinner} aria-hidden="true" /> Groth16 · BLS12-381 · 1,452 constraints ·
+          <span className={styles.spinner} aria-hidden="true" /> Groth16 · BLS12-381 · 3,757 constraints ·
           proving locally in your browser, nothing sent anywhere until the proof is done ·{" "}
           {elapsedSeconds}s elapsed
         </p>
@@ -670,6 +670,8 @@ export default function App() {
   }, []);
   const [round, setRound] = useState(0);
   const [pot, setPot] = useState(0n);
+  const [feeBps, setFeeBps] = useState(0);
+  const [feeRecipient, setFeeRecipient] = useState("");
   const [onChainContributors, setOnChainContributors] = useState<string[]>([]);
   const [cancelled, setCancelled] = useState(false);
   const [claimantIndex, setClaimantIndex] = useState(0);
@@ -735,6 +737,8 @@ export default function App() {
       setPot(circle.pot);
       setOnChainContributors(circle.contributors);
       setCancelled(circle.cancelled);
+      setFeeBps(circle.fee_bps ?? 0);
+      setFeeRecipient(circle.fee_recipient ?? "");
       
       // Update member funded status based on on-chain contributors
       setMembers((prev) =>
@@ -985,6 +989,8 @@ export default function App() {
         contribution,
         size: CIRCLE_SIZE,
         vk,
+        feeBps: 0,
+        feeRecipient: adminKp.publicKey(),
       });
 
       setAdmin(adminKp);
@@ -993,6 +999,8 @@ export default function App() {
       setCircleId(makeCircleId(newCircleId));
       setRound(0);
       setPot(0n);
+      setFeeBps(0);
+      setFeeRecipient("");
       setScreen("circle");
       setCirclePhase("ready");
     } catch (e) {
@@ -1474,6 +1482,11 @@ export default function App() {
             <p className="pot-label">
               pot: {(Number(pot) / 1e7).toFixed(1)} / {contributionXlm * CIRCLE_SIZE} XLM ·
               round {round}
+              {feeBps > 0 &&
+                ` · ${t("pot.fee", {
+                  feePercent: (feeBps / 100).toString(),
+                  feeRecipient: feeRecipient ? feeRecipient.slice(0, 8) : t("pot.feeUnknown"),
+                })}`}
               {cancelled && ` · ${t("cancel.cancelled")}`}
             </p>
 
@@ -1576,7 +1589,7 @@ export default function App() {
             {busy && (
               <p className={styles.techline}>
                 {/* Constraint count: update this AND circuits/README.md if the circuit changes. */}
-                Groth16 · BLS12-381 · 1,452 constraints · proving locally in your browser, nothing
+                Groth16 · BLS12-381 · 3,757 constraints · proving locally in your browser, nothing
                 sent anywhere until the proof is done
                 {isProving && proveElapsedSeconds !== null ? ` · proving… ${proveElapsedSeconds}s` : ""}
               </p>

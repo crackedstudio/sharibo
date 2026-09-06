@@ -91,10 +91,14 @@ template Sharibo(levels) {
     // no native Poseidon; Poseidon is kept for everything hashed *inside*
     // the circuit, where constraint-efficiency actually matters).
     signal input externalNullifier;
-    // public input: recipient binding. Squared into `recipientSquare` so
-    // it is committed to (and left otherwise unused) — standard Semaphore
-    // signal-binding pattern.
+    // Recipient-binding signal (issue #266). A squaring constraint binds
+    // recipientHash into the proof without adding a Poseidon evaluation.
+    // The verifier (contract) checks this public signal against the
+    // expected payout-address hash, preventing proof transfer to an
+    // arbitrary recipient.
     signal input recipientHash;
+    signal recipientSquare;
+    recipientSquare <== recipientHash * recipientHash;
 
     // public output (recorded by the contract)
     signal output nullifierHash;    // Poseidon(identityNullifier, externalNullifier)
@@ -118,12 +122,6 @@ template Sharibo(levels) {
     nullifierHasher.in[0] <== identityNullifier;
     nullifierHasher.in[1] <== externalNullifier;
     nullifierHash <== nullifierHasher.out;
-
-    // Bind recipientHash into the witness (unused otherwise). Squaring
-    // ensures the input is actually committed to while keeping the
-    // constraint simple and cheap.
-    signal recipientSquare;
-    recipientSquare <== recipientHash * recipientHash;
 }
 
 // NOTE: no `component main` here. This file is the template; the concrete
