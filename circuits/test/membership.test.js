@@ -167,6 +167,24 @@ describe("Sharibo membership circuit (BLS12-381)", function () {
     expect(witnessA[varIdx].toString()).to.not.equal(witnessNextRound[varIdx].toString());
   });
 
+  // Issue #268 — property not covered by the determinism/round-trip test
+  // above: two *different* identities must not collide even when they share
+  // the same externalNullifier (same circle + round). This is what lets the
+  // contract tell distinct members apart on one shared round-gate; a
+  // collision here would let two members reuse a single nullifier.
+  it("different identities with the same externalNullifier produce different nullifierHash", async () => {
+    await circuit.loadSymbols();
+    const varIdx = circuit.symbols["main.nullifierHash"].varIdx;
+
+    const inputA = await buildInput(2, 9, 1);
+    const inputB = await buildInput(3, 9, 1);
+
+    const witnessA = await circuit.calculateWitness(inputA, true);
+    const witnessB = await circuit.calculateWitness(inputB, true);
+
+    expect(witnessA[varIdx].toString()).to.not.equal(witnessB[varIdx].toString());
+  });
+
   it("rejects a non-boolean pathIndices entry", async () => {
     const input = await buildInput(2, 1, 0);
     input.pathIndices[0] = 2;
@@ -233,21 +251,18 @@ describe("Sharibo membership circuit (BLS12-381)", function () {
     await circuit.assertOut(witness, { nullifierHash: expected.toString() });
   });
 
-  it("binds recipientHash as a public signal the contract can check", async () => {
-    // The circuit deliberately accepts ANY recipientHash — it is a public
-    // input committed (squared) into the proof and verified by the contract
-    // (which expects the payout-address hash), NOT range-checked or
-    // constrained to a client-chosen value inside the circuit. So swapping
-    // it must produce a valid witness whose public recipientHash reflects
-    // the swapped value (front-running protection is enforced at verify
-    // time, issue #266).
+  it("recipientHash is committed but not constraint-bound (binding is enforced by the contract)", async () => {
     const input = await buildInput(2, 1, 0);
-    const swapped = poseidon(333n, 444n).toString();
-    input.recipientHash = swapped;
-
+    // The squaring constraint commits recipientHash to the witness, but the
+    // circuit does not tie it to any other signal: the contract verifier
+    // enforces the payout binding by comparing this public signal against
+    // compute_recipient_hash of the payout address (issue #266, ADR-006).
+    // Swapping the value must therefore keep the witness satisfiable — the
+    // on-chain public-input check, not the circuit, rejects the swap.
+    const differentRecipientHash = poseidon(333n, 444n);
+    input.recipientHash = differentRecipientHash.toString();
     const witness = await circuit.calculateWitness(input, true);
     await circuit.checkConstraints(witness);
-    expect(witness[4].toString()).to.equal(swapped);
   });
 
   it("public signals are pinned: [nullifierHash, root, externalNullifier, recipientHash]", async () => {

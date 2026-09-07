@@ -198,6 +198,8 @@ export const getCircle = vi.fn(
     },
     contributors: [],
     cancelled: false,
+    fee_bps: 0,
+    fee_recipient: "MOCK_FEE_RECIPIENT",
   }),
 );
 
