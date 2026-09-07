@@ -75,6 +75,40 @@ After a successful `RestoreFootprintOp` the circle's full state (including `roun
 
 ---
 
+## Changing the Merkle tree depth
+
+The membership circuit's depth is declared in [`circuits/config.json`](../circuits/config.json)
+(`"levels": 4`). The Merkle tree it generates holds `2^levels` commitments at
+most, so the contract enforces the same bound at circle creation:
+
+| Constant | Value | Source of truth |
+| --- | --- | --- |
+| `MAX_CIRCLE_SIZE` (in [`contracts/sharibo/src/lib.rs`](sharibo/src/lib.rs)) | `2^levels = 16` | `circuits/config.json` `levels` |
+
+`create_circle` rejects `size > MAX_CIRCLE_SIZE` with
+`Error::InvalidCircleParams`: a larger size would accept funding the tree can
+never contain enough members to claim, bricking every round until
+`cancel_circle`. A test (`max_circle_size_matches_circuit_levels`) asserts the
+constant equals `2^levels` by reading `circuits/config.json`, so a depth change
+fails the build loudly.
+
+### Runbook: raising the depth
+
+Because `MAX_CIRCLE_SIZE` is compiled into the contract WASM, a depth change
+**requires redeploying the contract** — the bound a deployed instance enforces
+cannot change without shipping a new WASM build:
+
+1. Bump `levels` in `circuits/config.json`.
+2. Regenerate the circuit (`circuits/scripts/compile.sh`, setup, and proof
+   pipeline) so roots/proofs match the new depth.
+3. Update `MAX_CIRCLE_SIZE = 2^levels` in `contracts/sharibo/src/lib.rs` — the
+   `max_circle_size_matches_circuit_levels` test fails until this matches.
+4. Rebuild (`stellar contract build`) and **redeploy**; existing deployments
+   keep enforcing the old bound. Any existing circles are unaffected (their
+   `size` was validated at creation).
+
+---
+
 ## 3. Deploying the Contracts
 
 ### Required CLI

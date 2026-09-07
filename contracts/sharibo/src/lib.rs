@@ -226,8 +226,9 @@ pub enum Error {
     CircleCancelled = 8,
     /// `create_circle` rejected a `fee_bps` outside `0..=10_000`.
     InvalidFeeParams = 9,
-    /// `create_circle` rejected invalid setup parameters: zero size,
-    /// non-positive contribution, or a verification key length mismatch.
+    /// `create_circle` rejected invalid setup parameters: zero size, size
+    /// above [`MAX_CIRCLE_SIZE`], non-positive contribution, or a
+    /// verification key length mismatch.
     InvalidCircleParams = 10,
     /// A payout or refund target that would strand the tokens — currently
     /// only the contract's own address.
@@ -318,8 +319,11 @@ impl Contract {
     ///   is eligible to claim. Stored in [`Circle::root`].
     /// * `contribution` — fixed amount each [`Self::fund`] deposits.
     ///   Stored in [`Circle::contribution`].
-    /// * `size` — number of funders needed to fill a round. `pot_target =
-    ///   contribution * size`. Stored in [`Circle::size`].
+/// * `size` — number of funders needed to fill a round. `pot_target =
+///   contribution * size`. Stored in [`Circle::size`]. Capped at
+///   [`MAX_CIRCLE_SIZE`] (the Merkle tree's capacity); a larger size is
+///   rejected with [`Error::InvalidCircleParams`] since no more than
+///   2^levels members can ever prove membership.
     /// * `vk` — Groth16 verification key for the membership circuit.
     ///   Stored in [`Circle::vk`].
     /// * `fee_bps` — protocol fee in basis points (`0..=10_000`; `10_000`
@@ -362,7 +366,15 @@ impl Contract {
         // ic must hold one point per public input plus one: the circuit's
         // public signals are [nullifierHash, root, externalNullifier,
         // recipientHash], so 4 + 1 = 5. Recount this if the circuit changes.
-        if size == 0 || contribution <= 0 || vk.ic.len() != PUBLIC_INPUT_COUNT + 1 {
+        // size is capped at MAX_CIRCLE_SIZE (2^levels from circuits/config.json):
+        // the membership tree can only ever hold that many commitments, so a
+        // larger size would fill the pot with contributions no member could
+        // ever claim, leaving cancel_circle as the only exit.
+        if size == 0
+            || size > MAX_CIRCLE_SIZE
+            || contribution <= 0
+            || vk.ic.len() != PUBLIC_INPUT_COUNT + 1
+        {
             panic_with_error!(&env, Error::InvalidCircleParams);
         }
 
