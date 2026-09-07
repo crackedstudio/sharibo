@@ -85,21 +85,16 @@ export function generateIdentity(): Identity {
   return { identityNullifier, identitySecret, commitment };
 }
 
-// DELIBERATE, PERMANENT DEVIATION from "Poseidon everywhere": external
-// nullifier binding (circle_id, round) happens with SHA-256, matching the
-// contract (see contracts/sharibo/src/lib.rs, compute_external_nullifier).
-// Poseidon is used only where it saves constraints *inside* the circuit
-// (commitment + nullifierHash); Soroban has no native Poseidon host
-// function, so nothing is gained by porting Poseidon into the contract for
-// this check, and SHA-256 is equally sound for binding a proof to a round.
-// See NOTES.md.
+// External nullifier derivation: SHA-256 over big-endian u64(circle_id)
+// || u32(round), reduced mod r. Specification: docs/wire-format.md §2.
+// Both TypeScript and Rust implementations must agree on byte order and
+// modulus reduction — a disagreement is silent until WrongRoundTag.
 export async function computeExternalNullifier(circleId: bigint, round: bigint): Promise<bigint> {
-  // Bounds must match the contract's field types exactly (see
-  // contracts/sharibo/src/lib.rs: `circle_id: u64`, `round: u32`).
-  // `setBigUint64`/`setUint32` below would otherwise silently truncate (or,
-  // for `Number(round)` on a bigint > 2^53, silently lose precision first),
-  // producing a valid-looking but wrong hash that the contract rejects with
-  // an opaque `WrongRoundTag` — Issue #65.
+  // Bounds must match the contract's field types exactly: circle_id: u64,
+  // round: u32 (see docs/wire-format.md §2). `setBigUint64`/`setUint32`
+  // below would otherwise silently truncate (or, for `Number(round)` on a
+  // bigint > 2^53, silently lose precision first), producing a valid-looking
+  // but wrong hash that the contract rejects with WrongRoundTag — Issue #65.
   if (circleId < 0n || circleId >= 2n ** 64n) {
     throw new InvalidInputError(
       `circleId must satisfy 0 <= circleId < 2**64 (u64), got ${circleId}`,

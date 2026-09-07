@@ -38,6 +38,12 @@ each covers and where to find it.
 | [`adr/003-client-boundary.md`](adr/003-client-boundary.md) | ADR 003: app ↔ SDK ↔ contract boundary and the current free-function design |
 | [`adr/004-storage-archival.md`](adr/004-storage-archival.md) | ADR 004: per-key storage TTL/archival analysis, including the nullifier double-claim fence's residual risk |
 
+## Cross-implementation specification
+
+| File | Description |
+|---|---|
+| [`wire-format.md`](wire-format.md) | Authoritative wire-format spec: public signal order, external nullifier derivation, G1/G2 encoding, vk.ic length rules — validated by `test-vectors/wire-format.json` |
+
 ## Circuit docs
 
 | File | Description |
@@ -71,6 +77,7 @@ each covers and where to find it.
 
 - **Just getting started:** [`README.md`](../README.md), [`NOTES.md`](../NOTES.md)
 - **Deep technical dive:** [`full_product_breakdown.md`](../full_product_breakdown.md)
+- **Wire format / cross-implementation spec:** [`wire-format.md`](wire-format.md)
 - **Verifying the on-chain proof:** [`judges/VERIFY.md`](../judges/VERIFY.md)
 - **Building the circuit:** [`circuits/README.md`](../circuits/README.md)
 - **Building the contract:** [`contracts/README.md`](../contracts/README.md)

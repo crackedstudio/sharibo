@@ -291,6 +291,8 @@ These must agree, byte-for-byte or value-for-value, across circuit, contract, an
 - **Public signal order:** `[nullifierHash, root, externalNullifier]` — this is what circom/snarkjs actually emit (circuit _output_ first, then declared public _inputs_, in source order), not the more intuitive-looking `[root, externalNullifier, nullifierHash]` a naive reading of the spec would produce. This was discovered empirically by inspecting a real `public.json`, not assumed.
 - **Wire format:** `G1Affine` = 96 bytes (`be(X) || be(Y)`), `G2Affine` = 192 bytes (`be(X_c1) || be(X_c0) || be(Y_c1) || be(Y_c0)`) — Soroban's documented format, which happens to match the widely-standardized ("ZCash-style") BLS12-381 serialization used across the ecosystem.
 
+> **Single source of truth:** The complete specification of all cross-implementation encodings — public signal order, external nullifier derivation, G1/G2 byte encoding, and vk.ic length rules — lives in [`docs/wire-format.md`](docs/wire-format.md), validated by committed test vectors in `test-vectors/wire-format.json`. Each implementation points there instead of describing the format inline.
+
 ## 11. Security properties
 
 | Property                                                                   | Enforced by                                                                                                                                                         |

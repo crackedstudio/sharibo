@@ -9,6 +9,9 @@ import { withRetry, DEFAULT_RETRY_POLICY, type RetryPolicy } from "./retry.js";
 import { validateContractProof, validateContractVerificationKey } from "./validate.js";
 import { SdkEventEmitter, type OnEventFn } from "./events.js";
 
+// Public signal order and claim argument order are specified in
+// docs/wire-format.md §1 — that document is the single source of truth.
+
 /**
  * Configuration required to connect to the Sharibo contract.
  *
