@@ -1,1 +1,5 @@
 blank_issues_enabled: true
+
+# Issue templates (bug_report.yml, feature_request.yml, refactor.yml) are
+# auto-discovered from this directory and listed in the issue chooser;
+# config.yml only controls the chooser behaviour above.

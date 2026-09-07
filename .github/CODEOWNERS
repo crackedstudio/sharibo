@@ -1,0 +1,23 @@
+# CODEOWNERS — required reviewers per path.
+#
+# This repo has no CI, so human review IS the gate (see CONTRIBUTING.md
+# "Review expectations" and issue #222). GitHub requests the owners below
+# automatically on every PR touching their paths.
+#
+# NOTE: this is the starting roster for issue #336. Maintainers: replace
+# @believetimothy with the actual reviewers for each area. circuits/** and
+# contracts/** are security-critical — changes there should require a
+# domain reviewer (someone who reads circom / Rust, respectively).
+#
+# Every top-level directory has an owner.
+
+*                       @believetimothy
+circuits/               @believetimothy
+contracts/              @believetimothy
+packages/               @believetimothy
+app/                    @believetimothy
+scripts/                @believetimothy
+docs/                   @believetimothy
+judges/                 @believetimothy
+test-vectors/           @believetimothy
+.github/                @believetimothy

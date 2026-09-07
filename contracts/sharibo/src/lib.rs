@@ -5,7 +5,7 @@ extern crate std;
 use soroban_sdk::{
     contract, contracterror, contractimpl, contracttype,
     crypto::bls12_381::{Fr, G1Affine, G2Affine},
-    panic_with_error, token, vec, Address, Bytes, Env, Vec,
+    panic_with_error, symbol_short, token, vec, xdr::ToXdr, Address, Bytes, Env, Vec,
 };
 
 /// Groth16 verification key over BLS12-381.
@@ -16,6 +16,9 @@ use soroban_sdk::{
 ///
 /// G1/G2 byte encoding rules are in docs/wire-format.md §3.
 /// ic length rule: ic.len() == number_of_public_signals + 1 (§4).
+/// **Cross-component invariant:** any change to this struct's wire format must
+/// be coordinated with the circuit public signals, contract `public_inputs`,
+/// and SDK encoding. See #344.
 #[contracttype]
 #[derive(Clone)]
 pub struct VerificationKey {
@@ -38,6 +41,9 @@ pub struct VerificationKey {
 /// [`Contract::verify_groth16`].
 ///
 /// G1/G2 byte encoding rules are in docs/wire-format.md §3.
+/// **Cross-component invariant:** any change to this struct's wire format must
+/// be coordinated with the circuit public signals, contract `public_inputs`,
+/// and SDK encoding. See #344.
 #[contracttype]
 #[derive(Clone)]
 pub struct Proof {
@@ -56,14 +62,65 @@ pub struct Proof {
 /// full, one member can claim the entire pot per round using a ZK proof that
 /// they are in the ring, with their nullifier preventing double-claims
 /// across rounds.
+///
+/// # Storage schema versioning
+///
+/// `schema_version` is always the **first field** so that a future migration
+/// helper can read it without needing to decode the full struct. The rule is:
+///
+/// - Every field addition or removal **must** bump `schema_version`.
+/// - A bump requires either a migration function (reading the old layout,
+///   writing the new one) or an explicit "testnet-reset" note in the release
+///   commit message.
+/// - A golden-XDR test in `test.rs` (`circle_xdr_layout_golden`) will fail if
+///   the serialised layout changes without a deliberate version bump, making
+///   accidental breakage impossible to land unnoticed.
+///
+/// Current version: **2** (adds `fee_bps`/`fee_recipient` — breaking, needs
+/// a testnet reset for pre-existing circles; see `docs/runbook-testnet-reset.md`).
 #[contracttype]
 #[derive(Clone)]
 pub struct Circle {
+    /// Schema version for this stored struct. Must be the first field.
+    /// Increment whenever a field is added, removed, or reordered, and
+    /// provide a migration path or explicit testnet-reset note.
+    /// Current value: 2.
+    pub schema_version: u32,
     /// Owner of the circle. Required to call [`Contract::cancel_circle`];
     /// does **not** gate funding or claiming — those are permissionless
     /// (fund) / zero-knowledge (claim).
     pub admin: Address,
     /// SAC token contract used for contributions and payouts.
+    ///
+    /// # Trust assumption
+    ///
+    /// This address is stored at circle creation and **never validated
+    /// on-chain**. Every subsequent [`Contract::fund`] and
+    /// [`Contract::claim`] call invokes `token::Client::transfer` against
+    /// it unconditionally. A hostile token contract at this address can:
+    ///
+    /// - **Refuse specific transfers** — e.g. selectively block the payout
+    ///   in `claim` while accepting `fund` deposits, permanently stranding
+    ///   the pot.
+    /// - **Charge a transfer fee (fee-on-transfer)** — report a successful
+    ///   transfer but credit the recipient less than the nominal amount.
+    ///   Because `claim` requires `pot == contribution * size` *exactly*,
+    ///   even a 1-stroop fee causes every `fund` to land short of the
+    ///   target and `claim` will never succeed, bricking the circle.
+    /// - **Re-enter the contract** — call back into `fund`, `claim`, or
+    ///   `cancel_circle` during a transfer. The contract holds no
+    ///   reentrancy lock; correctness depends on the token not doing this.
+    ///   (Soroban's host executes contracts in a single-threaded
+    ///   call-stack, so reentrancy is detectable but not prevented.)
+    /// - **Silently succeed without moving value** — `transfer` returns
+    ///   `()` and the contract has no way to verify the actual balance
+    ///   delta; a token that lies about transfers can drain the accounting
+    ///   without moving tokens.
+    ///
+    /// **Mitigation**: members must verify the token address out of band
+    /// before funding. The demo pins the native XLM Stellar Asset Contract
+    /// (SAC), which is the only token whose behaviour the contract assumes.
+    /// See `docs/threat-model.md` §"Token contract trust".
     pub token: Address,
     /// Merkle root of the member-commitment tree. Committed at creation
     /// and used as a public input to every [`Self::claim`] proof; binds
@@ -86,14 +143,39 @@ pub struct Circle {
     /// must prove against this key.
     pub vk: VerificationKey,
     /// Addresses that have funded the **current** round in order.
-    /// Reset to empty after a successful `claim` or `cancel_circle`.
-    /// Refunds on cancel are processed in this same order.
+    /// Reset to empty after a successful `claim`, `cancel_circle`, or
+    /// `expire_round`. Refunds are processed in this same order.
     /// Funding is unshielded (addresses are already public), so storing
     /// them here imposes no additional privacy loss — see issue #82.
     pub contributors: Vec<Address>,
+    /// Nullifier hashes used in successful claims for this circle.
+    /// Embedded inside the Circle persistent entry so they inherit the
+    /// continuously-extended TTL lifecycle of the circle itself (issue #254).
+    pub nullifiers: Vec<Fr>,
     /// True once `cancel_circle` has been called; prevents any further
     /// `fund` or `claim` calls so the circle is permanently closed.
     pub cancelled: bool,
+    /// Number of ledgers each round is allowed to stay open before any
+    /// contributor may call `expire_round` to recover their funds.
+    /// Set at circle creation and never changes.
+    pub round_deadline_ledgers: u32,
+    /// The ledger sequence number at which the current round began.
+    /// Reset to the current ledger after each successful `claim` or
+    /// `expire_round`.
+    pub round_started_ledger: u32,
+    /// Protocol fee in basis points (`0..=10_000`, where `10_000` = 100% of
+    /// the pot) deducted from every [`Contract::claim`] payout.
+    ///
+    /// Committed at circle creation — there is deliberately **no setter**, so
+    /// members can read [`Contract::get_circle`] before funding and know
+    /// exactly what will be deducted (see `docs/adr/003-protocol-fees.md`).
+    /// A `0` fee costs nothing extra on `claim` (the fee transfer is skipped).
+    pub fee_bps: u32,
+    /// Address that receives the [`Self::fee_bps`] deduction on every
+    /// [`Contract::claim`]. Must not be the contract's own address when
+    /// `fee_bps > 0` (enforced at creation — mirror of the `claim` recipient
+    /// guard); ignored when `fee_bps == 0`. Immutable after creation.
+    pub fee_recipient: Address,
 }
 
 /// Storage keys for the contract's persistent and instance storage.
@@ -111,12 +193,19 @@ pub enum DataKey {
     /// already been used in a successful [`Contract::claim`]? Prevents
     /// double-claims across rounds.
     Nullifier(u64, Fr),
+    /// Pending admin proposed via `propose_admin`; cleared on `accept_admin`.
+    PendingAdmin(u64),
 }
 
 /// Revertable error codes for every public entrypoint.
 ///
 /// All panics use `panic_with_error!` so the discriminant is surfaced to
 /// on-chain callers and off-chain simulations.
+///
+/// The variant count is pinned by the `error_table_variant_count` test in
+/// `test.rs`. Adding a variant here requires bumping `DOCUMENTED_ERROR_COUNT`
+/// in that test and adding a row to `docs/errors.md`. See that file for the
+/// full mapping to SDK classes, user-facing messages, and remedies.
 #[contracterror]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
 #[repr(u32)]
@@ -138,8 +227,18 @@ pub enum Error {
     Overflow = 7,
     /// `cancel_circle` or `fund`/`claim` called on a cancelled circle.
     CircleCancelled = 8,
-    /// `apply_fee` called with `fee_bps > 10_000` or `amount < 0`.
+    /// `create_circle` rejected a `fee_bps` outside `0..=10_000`.
     InvalidFeeParams = 9,
+    /// `create_circle` rejected invalid setup parameters: zero size, size
+    /// above [`MAX_CIRCLE_SIZE`], non-positive contribution, or a
+    /// verification key length mismatch.
+    InvalidCircleParams = 10,
+    /// A payout or refund target that would strand the tokens — currently
+    /// only the contract's own address.
+    InvalidRecipient = 11,
+    /// `expire_round` was called before the round's deadline, or `fund` was
+    /// called on a round whose deadline has already passed.
+    RoundNotExpired = 12,
 }
 
 /// Minimum remaining TTL (in ledgers) that triggers a `extend_ttl` call.
@@ -151,6 +250,14 @@ pub enum Error {
 /// this to 100 ledgers (≈ 8 minutes at ~5 s/ledger) means that any write
 /// performed in the last few minutes of a circle's live window will refresh it
 /// to the full `LEDGER_EXTEND_TO` budget.
+/// Number of public signals the membership circuit exposes:
+/// [nullifierHash, root, externalNullifier, recipientHash].
+const PUBLIC_INPUT_COUNT: u32 = 4;
+
+/// Upper bound for [`Circle::fee_bps`]: 10_000 basis points = 100% of a pot.
+/// `apply_fee` and `create_circle` share this single source of truth.
+const MAX_FEE_BASIS_POINTS: u32 = 10_000;
+
 const LEDGER_THRESHOLD: u32 = 100;
 
 /// TTL (in ledgers) that persistent and instance entries are extended to on
@@ -208,15 +315,27 @@ impl Contract {
     ///
     /// * `admin` — circle owner; can cancel. Stored in [`Circle::admin`].
     /// * `token` — SAC token address for contributions/payouts. Stored in
-    ///   [`Circle::token`].
+    ///   [`Circle::token`]. Accepted without validation — see
+    ///   [`Circle::token`] for the full list of trust assumptions members
+    ///   must verify before funding.
     /// * `root` — Merkle root of the Semaphore commitment tree; binds who
     ///   is eligible to claim. Stored in [`Circle::root`].
     /// * `contribution` — fixed amount each [`Self::fund`] deposits.
     ///   Stored in [`Circle::contribution`].
-    /// * `size` — number of funders needed to fill a round. `pot_target =
-    ///   contribution * size`. Stored in [`Circle::size`].
+/// * `size` — number of funders needed to fill a round. `pot_target =
+///   contribution * size`. Stored in [`Circle::size`]. Capped at
+///   [`MAX_CIRCLE_SIZE`] (the Merkle tree's capacity); a larger size is
+///   rejected with [`Error::InvalidCircleParams`] since no more than
+///   2^levels members can ever prove membership.
     /// * `vk` — Groth16 verification key for the membership circuit.
     ///   Stored in [`Circle::vk`].
+    /// * `fee_bps` — protocol fee in basis points (`0..=10_000`; `10_000`
+    ///   = 100% of the pot). Committed at creation and immutable. Stored in
+    ///   [`Circle::fee_bps`].
+    /// * `fee_recipient` — address that receives the fee deduction on every
+    ///   [`Self::claim`]. Must be a real recipient (not the contract itself)
+    ///   when `fee_bps > 0`; ignored when `fee_bps == 0`. Stored in
+    ///   [`Circle::fee_recipient`].
     ///
     /// # State effects
     ///
@@ -227,10 +346,12 @@ impl Contract {
     ///
     /// # Errors
     ///
-    /// This entrypoint does not panic with any [`Error`] variant — it
-    /// performs no arithmetic on user-provided `contribution`/`size`.
-    /// Overflow is first possible in [`Self::fund`]/[`Self::claim`] where
-    /// `pot_target` is computed.
+    /// * [`Error::InvalidCircleConfig`] — `size == 0` or `contribution <= 0`.
+    ///   A non-positive target would let an empty pot count as already-funded
+    ///   during the first claim and advance a round without any real deposits.
+    /// * [`Error::InvalidFeeParams`] — `fee_bps` outside `0..=10_000`.
+    /// * [`Error::InvalidRecipient`] — `fee_bps > 0` but `fee_recipient` is
+    ///   the contract's own address, which would strand the fee forever.
     pub fn create_circle(
         env: Env,
         admin: Address,
@@ -238,9 +359,39 @@ impl Contract {
         root: Fr,
         contribution: i128,
         size: u32,
+        round_deadline_ledgers: u32,
         vk: VerificationKey,
+        fee_bps: u32,
+        fee_recipient: Address,
     ) -> u64 {
         admin.require_auth();
+
+        // ic must hold one point per public input plus one: the circuit's
+        // public signals are [nullifierHash, root, externalNullifier,
+        // recipientHash], so 4 + 1 = 5. Recount this if the circuit changes.
+        // size is capped at MAX_CIRCLE_SIZE (2^levels from circuits/config.json):
+        // the membership tree can only ever hold that many commitments, so a
+        // larger size would fill the pot with contributions no member could
+        // ever claim, leaving cancel_circle as the only exit.
+        if size == 0
+            || size > MAX_CIRCLE_SIZE
+            || contribution <= 0
+            || vk.ic.len() != PUBLIC_INPUT_COUNT + 1
+        {
+            panic_with_error!(&env, Error::InvalidCircleParams);
+        }
+
+        if fee_bps > MAX_FEE_BASIS_POINTS {
+            panic_with_error!(&env, Error::InvalidFeeParams);
+        }
+        if fee_bps > 0 && fee_recipient == env.current_contract_address() {
+            panic_with_error!(&env, Error::InvalidRecipient);
+        }
+
+        let target = contribution
+            .checked_mul(size as i128)
+            .unwrap_or_else(|| panic_with_error!(&env, Error::InvalidCircleParams));
+        let _ = target;
 
         let circle_id: u64 = env
             .storage()
@@ -248,7 +399,9 @@ impl Contract {
             .get(&DataKey::NextCircleId)
             .unwrap_or(0);
 
+        let round_started_ledger = env.ledger().sequence();
         let circle = Circle {
+            schema_version: 2,
             admin,
             token,
             root,
@@ -258,7 +411,12 @@ impl Contract {
             pot: 0,
             vk,
             contributors: Vec::new(&env),
+            nullifiers: Vec::new(&env),
             cancelled: false,
+            round_deadline_ledgers,
+            round_started_ledger,
+            fee_bps,
+            fee_recipient,
         };
         let key = DataKey::Circle(circle_id);
         env.storage().persistent().set(&key, &circle);
@@ -278,6 +436,15 @@ impl Contract {
             .instance()
             .extend_ttl(LEDGER_THRESHOLD, LEDGER_EXTEND_TO);
 
+        env.events().publish(
+            (symbol_short!("circle"), symbol_short!("created"), circle_id),
+            (
+                circle.admin.clone(),
+                circle.token.clone(),
+                circle.contribution,
+                circle.size,
+            ),
+        );
         circle_id
     }
 
@@ -316,14 +483,13 @@ impl Contract {
         from.require_auth();
 
         let key = DataKey::Circle(circle_id);
-        let mut circle: Circle = env
-            .storage()
-            .persistent()
-            .get(&key)
-            .unwrap_or_else(|| panic_with_error!(&env, Error::CircleNotFound));
+        let mut circle = load_active_circle(&env, circle_id);
 
-        if circle.cancelled {
-            panic_with_error!(&env, Error::CircleCancelled);
+        // Reject funding into an already-expired round: the pot will never
+        // reach the target (someone non-showed), so new deposits would just
+        // get trapped until expire_round is called. Fail fast instead.
+        if is_round_expired(&env, &circle) {
+            panic_with_error!(&env, Error::RoundNotExpired);
         }
 
         let target = pot_target(&env, &circle);
@@ -342,7 +508,7 @@ impl Contract {
             .pot
             .checked_add(circle.contribution)
             .unwrap_or_else(|| panic_with_error!(&env, Error::Overflow));
-        circle.contributors.push_back(from);
+        circle.contributors.push_back(from.clone());
         env.storage().persistent().set(&key, &circle);
         env.storage()
             .persistent()
@@ -350,6 +516,10 @@ impl Contract {
         env.storage()
             .instance()
             .extend_ttl(LEDGER_THRESHOLD, LEDGER_EXTEND_TO);
+        env.events().publish(
+            (symbol_short!("circle"), symbol_short!("funded"), circle_id),
+            (from, circle.pot, target),
+        );
     }
 
     /// Zero-knowledge payout: transfer the full round pot to `recipient`
@@ -402,8 +572,9 @@ impl Contract {
     ///
     /// * Sets [`DataKey::Nullifier`]`(circle_id, nullifier_hash) = true`
     ///   and extends TTL — idempotent double-claim fence.
-    /// * Transfers the entire [`Circle::pot`] to `recipient` via the
-    ///   token client.
+    /// * Splits [`Circle::pot`] via `apply_fee` into the protocol fee and the
+    ///   net payout; transfers the fee to [`Circle::fee_recipient`] (skipped
+    ///   entirely when the fee is zero) and the net to `recipient`.
     /// * Zeros [`Circle::pot`], increments [`Circle::round`], clears
     ///   [`Circle::contributors`], and writes the updated circle back.
     /// * Extends both instance and persistent TTLs.
@@ -427,15 +598,7 @@ impl Contract {
         proof: Proof,
     ) {
         let key = DataKey::Circle(circle_id);
-        let mut circle: Circle = env
-            .storage()
-            .persistent()
-            .get(&key)
-            .unwrap_or_else(|| panic_with_error!(&env, Error::CircleNotFound));
-
-        if circle.cancelled {
-            panic_with_error!(&env, Error::CircleCancelled);
-        }
+        let mut circle = load_active_circle(&env, circle_id);
 
         // 1. round must be fully funded
         if circle.pot != pot_target(&env, &circle) {
@@ -450,36 +613,47 @@ impl Contract {
         }
 
         // 3. this nullifier must not have claimed before (any round, this circle)
-        let nullifier_key = DataKey::Nullifier(circle_id, nullifier_hash.clone());
-        if env.storage().persistent().has(&nullifier_key) {
+        if circle.nullifiers.contains(&nullifier_hash) {
             panic_with_error!(&env, Error::AlreadyClaimed);
         }
 
         // 4. the ZK proof itself must verify against the circle's committed root
         // Public signal order: [nullifierHash, root, externalNullifier]
         // — see docs/wire-format.md §1.
+        // Bind the recipient into the public inputs so the proof commits to
+        // where the payout will land. Compute the same SHA-256-based
+        // reduction used for external nullifier binding.
+        let recipient_hash = Self::compute_recipient_hash(&env, &recipient);
         let public_inputs = vec![
             &env,
             nullifier_hash.clone(),
             circle.root.clone(),
             external_nullifier,
+            recipient_hash,
         ];
         if !Self::verify_groth16(&env, &circle.vk, &proof, &public_inputs) {
             panic_with_error!(&env, Error::InvalidProof);
         }
 
+        // 5. recipient must not be the contract itself — a self-transfer zeroes
+        //    the pot and burns the nullifier while leaving the tokens stranded
+        //    with no accounting or recovery path.
+        if recipient == env.current_contract_address() {
+            panic_with_error!(&env, Error::InvalidRecipient);
+        }
+
         // effects
-        env.storage().persistent().set(&nullifier_key, &true);
-        env.storage()
-            .persistent()
-            .extend_ttl(&nullifier_key, LEDGER_THRESHOLD, LEDGER_EXTEND_TO);
-
-        let token_client = token::Client::new(&env, &circle.token);
-        token_client.transfer(&env.current_contract_address(), &recipient, &circle.pot);
-
+        // Persist the round state and the nullifier (embedded in the Circle
+        // struct since issue #254) before any external token call, so a hostile
+        // token cannot re-enter the same claim with a fresh nullifier or stale
+        // pot/round data while this call is in-flight.
+        let claimed_round = circle.round;
+        let payout = circle.pot;
         circle.pot = 0;
         circle.round += 1;
         circle.contributors = Vec::new(&env);
+        circle.round_started_ledger = env.ledger().sequence();
+        circle.nullifiers.push_back(nullifier_hash);
         env.storage().persistent().set(&key, &circle);
         env.storage()
             .persistent()
@@ -487,6 +661,22 @@ impl Contract {
         env.storage()
             .instance()
             .extend_ttl(LEDGER_THRESHOLD, LEDGER_EXTEND_TO);
+
+        let (fee, net) = apply_fee(&env, circle.fee_bps, payout);
+        let token_client = token::Client::new(&env, &circle.token);
+        if fee > 0 {
+            token_client.transfer(
+                &env.current_contract_address(),
+                &circle.fee_recipient,
+                &fee,
+            );
+        }
+        token_client.transfer(&env.current_contract_address(), &recipient, &net);
+
+        env.events().publish(
+            (symbol_short!("circle"), symbol_short!("claimed"), circle_id),
+            (claimed_round, payout, recipient),
+        );
     }
 
     /// Look up a [`Circle`] by its assigned id.
@@ -508,10 +698,7 @@ impl Contract {
     ///
     /// * [`Error::CircleNotFound`] — no circle stored at `circle_id`.
     pub fn get_circle(env: Env, circle_id: u64) -> Circle {
-        env.storage()
-            .persistent()
-            .get(&DataKey::Circle(circle_id))
-            .unwrap_or_else(|| panic_with_error!(&env, Error::CircleNotFound))
+        load_circle(&env, circle_id)
     }
 
     /// Pure read: the current count of circles ever created (i.e. the next
@@ -619,9 +806,162 @@ impl Contract {
     /// `true` if the nullifier has ever been used in a successful claim for
     /// this circle (any round); the associated identity cannot claim again.
     pub fn has_claimed(env: Env, circle_id: u64, nullifier_hash: Fr) -> bool {
+        let key = DataKey::Circle(circle_id);
+        if let Some(circle) = env.storage().persistent().get::<_, Circle>(&key) {
+            circle.nullifiers.contains(&nullifier_hash)
+        } else {
+            false
+        }
+    }
+
+    /// Step 1 of two-step admin transfer: the current admin nominates a
+    /// `new_admin` address.  The transfer is **not** final until `accept_admin`
+    /// is called by `new_admin`.  This prevents a typo from permanently
+    /// locking the circle: if the wrong address is proposed, the current
+    /// admin can overwrite the pending slot with a corrected `propose_admin`
+    /// call before anyone calls `accept_admin`.
+    ///
+    /// Reverts with [`Error::CircleCancelled`] on a cancelled circle — there
+    /// is no point transferring admin rights once the circle is closed.
+    pub fn propose_admin(env: Env, circle_id: u64, new_admin: Address) {
+        let key = DataKey::Circle(circle_id);
+        let circle: Circle = env
+            .storage()
+            .persistent()
+            .get(&key)
+            .unwrap_or_else(|| panic_with_error!(&env, Error::CircleNotFound));
+
+        circle.admin.require_auth();
+
+        if circle.cancelled {
+            panic_with_error!(&env, Error::CircleCancelled);
+        }
+
+        let pending_key = DataKey::PendingAdmin(circle_id);
+        env.storage().persistent().set(&pending_key, &new_admin);
         env.storage()
             .persistent()
-            .has(&DataKey::Nullifier(circle_id, nullifier_hash))
+            .extend_ttl(&pending_key, LEDGER_THRESHOLD, LEDGER_EXTEND_TO);
+
+        env.events().publish(
+            (soroban_sdk::symbol_short!("prop_adm"), circle_id),
+            (circle.admin, new_admin),
+        );
+    }
+
+    /// Step 2 of two-step admin transfer: the nominated address accepts,
+    /// atomically updating `Circle.admin` and clearing the pending slot.
+    ///
+    /// Only the address stored by [`Self::propose_admin`] may call this.
+    /// Reverts with [`Error::CircleCancelled`] on a cancelled circle.
+    pub fn accept_admin(env: Env, circle_id: u64) {
+        let circle_key = DataKey::Circle(circle_id);
+        let mut circle: Circle = env
+            .storage()
+            .persistent()
+            .get(&circle_key)
+            .unwrap_or_else(|| panic_with_error!(&env, Error::CircleNotFound));
+
+        if circle.cancelled {
+            panic_with_error!(&env, Error::CircleCancelled);
+        }
+
+        let pending_key = DataKey::PendingAdmin(circle_id);
+        let new_admin: Address = env
+            .storage()
+            .persistent()
+            .get(&pending_key)
+            .unwrap_or_else(|| panic_with_error!(&env, Error::CircleNotFound));
+
+        new_admin.require_auth();
+
+        let old_admin = circle.admin.clone();
+        circle.admin = new_admin.clone();
+        env.storage().persistent().set(&circle_key, &circle);
+        env.storage()
+            .persistent()
+            .extend_ttl(&circle_key, LEDGER_THRESHOLD, LEDGER_EXTEND_TO);
+        env.storage().persistent().remove(&pending_key);
+
+        env.events().publish(
+            (soroban_sdk::symbol_short!("acc_adm"), circle_id),
+            (old_admin, new_admin),
+        );
+    }
+
+    /// Permissionless: expire a stuck round and refund all current-round
+    /// contributors once the deadline has passed and the pot is below target.
+    ///
+    /// Unlike [`Self::cancel_circle`] this does **not** permanently close the
+    /// circle — it resets the round counter so the group can continue. A ROSCA
+    /// with one silent member in a single round should not be destroyed; the
+    /// group can re-start without the absent member (admin can update the
+    /// Merkle root in a new circle, or the group simply re-funds round N+1
+    /// with willing participants).
+    ///
+    /// Conditions to trigger:
+    /// - Circle is not cancelled.
+    /// - Pot is below `contribution * size` (fully-funded rounds cannot be expired;
+    ///   the claimer should call `claim` instead).
+    /// - `env.ledger().sequence() > round_started_ledger + round_deadline_ledgers`.
+    ///
+    /// Effects:
+    /// - Refunds every contributor for the current round (FIFO, same as cancel).
+    /// - Increments `circle.round` so old proof round-tags are invalidated.
+    /// - Resets `pot`, `contributors`, and `round_started_ledger`.
+    /// - Emits a `rnd_exp` event.
+    pub fn expire_round(env: Env, circle_id: u64) {
+        let key = DataKey::Circle(circle_id);
+        let mut circle: Circle = env
+            .storage()
+            .persistent()
+            .get(&key)
+            .unwrap_or_else(|| panic_with_error!(&env, Error::CircleNotFound));
+
+        if circle.cancelled {
+            panic_with_error!(&env, Error::CircleCancelled);
+        }
+
+        // Only callable once the deadline has passed.
+        if !is_round_expired(&env, &circle) {
+            panic_with_error!(&env, Error::RoundNotExpired);
+        }
+
+        // A fully-funded round should be claimed, not expired.
+        if circle.pot >= pot_target(&env, &circle) {
+            panic_with_error!(&env, Error::RoundFull);
+        }
+
+        // Refund every contributor for the current (stuck) round.
+        let token_client = token::Client::new(&env, &circle.token);
+        for contributor in circle.contributors.iter() {
+            if contributor == env.current_contract_address() {
+                panic_with_error!(&env, Error::InvalidRecipient);
+            }
+            token_client.transfer(
+                &env.current_contract_address(),
+                &contributor,
+                &circle.contribution,
+            );
+        }
+
+        let expired_round = circle.round;
+        circle.pot = 0;
+        circle.round += 1;
+        circle.contributors = Vec::new(&env);
+        circle.round_started_ledger = env.ledger().sequence();
+        env.storage().persistent().set(&key, &circle);
+        env.storage()
+            .persistent()
+            .extend_ttl(&key, LEDGER_THRESHOLD, LEDGER_EXTEND_TO);
+        env.storage()
+            .instance()
+            .extend_ttl(LEDGER_THRESHOLD, LEDGER_EXTEND_TO);
+
+        env.events().publish(
+            (soroban_sdk::symbol_short!("rnd_exp"), circle_id),
+            expired_round,
+        );
     }
 
     /// Admin-only: cancel a stuck circle and refund all current-round
@@ -661,11 +1001,7 @@ impl Contract {
     /// * [`Error::CircleCancelled`] — circle was already cancelled.
     pub fn cancel_circle(env: Env, circle_id: u64) {
         let key = DataKey::Circle(circle_id);
-        let mut circle: Circle = env
-            .storage()
-            .persistent()
-            .get(&key)
-            .unwrap_or_else(|| panic_with_error!(&env, Error::CircleNotFound));
+        let mut circle = load_active_circle(&env, circle_id);
 
         circle.admin.require_auth();
 
@@ -673,16 +1009,9 @@ impl Contract {
             panic_with_error!(&env, Error::CircleCancelled);
         }
 
-        // Refund every contributor for the current (stuck) round.
-        let token_client = token::Client::new(&env, &circle.token);
-        for contributor in circle.contributors.iter() {
-            token_client.transfer(
-                &env.current_contract_address(),
-                &contributor,
-                &circle.contribution,
-            );
-        }
-
+        let refunded_count = circle.contributors.len();
+        let refunded_total = circle.pot;
+        let contributors = circle.contributors.clone();
         circle.pot = 0;
         circle.cancelled = true;
         circle.contributors = Vec::new(&env);
@@ -690,6 +1019,31 @@ impl Contract {
         env.storage()
             .persistent()
             .extend_ttl(&key, LEDGER_THRESHOLD, LEDGER_EXTEND_TO);
+
+        // Refund every contributor for the current (stuck) round only after
+        // the circle's cancelled state has been persisted; otherwise a hostile
+        // token can call back into `cancel_circle` while the old state still reads
+        // as active and claimable.
+        let token_client = token::Client::new(&env, &circle.token);
+        for contributor in contributors.iter() {
+            // Defence in depth: a contributor address equal to the contract
+            // itself would silently absorb the refund with no recovery path.
+            // This can only arise from a future bug in `fund`; reject it here
+            // so a bad state never silently loses funds.
+            if contributor == env.current_contract_address() {
+                panic_with_error!(&env, Error::InvalidRecipient);
+            }
+            token_client.transfer(
+                &env.current_contract_address(),
+                &contributor,
+                &circle.contribution,
+            );
+        }
+
+        env.events().publish(
+            (symbol_short!("circle"), symbol_short!("cancelled"), circle_id),
+            (refunded_count, refunded_total),
+        );
     }
 
     // External nullifier derivation: SHA-256 over big-endian u64(circle_id)
@@ -701,6 +1055,18 @@ impl Contract {
         let mut bytes = Bytes::new(env);
         bytes.extend_from_array(&circle_id.to_be_bytes());
         bytes.extend_from_array(&round.to_be_bytes());
+        let digest = env.crypto().sha256(&bytes).to_bytes();
+        Fr::from_bytes(digest)
+    }
+
+    // Compute a SHA-256-based hash of the recipient address serialized to
+    // XDR, reduced into the scalar field (Fr). Mirrors the client's
+    // `computeRecipientHash` so both sides bind the proof to the same
+    // recipient representation.
+    fn compute_recipient_hash(env: &Env, recipient: &Address) -> Fr {
+        // Serialize the recipient address to its canonical XDR encoding, so
+        // both sides hash exactly the same bytes.
+        let bytes: Bytes = recipient.clone().to_xdr(env);
         let digest = env.crypto().sha256(&bytes).to_bytes();
         Fr::from_bytes(digest)
     }
@@ -744,7 +1110,47 @@ impl Contract {
     }
 }
 
+/// Load a [`Circle`] from persistent storage, or revert with
+/// [`Error::CircleNotFound`].
+///
+/// This is the single authoritative source of that error; no call site should
+/// open-code the storage lookup.
+fn load_circle(env: &Env, circle_id: u64) -> Circle {
+    env.storage()
+        .persistent()
+        .get(&DataKey::Circle(circle_id))
+        .unwrap_or_else(|| panic_with_error!(env, Error::CircleNotFound))
+}
+
+/// Load a [`Circle`] and additionally reject it if it has been cancelled,
+/// reverting with [`Error::CircleCancelled`].
+///
+/// Used by every entrypoint that must not operate on a closed circle:
+/// [`Contract::fund`], [`Contract::claim`], and [`Contract::cancel_circle`].
+fn load_active_circle(env: &Env, circle_id: u64) -> Circle {
+    let circle = load_circle(env, circle_id);
+    if circle.cancelled {
+        panic_with_error!(env, Error::CircleCancelled);
+    }
+    circle
+}
+
 /// `contribution * size` for the current round, or [`Error::Overflow`].
+/// Whether the circle's current round has passed its funding deadline.
+///
+/// A `round_deadline_ledgers` of 0 means "no deadline" — those rounds never
+/// expire, which is the behaviour circles created before deadlines existed
+/// inherit.
+fn is_round_expired(env: &Env, circle: &Circle) -> bool {
+    if circle.round_deadline_ledgers == 0 {
+        return false;
+    }
+    let deadline = circle
+        .round_started_ledger
+        .saturating_add(circle.round_deadline_ledgers);
+    env.ledger().sequence() >= deadline
+}
+
 fn pot_target(env: &Env, circle: &Circle) -> i128 {
     circle
         .contribution
@@ -779,20 +1185,16 @@ fn pot_target(env: &Env, circle: &Circle) -> i128 {
 /// # Arguments
 ///
 /// * `fee_bps` — fee in basis points; must be in `0..=10_000` (i.e.
-///   0 % – 100 %). Values outside this range are **rejected** with
-///   [`Error::InvalidFeeParams`] — they are never silently accepted.
-/// * `amount` — gross token amount to split. Must be non-negative;
-///   negative values are **rejected** with [`Error::InvalidFeeParams`].
+///   0 % – 100 %). `create_circle` rejects anything outside this range
+///   with [`Error::InvalidFeeParams`].
+/// * `amount` — gross token amount to split. Non-negative; the round-trip
+///   invariant `fee + net == amount` holds for it.
 ///
 /// # Returns
 ///
 /// `(fee, net)` where `fee + net == amount`.
-///
-/// # Errors
-///
-/// * [`Error::InvalidFeeParams`] — `fee_bps > 10_000` or `amount < 0`.
-pub fn apply_fee(env: &Env, fee_bps: u32, amount: i128) -> (i128, i128) {
-    if fee_bps > 10_000 || amount < 0 {
+fn apply_fee(env: &Env, fee_bps: u32, amount: i128) -> (i128, i128) {
+    if fee_bps > MAX_FEE_BASIS_POINTS {
         panic_with_error!(env, Error::InvalidFeeParams);
     }
     // Split to avoid overflow: amount = q * 10_000 + r, so

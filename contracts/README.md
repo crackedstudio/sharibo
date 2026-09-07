@@ -4,9 +4,9 @@ This directory contains the Soroban smart contracts for **Sharibo**, private rot
 
 | Method          | Kind  | Purpose                                                            |
 | --------------- | ----- | ------------------------------------------------------------------ |
-| `create_circle` | write | Admin creates a circle (Merkle root, contribution, size, vk).      |
+| `create_circle` | write | Admin creates a circle (Merkle root, contribution, size, vk, fee).  |
 | `fund`          | write | Deposit one `contribution` into the current round's pot.           |
-| `claim`         | write | Pay the pot to `recipient` given a valid Groth16 membership proof. |
+| `claim`         | write | Pay the pot (minus protocol fee) to `recipient` given a valid proof.|
 | `get_circle`    | view  | Read circle state.                                                 |
 | `has_claimed`   | view  | Whether a nullifier has already been used in this circle.          |
 
@@ -71,6 +71,41 @@ After a successful `RestoreFootprintOp` the circle's full state (including `roun
 `NextCircleId` lives in **instance storage** (`env.storage().instance()`). Soroban instance entries have a TTL measured in ledgers; once a TTL lapses the entry is _archived_ (removed from the live state) and can be restored later via `RestoreFootprintOp`.
 
 **What happens on testnet when instance storage is archived and restored?** After a successful `RestoreFootprintOp` the entry reappears with its last-written value intact — the counter does _not_ reset. The risk is the gap between archival and restoration: any `create_circle` call during that gap would reinitialise the counter to `0` (the `unwrap_or(0)` default), silently overwriting circle 0.
+**Storage archival:** every entry the contract writes — instance (`NextCircleId`) and persistent (`Circle`, `Nullifier`) — has its own TTL-extension and archival-consequence analysis, including the `NextCircleId` reset-to-zero risk and the more sensitive nullifier double-claim fence. See [`docs/adr/004-storage-archival.md`](../docs/adr/004-storage-archival.md).
+
+---
+
+## Changing the Merkle tree depth
+
+The membership circuit's depth is declared in [`circuits/config.json`](../circuits/config.json)
+(`"levels": 4`). The Merkle tree it generates holds `2^levels` commitments at
+most, so the contract enforces the same bound at circle creation:
+
+| Constant | Value | Source of truth |
+| --- | --- | --- |
+| `MAX_CIRCLE_SIZE` (in [`contracts/sharibo/src/lib.rs`](sharibo/src/lib.rs)) | `2^levels = 16` | `circuits/config.json` `levels` |
+
+`create_circle` rejects `size > MAX_CIRCLE_SIZE` with
+`Error::InvalidCircleParams`: a larger size would accept funding the tree can
+never contain enough members to claim, bricking every round until
+`cancel_circle`. A test (`max_circle_size_matches_circuit_levels`) asserts the
+constant equals `2^levels` by reading `circuits/config.json`, so a depth change
+fails the build loudly.
+
+### Runbook: raising the depth
+
+Because `MAX_CIRCLE_SIZE` is compiled into the contract WASM, a depth change
+**requires redeploying the contract** — the bound a deployed instance enforces
+cannot change without shipping a new WASM build:
+
+1. Bump `levels` in `circuits/config.json`.
+2. Regenerate the circuit (`circuits/scripts/compile.sh`, setup, and proof
+   pipeline) so roots/proofs match the new depth.
+3. Update `MAX_CIRCLE_SIZE = 2^levels` in `contracts/sharibo/src/lib.rs` — the
+   `max_circle_size_matches_circuit_levels` test fails until this matches.
+4. Rebuild (`stellar contract build`) and **redeploy**; existing deployments
+   keep enforcing the old bound. Any existing circles are unaffected (their
+   `size` was validated at creation).
 
 ---
 
@@ -113,16 +148,22 @@ Below is the documentation for all public contract methods.
       root: Fr,
       contribution: i128,
       size: u32,
+      round_deadline_ledgers: u32,
       vk: VerificationKey,
+      fee_bps: u32,
+      fee_recipient: Address,
   ) -> u64
   ```
+  (See [`docs/adr/003-protocol-fees.md`](../docs/adr/003-protocol-fees.md) for
+  the fee design.)
 
 * **Purpose**:
-  Allows an administrator to initialize a new rotating savings circle with a designated payment token, Merkle root containing member commitments, expected contribution amount per member, total circle size (number of members), and the Groth16 verification key (`vk`).
+  Allows an administrator to initialize a new rotating savings circle with a designated payment token, Merkle root containing member commitments, expected contribution amount per member, total circle size (number of members), an optional round deadline (in ledgers), and the Groth16 verification key (`vk`). `fee_bps` (0–10,000 basis points; `0` = no fee) and `fee_recipient` commit an immutable protocol fee paid out of the pot on each `claim`.
 
 * **Preconditions**:
   * The admin must authorize the transaction (`admin.require_auth()`).
   * The contribution amount and circle size must be valid and must not result in an integer overflow when multiplied to determine the pot target.
+  * `fee_bps` must be `<= 10_000` (`Error::InvalidFeeParams` otherwise), and when `fee_bps > 0` the `fee_recipient` must not be the contract itself (`Error::InvalidRecipient`).
 
 ---
 
@@ -162,7 +203,14 @@ Below is the documentation for all public contract methods.
   ```
 
 * **Purpose**:
-  Anonymously pays out the full round pot (`contribution * size`) to the designated `recipient` address upon presenting a valid Groth16 zero-knowledge proof of membership.
+  Anonymously pays out the round pot (`contribution * size` minus the
+  committed protocol fee) to the designated `recipient` address upon
+  presenting a valid Groth16 zero-knowledge proof of membership. `claim`
+  splits the pot with `apply_fee`: `fee` bps goes to
+  `circle.fee_recipient` (the fee transfer is skipped entirely when
+  `fee_bps = 0`, keeping the `claim` CPU cost identical to a no-fee
+  circle), and the net goes to `recipient`. The `claimed` event reports
+  the full pot.
 
 * **Preconditions**:
   * The circle associated with `circle_id` must exist and must **not** be cancelled.
@@ -191,11 +239,24 @@ Below is the documentation for all public contract methods.
 * **Preconditions**:
   * The circle associated with `circle_id` must exist.
 
+### Events
+
+Every state-changing entrypoint emits a contract event so off-chain observers can react without polling `get_circle`.
+
+| Entrypoint | Topics | Data |
+| --- | --- | --- |
+| `create_circle` | `("circle", "created", circle_id)` | `(admin, token, contribution, size)` |
+| `fund` | `("circle", "funded", circle_id)` | `(from, new_pot, target)` |
+| `claim` | `("circle", "claimed", circle_id)` | `(round, amount, recipient)` |
+| `cancel_circle` | `("circle", "cancelled", circle_id)` | `(refunded_count, refunded_total)` |
+
+The `claim` event deliberately omits the nullifier hash: publishing it would give observers a linkability handle for correlating anonymized payouts.
+
 ---
 
 ## 5. Error Code Reference
 
-When a transaction reverts, Soroban returns a typed contract error of the form `Error(Contract, #Code)`. Below is the complete table of error codes defined in the contract:
+When a transaction reverts, Soroban returns a typed contract error of the form `Error(Contract, #Code)`. The canonical mapping — covering all eight current codes with SDK class, user-facing message, likely cause, and remedy — is in **[`docs/errors.md`](../docs/errors.md)**.
 
 | Code | Error Name | Trigger / Cause | What the Caller Should Do |
 | :---: | :--- | :--- | :--- |
@@ -207,6 +268,7 @@ When a transaction reverts, Soroban returns a typed contract error of the form `
 | **6** | `RoundFull` | `fund` was called on a circle whose pot is already fully funded. | Wait for the current round to be claimed and advanced before attempting to fund the next round. |
 | **7** | `Overflow` | Checked arithmetic failed during contribution calculation or pot addition. | Avoid using absurdly large contribution amounts or circle sizes that overflow integer capacities. |
 | **8** | `CircleCancelled` | `fund`, `claim`, or `cancel_circle` was called on a circle that has already been cancelled. | Do not interact with a cancelled circle. Any funds were already refunded to the contributors. |
+| **9** | `InvalidCircleParams` | `create_circle` was given a zero size, a non-positive contribution, an invalid verification key length, or a creation-time overflow in `contribution * size`. | Correct the circle configuration before submitting the transaction. |
 
 ---
 
@@ -233,5 +295,50 @@ The accompanying test suite in [`contracts/sharibo/src/test.rs`](sharibo/src/tes
    - `cancel_refunds_partial_funders_and_closes_circle`: Verifies that a circle admin can cancel an underfunded circle, automatically refunding all current round contributors in FIFO order and closing the circle permanently.
 6. **State Persistence**:
    - `instance_ttl_extended_after_create_fund_claim`: Ensures that `extend_ttl` is executed on all write operations (`create_circle`, `fund`, `claim`) to prevent instance-storage archival issues.
+   - `persistent_circle_survives_multiple_rounds_with_ttl_refresh`: Verifies that Circle and Nullifier entries remain accessible across multiple fund/claim rounds when ledger advances by LEDGER_THRESHOLD, confirming TTL is actively re-extended (not once-at-creation).
+   - `circle_and_nullifier_entries_individually_extended`: Asserts that both the Circle persistent entry AND the Nullifier persistent entry are independently extended, surviving ledger advancement past LEDGER_THRESHOLD.
+   - `ttl_survives_fund_after_ledger_advance`: Confirms that fund operations trigger TTL re-extension even after ledger has advanced past LEDGER_THRESHOLD, allowing indefinite circle activity.
 7. **Gas / CPU Benchmarking**:
    - `cpu_instruction_benchmarks`: Benchmarks and prints the precise CPU instructions consumed by write operations (e.g., `create_circle`, `fund`, `claim`) and asserts that they remain safely under the 100M limit.
+
+### TTL (Time-To-Live) & State Archival
+
+The contract uses Soroban's ledger TTL mechanism to manage circle entry lifespan. The following constants govern TTL behavior:
+
+- **`LEDGER_THRESHOLD = 100`**: The minimum ledger distance at which an entry's TTL should be re-extended. At ~5 seconds per ledger, this is ~8.3 minutes. Active circles are re-extended every ~500 seconds of operation.
+- **`LEDGER_EXTEND_TO = 500_000`**: The target TTL (in ledgers) after each extension. At ~5 seconds per ledger:
+  ```
+  500_000 ledgers × 5 sec/ledger = 2_500_000 seconds ≈ 28.9 days ≈ 29 days
+  ```
+  This gives circles **~1 month of inactivity** before archival risk.
+
+#### Archival & Restoration
+
+If a circle's persistent entry (or any Nullifier) is not written to for 29+ days:
+
+1. **Archival**: The entry moves to the Soroban state archive (temporary inaccessibility). On-chain reads/writes fail with `CircleNotFound`.
+2. **Restoration**: The entry can be restored via `RestoreFootprintOp` on the Stellar network (Ledger 50M+ supports historical recovery).
+3. **Recovery**: Restoration is **permissionless** — any party can restore an archived circle; no admin key is needed (only network validator consensus).
+4. **State Preservation**: Upon restoration, the entry reappears with its last-written value intact (round number, pot, contributors, etc. are preserved).
+
+See the [Soroban Documentation](https://developers.stellar.org/) for "Temporary State" and "State Archival" (Soroban 23.0+).
+  - `cpu_instruction_benchmarks`: Benchmarks and prints the precise CPU instructions consumed by write operations (e.g., `create_circle`, `fund`, `claim`) and asserts that they remain safely under the 100M limit.
+
+### Running Coverage (LLVM / Rust)
+
+You can generate coverage reports for the Rust contract using `cargo-llvm-cov`. Install it and then run the coverage collection from the `contracts/` directory:
+
+```bash
+# Install the tool (once)
+cargo install cargo-llvm-cov
+
+# From the repository root
+cd contracts
+
+# Run tests and produce coverage reports (HTML + lcov)
+cargo llvm-cov --workspace --tests --lcov --output-path coverage --html
+
+# Combined coverage will be written to `contracts/coverage/` (open the HTML report in a browser).
+```
+
+Note: `cargo-llvm-cov` depends on LLVM tooling available in your environment. See the `cargo-llvm-cov` documentation for platform-specific notes.

@@ -1,0 +1,102 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema-jsonc.json",
+  // ── Sharibo dead-code configuration ────────────────────────────────────────
+  //
+  // Run:  npm run lint:dead
+  // Fix:  npm run lint:dead -- --fix   (removes unused exports automatically)
+  //
+  // Zero issues is the baseline: CI fails on any regression.
+  //
+  // ── How to mark an intentional public export ──────────────────────────────
+  //
+  // packages/client/src/index.ts is the SDK barrel — every export there is
+  // public API and must not be reported as unused.  Use `includeEntryExports`
+  // set to false (the default) for client, so barrel re-exports are exempt.
+  //
+  // For a genuine internal symbol that knip still flags (e.g. a utility
+  // exported only for tests), add the JSDoc tag:
+  //
+  //   /** @public */
+  //   export function myUtil() { … }
+  //
+  // Then add `"@public"` to the `tags` array below.  This is the intentional-
+  // exception mechanism — use it sparingly and always explain why in the comment.
+  //
+  // ── Entry points ─────────────────────────────────────────────────────────
+  //
+  // knip traces reachability from entry files outward; anything not reachable
+  // from an entry is dead code.  The entries below mirror the real runtime
+  // entry points for each workspace.
+
+  "workspaces": {
+    // ── app workspace ───────────────────────────────────────────────────────
+    "app": {
+      "entry": [
+        "src/main.tsx",
+        "src/App.test.tsx",
+        "src/setupTests.ts",
+        "vitest.config.ts",
+        "vite.config.ts",
+        "scripts/sync-circuit.mjs"
+      ],
+      "project": ["src/**/*.{ts,tsx}", "scripts/**/*.mjs", "vitest.config.ts", "vite.config.ts"],
+      // @testing-library/jest-dom types are imported for side-effects only
+      // (augmenting the expect interface); knip sees no explicit usage.
+      "ignoreDependencies": ["@testing-library/jest-dom"]
+    },
+
+    // ── packages/client workspace ───────────────────────────────────────────
+    "packages/client": {
+      // index.ts is the public API barrel — all its re-exports are intentional.
+      "entry": [
+        "src/index.ts",
+        "src/*.test.ts",
+        "vitest.config.ts"
+      ],
+      "project": ["src/**/*.ts", "vitest.config.ts"],
+      // The barrel (index.ts) re-exports everything; suppress unused-export
+      // noise for symbols that are exported from index.ts but only consumed
+      // by external packages (they appear unused within the workspace).
+      "includeEntryExports": false
+    },
+
+    // ── scripts workspace ───────────────────────────────────────────────────
+    "scripts": {
+      "entry": [
+        "e2e.ts",
+        "smoke.ts",
+        "testnet-health.ts",
+        "config.ts",
+        "*.test.ts"
+      ],
+      "project": ["**/*.ts"]
+    },
+
+    // ── circuits workspace ──────────────────────────────────────────────────
+    // circuits/ is JavaScript (CJS scripts + pure JS tests) — knip analyses
+    // it but the only "entry" is the package.json scripts, which knip resolves
+    // automatically via the Node.js plugin.  No manual entry needed.
+    "circuits": {
+      "entry": ["scripts/*.{sh,cjs,mjs}", "test/*.js"],
+      "project": ["scripts/**/*.{cjs,mjs,js}", "test/**/*.js"],
+      // snarkjs ships without type declarations; the binary is used in shell
+      // scripts, not imported as a module.
+      "ignoreDependencies": ["snarkjs"]
+    }
+  },
+
+  // ── Intentional exceptions ─────────────────────────────────────────────────
+  //
+  // Symbols tagged @public in JSDoc are excluded from dead-code reporting.
+  // Use this for genuine public API that has no consumer inside this repo
+  // (e.g. types exported for downstream SDK consumers).
+  "tags": ["-@public"],
+
+  // ignoreExportsUsedInFile: suppress reports for exports that are consumed
+  // within the same file (common in test helpers and utility modules that
+  // export both the function and its test).
+  "ignoreExportsUsedInFile": {
+    "interface": true,
+    "type": true
+  }
+}

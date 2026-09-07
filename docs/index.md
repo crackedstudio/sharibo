@@ -16,18 +16,27 @@ each covers and where to find it.
 | [`SECURITY.md`](../SECURITY.md) | Security policy and responsible disclosure |
 | [`LICENSE`](../LICENSE) | Project license |
 
-## Hackathon-era artifacts (`docs/hackathon/`)
+## Hackathon-era artifacts (`docs/hackathon/` — point-in-time archive, not maintained)
 
 | File | Description |
 |---|---|
 | [`hackathon/hackathon_demo_script.md`](hackathon/hackathon_demo_script.md) | Annotated 2m20s demo video script (shot list, voiceover, overlays, recording checklist) |
 | [`hackathon/dorahacks_submission.md`](hackathon/dorahacks_submission.md) | DoraHacks submission form text (project description, evidence, honest scope) |
 
+## Architecture
+
+| File | Description |
+|---|---|
+| [`architecture.md`](architecture.md) | Detailed version of the README's repository structure: directory ownership, toolchains, and end-to-end data flow |
+
 ## Architecture decision records (`docs/adr/`)
 
 | File | Description |
 |---|---|
 | [`adr/001-upgradeability.md`](adr/001-upgradeability.md) | ADR 001: decision to keep the contract immutable and defer admin rotation |
+| [`adr/002-multi-round-turn-ordering.md`](adr/002-multi-round-turn-ordering.md) | ADR 002: multi-round turn ordering and cycle-scoped nullifier behavior |
+| [`adr/003-client-boundary.md`](adr/003-client-boundary.md) | ADR 003: app ↔ SDK ↔ contract boundary and the current free-function design |
+| [`adr/004-storage-archival.md`](adr/004-storage-archival.md) | ADR 004: per-key storage TTL/archival analysis, including the nullifier double-claim fence's residual risk |
 
 ## Cross-implementation specification
 
@@ -47,6 +56,7 @@ each covers and where to find it.
 | File | Description |
 |---|---|
 | [`contracts/README.md`](../contracts/README.md) | Contract build and deploy instructions |
+| [`contracts/BENCHMARKS.md`](../contracts/BENCHMARKS.md) | CPU instruction benchmarks and gas analysis for contract entrypoints |
 
 ## Verifiability
 

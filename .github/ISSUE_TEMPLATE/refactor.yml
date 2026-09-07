@@ -1,0 +1,61 @@
+name: Refactor / Architecture Proposal
+description: Propose a structural change — a current shape, a proposed shape, a blast radius, and a migration path
+labels: [refactor]
+body:
+  - type: textarea
+    id: current-state
+    attributes:
+      label: Current state (where)
+      description: What exists today, with file paths. Required — a refactor issue that does not say which files is not actionable.
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is wrong with it
+      description: Why the current shape is a problem.
+    validations:
+      required: true
+  - type: textarea
+    id: proposed-structure
+    attributes:
+      label: Proposed structure
+      description: The target shape, with the same level of file-path specificity as "Current state".
+    validations:
+      required: true
+  - type: textarea
+    id: files-affected
+    attributes:
+      label: Files affected
+      description: The blast radius — which files change, which are new, which are deleted.
+    validations:
+      required: true
+  - type: dropdown
+    id: public-api
+    attributes:
+      label: Does the public API change?
+      description: Contract entrypoints, SDK exports, circuit public signals, or wire formats.
+      options:
+        - No — behaviour-preserving
+        - Yes
+        - Not sure
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: How will it be verified as behaviour-preserving?
+      description: Which tests or proofs will show behaviour is preserved across the change.
+    validations:
+      required: true
+  - type: dropdown
+    id: adr
+    attributes:
+      label: Is an ADR needed?
+      description: See docs/adr/ for the decision-record convention.
+      options:
+        - "Yes"
+        - "No"
+        - "Not sure"
+    validations:
+      required: true

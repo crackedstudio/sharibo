@@ -1,9 +1,20 @@
 {
   "name": "@sharibo/client",
   "version": "0.0.0",
-  "private": true,
   "type": "module",
-  "main": "src/index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "browser": "./dist/index.browser.js",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
   "description": "Client SDK for interacting with Sharibo ROSCA on Stellar Soroban",
   "license": "MIT",
   "repository": {
@@ -20,10 +31,12 @@
     "client"
   ],
   "scripts": {
+    "build": "tsc",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "bench:prove": "tsx bench/prove.bench.ts"
+    "bench:prove": "tsx bench/prove.bench.ts",
+    "mutate": "stryker run stryker.conf.json"
   },
   "dependencies": {
     "@stellar/stellar-sdk": "^16.2.0",
@@ -31,8 +44,11 @@
     "snarkjs": "0.7.6"
   },
   "devDependencies": {
+    "@stryker-mutator/core": "8.7.1",
+    "@stryker-mutator/vitest-runner": "8.7.1",
     "@types/node": "24.13.3",
     "@types/snarkjs": "0.7.9",
+    "fast-check": "3.22.0",
     "tsx": "4.22.4",
     "typescript": "6.0.3",
     "vitest": "^2.1.8"

@@ -116,16 +116,16 @@ async function checkCircle(): Promise<DiagResult> {
   try {
     // Dynamic import so env-missing paths above exit before this resolution.
     const { Keypair } = await import("@stellar/stellar-sdk");
-    const { connect, getCircle } = await import("@sharibo/client");
+    const { ShariboSDK } = await import("@sharibo/client");
 
-    // Read-only call: we need a keypair to satisfy the SDK's connect(), but
-    // no transaction is signed or submitted; the random keypair is discarded.
+    // The SDK uses a keypair to sign; this is a read-only call, so the
+    // random keypair is discarded without anything being submitted.
     const throwaway = Keypair.random();
-    const client = await connect(
+    const sdk = await ShariboSDK.connect(
       { contractId: CONTRACT_ID, rpcUrl: RPC_URL, networkPassphrase: NETWORK_PASSPHRASE },
       throwaway,
     );
-    const circle = await getCircle(client, circleId);
+    const circle = await sdk.getCircle(circleId);
 
     const lines = [
       `round: ${circle.round}`,

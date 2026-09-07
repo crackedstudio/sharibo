@@ -1,0 +1,87 @@
+.result {
+  margin-top: 20px;
+  border: var(--border);
+  background: var(--accent2);
+  padding: 16px;
+}
+
+.link {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 13px;
+  color: var(--ink);
+}
+.link:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+  text-decoration: underline;
+}
+
+.callout {
+  background: var(--accent);
+  border: 2px dashed var(--ink);
+  padding: 10px;
+  font-size: 14px;
+}
+
+.btn {
+  font-family: "Space Grotesk", sans-serif;
+  font-weight: 700;
+  font-size: 16px;
+  padding: 14px 22px;
+  background: var(--accent);
+  border: var(--border);
+  box-shadow: 5px 5px 0 var(--ink);
+  cursor: pointer;
+  transition: transform 0.05s ease;
+}
+.btn:hover:not(:disabled) {
+  transform: translate(-2px, -2px);
+  box-shadow: 7px 7px 0 var(--ink);
+}
+.btn:active:not(:disabled) {
+  transform: translate(2px, 2px);
+  box-shadow: 3px 3px 0 var(--ink);
+}
+.btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+.btn:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 3px;
+  box-shadow:
+    5px 5px 0 var(--ink),
+    0 0 0 6px var(--accent2);
+}
+.btn-danger {
+  background: var(--danger);
+  color: white;
+  width: 100%;
+  margin-top: 16px;
+}
+.btn-primary {
+  background: var(--accent2);
+  width: 100%;
+  margin-top: 12px;
+}
+
+.rejected {
+  margin-top: 12px;
+  background: var(--danger);
+  color: white;
+  border: var(--border);
+  padding: 12px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 13px;
+}
+
+@media (max-width: 767px) {
+  .result {
+    padding: 12px;
+  }
+
+  .callout {
+    padding: 8px;
+    font-size: 13px;
+  }
+}

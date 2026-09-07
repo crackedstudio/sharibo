@@ -19,7 +19,11 @@ if ! printf '%s\n' "2.1.6" "$version" | sort -V | head -1 | grep -q '^2.1.6$'; t
 fi
 
 # Regenerate membership.circom from membership.template.circom + config.json
-# (single source of truth for the Merkle tree depth).
+# Allow overriding the levels with the LEVELS env var, e.g.:
+#
+#   LEVELS=8 npm run compile
+#
+echo "Generating membership.circom (LEVELS=${LEVELS:-from config.json})"
 node scripts/gen-circuit.cjs
 
 mkdir -p build

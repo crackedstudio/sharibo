@@ -1,0 +1,101 @@
+.namewall {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.namewall-item {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 12px;
+  padding: 4px 10px;
+  border: 2px solid var(--ink);
+  background: var(--accent2);
+  transform: rotate(-1deg);
+}
+.namewall-item:nth-child(even) {
+  transform: rotate(1deg);
+  background: var(--accent);
+}
+
+.tagline {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.sub {
+  color: #333;
+  line-height: 1.5;
+}
+
+.fineprint {
+  font-size: 12px;
+  color: #666;
+  margin-top: 16px;
+}
+
+.btn {
+  font-family: "Space Grotesk", sans-serif;
+  font-weight: 700;
+  font-size: 16px;
+  padding: 14px 22px;
+  background: var(--accent);
+  border: var(--border);
+  box-shadow: 5px 5px 0 var(--ink);
+  cursor: pointer;
+  transition: transform 0.05s ease;
+}
+.btn:hover:not(:disabled) {
+  transform: translate(-2px, -2px);
+  box-shadow: 7px 7px 0 var(--ink);
+}
+.btn:active:not(:disabled) {
+  transform: translate(2px, 2px);
+  box-shadow: 3px 3px 0 var(--ink);
+}
+.btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+.btn:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 3px;
+  box-shadow:
+    5px 5px 0 var(--ink),
+    0 0 0 6px var(--accent2);
+}
+.btn-primary {
+  background: var(--accent2);
+  width: 100%;
+  margin-top: 12px;
+}
+
+.error {
+  color: var(--danger);
+  font-weight: 700;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 13px;
+}
+
+.link {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 13px;
+  color: var(--ink);
+}
+.link:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+  text-decoration: underline;
+}
+
+@media (max-width: 767px) {
+  .namewall-item {
+    font-size: 11px;
+    padding: 3px 8px;
+  }
+
+  .tagline {
+    font-size: 16px;
+  }
+}

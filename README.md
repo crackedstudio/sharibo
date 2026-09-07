@@ -41,21 +41,16 @@ A **rotating savings and credit association** (ROSCA) is one of the oldest finan
 
 **Why privacy matters:** In a traditional ROSCA, everyone knows who collected the pot this round. That transparency is fine when the group is small and offline — but put the same circle on a public blockchain and suddenly every deposit and payout is visible to *the entire world*. Sharibo's zero-knowledge proof restores the privacy boundary the original social structure assumes: the contract knows *that* the claimant is a rightful member (via the ZK proof and the group's Merkle root), but **no observer — not even the other members — can link the payout address back to a specific member**. The circle stays on-chain; the connections stay off it.
 
-<!-- ──────────────────────────────────────────────────────────────
-  DEMO GIF GOES HERE — 8–12s screen capture of the proving state
-  → claim success → unlinked ring reveal. Record the browser at
-  ~1280px wide, convert with e.g. `ffmpeg -i demo.mp4 -vf
-  "fps=12,scale=960:-1" demo.gif`, keep it under ~8 MB.
-─────────────────────────────────────────────────────────────── -->
-
-**[▶ demo video](YOUR_VIDEO_URL)** · **[🚀 live app (testnet)](https://dist-flax-three-43.vercel.app)** · **[📖 full product breakdown](full_product_breakdown.md)** · **[🛠 build log](NOTES.md)** · **[📚 glossary](docs/glossary.md)**
-**[▶ demo video](YOUR_VIDEO_URL)** · **[🚀 live app (testnet)](https://dist-flax-three-43.vercel.app)** · **[📖 full product breakdown](full_product_breakdown.md)** · **[🛠 build log](NOTES.md)** · **[🤝 contributing](CONTRIBUTING.md)**
+**[🚀 live app (testnet)](https://dist-flax-three-43.vercel.app)** · **[📖 full product breakdown](full_product_breakdown.md)** · **[🛠 build log](NOTES.md)** · **[📚 glossary](docs/glossary.md)** · **[🤝 contributing](CONTRIBUTING.md)**
 
 ---
 
 ## On-chain evidence (testnet — verify any of it yourself)
 
-Every claim below was produced by running this repo against live Stellar testnet infrastructure. Nothing is asserted from a test double.
+Every claim below was produced by running this repo against live Stellar testnet infrastructure (recorded July 2026). Nothing is asserted from a test double.
+
+> [!NOTE]
+> **Testnet resets:** Stellar testnet is reset quarterly, which wipes all deployed contracts and transaction history. The transaction hashes and contract ID below reflect the testnet deployment at the time of recording. If testnet has been reset since, follow the [testnet reset runbook](docs/troubleshooting.md#stellar-testnet-resets-quarterly) to redeploy or re-run `npm run e2e` to verify fresh on-chain transactions.
 
 | What                                     | Where                                                                                                        |
 | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
@@ -94,9 +89,9 @@ To reproduce everything from source (circuit build → trusted setup → tests �
 
 ## Why this was hard (the 30-second version)
 
-The standard Circom/Groth16 stack targets the **BN254** curve. On Soroban, we measured a single BN254 pairing (pure-Rust `ark-bn254`, per Stellar's own `import_ark_bn254` example) at **~560 million CPU instructions — against a hard 100 million per-transaction cap.** Not expensive: impossible.
+The standard Circom/Groth16 stack targets the **BN254** curve. On Soroban, a single pure-Rust BN254 pairing (per Stellar's own `import_ark_bn254` example) costs **~560 million CPU instructions — against a hard 100 million per-transaction cap.** Not expensive: impossible.
 
-So Sharibo runs the entire pipeline — circuit, trusted setup, Poseidon parameters, contract, client encoding — on **BLS12-381**, the curve Stellar accelerates natively (`env.crypto().bls12_381().pairing_check(...)`). A real `claim()` with a real proof costs **48.0M / 100M instructions (~48%)** — measured, not estimated. That required sourcing Poseidon round constants generated for the BLS12-381 scalar field (cross-checked against `soroban-sdk`'s own `BLS12_381_FR_MODULUS_BE`) and byte-exact wire formats across circuit ↔ contract ↔ client. Full story: [breakdown §6](full_product_breakdown.md#6-deep-dive-the-zk-circuit) and [§14](full_product_breakdown.md#14-key-engineering-decisions-and-deviations).
+So Sharibo runs the entire pipeline — circuit, trusted setup, Poseidon parameters, contract, client encoding — on **BLS12-381**, the curve Stellar accelerates natively (`env.crypto().bls12_381().pairing_check(...)`). A real `claim()` with a real proof fits comfortably within the 100M budget, verified and enforced in contract unit tests. For complete measured instruction counts across operations, see [contracts/BENCHMARKS.md](contracts/BENCHMARKS.md). That required sourcing Poseidon round constants generated for the BLS12-381 scalar field (cross-checked against `soroban-sdk`'s own `BLS12_381_FR_MODULUS_BE`) and byte-exact wire formats across circuit ↔ contract ↔ client. Full story: [breakdown §6](full_product_breakdown.md#6-deep-dive-the-zk-circuit) and [§14](full_product_breakdown.md#14-key-engineering-decisions-and-deviations).
 
 ## What the ZK is doing (load-bearing, not decorative)
 
@@ -343,8 +338,7 @@ Full annotated version (what each file does and why): [breakdown §16](full_prod
 
 ## Contributing
 
-We welcome contributions to Sharibo! Please ensure you have read and adhere to our [Code of Conduct](CODE_OF_CONDUCT.md) when participating in this project. If terms like *Groth16* or *Merkle root* are new to you, start with the [glossary](docs/glossary.md).
-We welcome contributions to Sharibo! See [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow, how to run the test suites, and the dependency audit runbook. Please ensure you have read and adhere to our [Code of Conduct](CODE_OF_CONDUCT.md) when participating in this project.
+We welcome contributions to Sharibo! See [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow, how to run the test suites, and the dependency audit runbook. Please ensure you have read and adhere to our [Code of Conduct](CODE_OF_CONDUCT.md) when participating in this project. If terms like *Groth16* or *Merkle root* are new to you, start with the [glossary](docs/glossary.md).
 
 `@stellar/stellar-sdk` is declared independently in `app`, `packages/client`, and `scripts`, and pinned to a single resolved version via a root `overrides` entry. **Bump `stellar-sdk` in all three places at once** — `npm run check:stellar-sdk` (also run automatically on `npm install`) fails the build if the declared ranges ever drift apart.
 

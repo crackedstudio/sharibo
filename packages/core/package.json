@@ -1,0 +1,35 @@
+{
+  "name": "@sharibo/core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "description": "Dependency-free pure crypto primitives for Sharibo: Poseidon hashing, Merkle trees, identity/nullifier derivation",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/crackedstudio/sharibo.git",
+    "directory": "packages/core"
+  },
+  "keywords": [
+    "zk",
+    "poseidon",
+    "merkle",
+    "bls12381",
+    "crypto",
+    "primitives"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "poseidon-bls12381": "1.0.2"
+  },
+  "devDependencies": {
+    "@types/node": "24.13.3",
+    "typescript": "6.0.3",
+    "vitest": "^2.1.8"
+  }
+}

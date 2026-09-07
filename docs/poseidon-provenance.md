@@ -65,3 +65,19 @@ Sharibo uses the following third-party package pair authored by `@jmagan`:
    - Re-run the reference Grain-LFSR parameter generator for BLS12-381 with full transparency, publishing the exact seed parameters, generation scripts, and transcripts.
 2. **Third-Party Security Audit**:
    - Commission an independent audit of the BLS12-381 Poseidon parameters, circuit constraints, and client implementations prior to production deployment.
+
+---
+
+## 5. Upgrade Runbook
+
+For a package bump or a rebuild after a new Poseidon release, follow the step order documented in [circuits/README.md](../circuits/README.md#upgrading-poseidon). The short version is:
+
+1. **Bump both packages together in the same commit** — [`poseidon-bls12381`](https://github.com/jmagan/poseidon-bls12381) and [`poseidon-bls12381-circom`](https://github.com/jmagan/poseidon-bls12381-circom) must remain in the same `major.minor` release family.
+2. **Run the compatibility check** — `cd circuits && npm run check-constants` — this is enforced by [`circuits/scripts/check-poseidon-constants.mjs`](../circuits/scripts/check-poseidon-constants.mjs).
+3. **Recompile** — `cd circuits && npm run compile`.
+4. **Re-run trusted setup** — `cd circuits && ./scripts/setup.sh`.
+5. **Regenerate the verification key** — `cd circuits && ./scripts/prove.sh`.
+6. **Redeploy the contract** — update the on-chain verification key and deploy the contract that verifies the new proofs.
+7. **Invalidate existing circles** — an old circle cannot survive a constant change because the commitment and nullifier hashes are computed under a different Poseidon permutation. Proofs generated under the older constants do not verify against the new circuit and verification key, so the old circle state must be recreated or retired.
+
+> Existing circles are not migratable across a Poseidon constants change. The change alters the cryptographic domain itself, not just the library version. Any proof or membership commitment produced under the old constants is incompatible with the new verification key.

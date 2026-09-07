@@ -113,6 +113,9 @@ const { pathElements, pathIndices } = merkleProof(memberIndex);
 const member = leaves[memberIndex];
 const circuitNullifierHash = poseidon(member.identityNullifier, externalNullifier);
 
+// Deterministic recipientHash for the cross-implementation fixture.
+const recipientHash = poseidon(111n, 222n);
+
 const fullCircuitExample = {
   input: {
     identityNullifier: member.identityNullifier.toString(),
@@ -121,6 +124,7 @@ const fullCircuitExample = {
     pathIndices,
     root: root.toString(),
     externalNullifier: externalNullifier.toString(),
+    recipientHash: recipientHash.toString(),
   },
   circleId: circleId.toString(),
   round: round.toString(),

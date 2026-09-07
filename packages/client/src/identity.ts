@@ -1,4 +1,5 @@
 import { poseidon2 } from "poseidon-bls12381";
+import { StrKey } from "@stellar/stellar-sdk";
 import { InvalidInputError } from "./errors.js";
 
 // Web Crypto (`globalThis.crypto`) rather than `node:crypto`, so this module
@@ -95,10 +96,14 @@ export async function computeExternalNullifier(circleId: bigint, round: bigint):
   // bigint > 2^53, silently lose precision first), producing a valid-looking
   // but wrong hash that the contract rejects with WrongRoundTag — Issue #65.
   if (circleId < 0n || circleId >= 2n ** 64n) {
-    throw new RangeError(`circleId must satisfy 0 <= circleId < 2**64 (u64), got ${circleId}`);
+    throw new InvalidInputError(
+      `circleId must satisfy 0 <= circleId < 2**64 (u64), got ${circleId}`,
+    );
   }
   if (round < 0n || round >= 2n ** 32n) {
-    throw new RangeError(`round must satisfy 0 <= round < 2**32 (u32), got ${round}`);
+    throw new InvalidInputError(
+      `round must satisfy 0 <= round < 2**32 (u32), got ${round}`,
+    );
   }
 
   const buf = new ArrayBuffer(12);
@@ -106,6 +111,13 @@ export async function computeExternalNullifier(circleId: bigint, round: bigint):
   view.setBigUint64(0, circleId, false);
   view.setUint32(8, Number(round), false);
   const digest = await webCrypto.subtle.digest("SHA-256", buf);
+  return bytesToBigInt(new Uint8Array(digest)) % FR_MODULUS;
+}
+
+export async function computeRecipientHash(recipient: string): Promise<bigint> {
+  // Decode Stellar ed25519 public key (StrKey) to raw 32 bytes and sha256.
+  const raw = StrKey.decodeEd25519PublicKey(recipient);
+  const digest = await webCrypto.subtle.digest("SHA-256", new Uint8Array(raw));
   return bytesToBigInt(new Uint8Array(digest)) % FR_MODULUS;
 }
 

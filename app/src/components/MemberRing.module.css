@@ -1,0 +1,82 @@
+.ring-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 24px 0;
+  width: 100%;
+  overflow: hidden;
+}
+.ring {
+  position: relative;
+  width: var(--ring-size);
+  height: var(--ring-size);
+  margin: var(--ring-margin-y) 0;
+  flex-shrink: 0;
+}
+.ring-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: var(--ring-center-size);
+  height: var(--ring-center-size);
+  margin: calc(var(--ring-center-size) / -2) 0 0 calc(var(--ring-center-size) / -2);
+  border: var(--border);
+  border-radius: 50%;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "JetBrains Mono", monospace;
+  font-weight: 700;
+  font-size: 13px;
+}
+.ring-node {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: var(--ring-node-size);
+  height: var(--ring-node-size);
+  margin: calc(var(--ring-node-size) / -2) 0 0 calc(var(--ring-node-size) / -2);
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  background: #eee;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "JetBrains Mono", monospace;
+  font-weight: 700;
+  transition:
+    transform 0.4s ease,
+    background 0.3s ease;
+}
+.ring-node.funded {
+  background: var(--accent2);
+}
+.ring-node.ring-recipient {
+  background: var(--accent);
+  border-style: dashed;
+  transform: translate(0, var(--ring-recipient-offset));
+}
+.ring-caption {
+  max-width: 420px;
+  width: 100%;
+  text-align: center;
+  font-size: 13px;
+  color: #333;
+  background: #fafafa;
+  border: 2px dashed var(--ink);
+  padding: 10px;
+}
+
+@media (max-width: 767px) {
+  .ring-caption {
+    font-size: 12px;
+    padding: 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ring-node {
+    transition: none !important;
+  }
+}

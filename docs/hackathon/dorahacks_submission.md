@@ -1,5 +1,8 @@
 # DoraHacks submission text
 
+> [!NOTE]
+> **Point-in-time archive:** This document is a historical record of the original hackathon submission for the Stellar Hacks: Real-World ZK hackathon (July 2026). It is not maintained and may contain outdated references or transaction identifiers. For current project documentation, see [README.md](../../README.md) and [full_product_breakdown.md](../../full_product_breakdown.md).
+
 Paste directly into the submission form. Tag: **Circom, Soroban, ZK, Stellar**.
 
 ---

@@ -44,10 +44,6 @@ export async function checkContractDeployed(
       `Contract ${contractId} was not found, but RPC (${rpcUrl}) reports healthy.\n` +
       "This usually means the Stellar testnet was reset and every deployed\n" +
       "contract was wiped — not a bug in this script.\n\n" +
-      "To recover:\n" +
-      '  1. Redeploy: see README.md, "Run it" → "3. Contract"\n' +
-      "     (stellar contract build && stellar contract deploy ...)\n" +
-      "  2. Paste the new contract id into .env as SHARIBO_CONTRACT_ID\n" +
-      "  3. Re-run this script.",
+      "Full recovery steps: docs/runbook-testnet-reset.md",
   };
 }

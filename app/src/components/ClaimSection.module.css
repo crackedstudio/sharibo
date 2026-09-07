@@ -1,0 +1,145 @@
+.sub {
+  color: #333;
+  line-height: 1.5;
+}
+
+.row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.radio {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.radio input[type="radio"]:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+  accent-color: var(--ink);
+}
+
+.btn {
+  font-family: "Space Grotesk", sans-serif;
+  font-weight: 700;
+  font-size: 16px;
+  padding: 14px 22px;
+  background: var(--accent);
+  border: var(--border);
+  box-shadow: 5px 5px 0 var(--ink);
+  cursor: pointer;
+  transition: transform 0.05s ease;
+}
+.btn:hover:not(:disabled) {
+  transform: translate(-2px, -2px);
+  box-shadow: 7px 7px 0 var(--ink);
+}
+.btn:active:not(:disabled) {
+  transform: translate(2px, 2px);
+  box-shadow: 3px 3px 0 var(--ink);
+}
+.btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+.btn:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 3px;
+  box-shadow:
+    5px 5px 0 var(--ink),
+    0 0 0 6px var(--accent2);
+}
+.btn-primary {
+  background: var(--accent2);
+  width: 100%;
+  margin-top: 12px;
+}
+
+.techline {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  color: #555;
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.stepper {
+  display: flex;
+  gap: 4px;
+  margin: 18px 0;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.step {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border: 2px solid #ccc;
+  color: #737373;
+  background: #fafafa;
+}
+.step.active {
+  border-color: var(--ink);
+  background: var(--accent);
+  color: var(--ink);
+}
+.step.done {
+  border-color: var(--ink);
+  background: var(--accent2);
+  color: var(--ink);
+}
+.step-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  font-size: 10px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 767px) {
+  .stepper {
+    font-size: 9px;
+    gap: 2px;
+  }
+  .step {
+    padding: 8px 4px;
+    min-height: var(--touch-min);
+    justify-content: center;
+  }
+  .step-dot {
+    display: none;
+  }
+
+  .radio-group {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .radio {
+    min-height: var(--touch-min);
+    padding: 8px 12px;
+    border: 2px solid var(--ink);
+    background: #fafafa;
+    gap: 10px;
+  }
+  .radio input[type="radio"] {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+  }
+}

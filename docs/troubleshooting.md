@@ -8,6 +8,9 @@ where possible), the **cause**, and the **fix**.
 If you hit a problem while setting up and it isn't covered here, please open an issue
 and share the exact error text — you're the most qualified person to document it.
 
+Start with `just doctor` for an automated checklist that prints the exact install command
+for anything missing or out of date.
+
 ---
 
 ## `circom: command not found`, or an ancient `1.x` circom
@@ -33,6 +36,8 @@ invoked as `circom --version` → `2.x.x`. It also needs the `--prime bls12381` 
 that only the Rust build provides.
 
 **Fix**
+
+Quick check: `just doctor` will flag a missing or outdated `circom` and print the exact install command.
 
 Install the Rust circom 2.x and put it on your `PATH`, then confirm the version:
 
@@ -78,6 +83,8 @@ Rust supports many targets; the `wasm32v1-none` target used by Stellar contracts
 
 **Fix**
 
+Quick check: `just doctor` verifies the target is installed and prints the install command if it is missing.
+
 ```bash
 rustup target add wasm32v1-none
 rustc +stable target list --installed | grep wasm32v1-none   # verify
@@ -110,6 +117,8 @@ into the `stellar` CLI, and its ordering/flags differ. The repo targets the curr
 Groth16 verifier uses, see [README §0](../README.md#0-prerequisites)).
 
 **Fix**
+
+Quick check: `just doctor` verifies the `stellar` CLI version and prints the install URL if it is missing.
 
 Use the `stellar` CLI exclusively. Walk with the docs:
 
@@ -183,24 +192,11 @@ ledger) are stale.
 
 **Fix**
 
-1. Rebuild/redeploy the contract and token, then paste the **new** IDs:
-
-   ```bash
-   cd contracts && stellar contract build && stellar contract deploy \
-     --wasm target/wasm32v1-none/release/sharibo.wasm --source admin --network testnet
-   cd ../packages/contracts/contracts && stellar contract id asset --asset native --network testnet
-   ```
-
-2. Update `.env` (and `app/.env`) with the fresh IDs and regenerate keys if needed:
-
-   ```bash
-   stellar keys generate admin --network testnet --fund
-   stellar keys generate member --network testnet --fund
-   stellar keys show admin ; stellar keys show member
-   ```
-
-3. Re-run the browser/further steps as usual — new circle state now lives on the new
-   ledger.
+Full ordered recovery — redeploy contract + token, re-fund identities, update both `.env` files,
+re-run `e2e`, rebuild/redeploy the (non-git-connected) Vercel app, and refresh the README's
+on-chain evidence — is [`docs/runbook-testnet-reset.md`](runbook-testnet-reset.md). Start there
+rather than improvising; it also covers what does *not* need redoing (the circuit/trusted-setup
+artifacts survive a reset untouched).
 
 ---
 
@@ -242,6 +238,95 @@ npm run dev
 
 Then hard-refresh the browser tab. If it still misbehaves, delete
 `app/public/circuits/*` and re-run `sync-circuit` to force a clean copy.
+
+---
+
+## Local circuit artifacts are stale and fail verification before the app copies them
+
+**Symptom**
+
+The browser throws `InvalidProof`, but the real problem is that the local `circuits/build/`
+artifacts no longer match the committed circuit setup. This often happens after deleting and
+rebuilding the circuit without re-running the trusted setup.
+
+**Cause**
+
+`app/scripts/sync-circuit.mjs` used to copy whatever existed in `circuits/build/` without checking
+whether the `.wasm` and `.zkey` still match the committed `verification_key.json`.
+
+**Fix**
+
+```bash
+cd circuits
+npm run verify-artifacts
+```
+
+If the hashes differ, the script aborts with:
+
+```bash
+run `npm run compile && npm run setup` in `circuits/`
+```
+
+This is the safe recovery path: rebuild the circuit and re-run setup, then re-sync the app.
+
+---
+
+**Still stuck?** Re-read [`CONTRIBUTING.md`](../CONTRIBUTING.md) for the dev loop and
+the [README "Run it" section](../README.md#run-it) for the step order; open an issue if
+your symptom isn't here.
+
+---
+
+## Proof passes local verification but fails on-chain (`InvalidProof`)
+
+**Symptom**
+
+The claim flow completes the "Verifying proof locally…" stage and shows
+`local verify Xms ✓` in the result card — but the on-chain `claim` call is still
+rejected with an `InvalidProof` error.
+
+**What this means**
+
+Local verification (snarkjs `groth16.verify`) checks the mathematical proof
+against the public signals. On-chain verification checks the same proof but
+expects it in a specific **binary wire format** (BLS12-381 compressed G1/G2
+points, big-endian, in the exact byte layout Soroban's `bls12_381_g1_msm` /
+`g2_msm` host functions consume).
+
+If local passes and on-chain fails, **the proof itself is valid** — the mismatch is
+almost certainly in the encoding, not the cryptography. Common causes:
+
+- **Wrong point encoding** — G1 should be 96 bytes (x‖y uncompressed, big-endian);
+  G2 should be 192 bytes (x₁‖x₀‖y₁‖y₀, each 48 bytes big-endian). Swapping
+  coordinate order or using the compressed (48/96 byte) form causes a silent
+  mismatch.
+- **Wrong public signal order** — the contract expects `[nullifierHash, root,
+  externalNullifier]` in that order. If `publicSignals` is passed in a different
+  order the encoded `pi_a`/`pi_b`/`pi_c` will be correct but the IC combination
+  will mismatch on-chain.
+- **Mismatched verification key** — the VK stored in the contract at
+  `create_circle` time must match the one used during `groth16.verify`. If you
+  re-ran `npm run setup` after deploying, the on-chain VK is stale.
+- **Wrong curve** — the circuit uses BLS12-381, not BN128. A snarkjs build or VK
+  from a BN128 ceremony will verify locally (snarkjs is curve-aware) but produce
+  byte offsets the Soroban BLS12-381 host rejects.
+
+**How to diagnose**
+
+1. Check `packages/client/src/prove.ts` — the `encodeG1` / `encodeG2` helpers are
+   the single point-of-truth for the wire encoding. Log the raw `snarkjsProof` from
+   `generateProof` and compare `pi_a`, `pi_b`, `pi_c` lengths against what the
+   contract receives.
+2. Confirm the VK on-chain matches `circuits/verification_key.json` — re-deploy with
+   a fresh `verificationKeyToContractFormat(vkJson)` call if in doubt.
+3. Add a temporary log of `publicSignals` just before `claim()` and verify the order
+   is `[nullifierHash, root, externalNullifier]`.
+
+**Fix**
+
+Correct the encoding in `encodeG1` / `encodeG2` or the `vk` passed to
+`createCircle`. Once the encoding is right, both local verify and on-chain verify
+will agree.
 
 ---
 

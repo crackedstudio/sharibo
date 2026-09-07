@@ -1,0 +1,42 @@
+{
+  "constants": {
+    "MAX_CIRCLE_SIZE": "number",
+    "TREE_LEVELS": "number",
+    "ZERO_VALUE": "bigint"
+  },
+  "functions": {
+    "cancelCircle": "function",
+    "claim": "function",
+    "computeExternalNullifier": "function",
+    "computeNullifierHash": "function",
+    "connect": "function",
+    "createCircle": "function",
+    "estimateClaimFee": "function",
+    "explorerTxUrl": "function",
+    "fund": "function",
+    "generateIdentity": "function",
+    "generateProof": "function",
+    "getCircle": "function",
+    "getCircleCount": "function",
+    "getContributors": "function",
+    "getPot": "function",
+    "getRound": "function",
+    "getStatus": "function",
+    "hasClaimed": "function",
+    "installIndicatorAndPrefetch": "function",
+    "poseidon": "function",
+    "prefetchMembershipArtifacts": "function",
+    "getArtifactPrefetchProgress": "function",
+    "subscribeToArtifactPrefetch": "function"
+  },
+  "types": {
+    "MerkleTree": "function"
+  },
+  "errors": {
+    "ContractError": "function",
+    "InvalidInputError": "function",
+    "ProvingError": "function",
+    "RpcError": "function",
+    "ShariboError": "function"
+  }
+}

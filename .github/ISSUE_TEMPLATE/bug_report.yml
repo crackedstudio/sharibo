@@ -43,3 +43,21 @@ body:
       description: Include OS, Node version, Circom version, Stellar CLI version if applicable.
     validations:
       required: false
+  - type: textarea
+    id: debug-bundle
+    attributes:
+      label: Debug bundle
+      description: >
+        If the failure happened in the browser app, click the **"📋 Copy debug bundle"** button
+        in the bottom of the circle card (or next to the error message) and paste here.
+        The bundle contains network config, circle state, step timings, and the last error —
+        no secret keys are ever included.
+      placeholder: |
+        ### Sharibo debug bundle
+
+        **Collected at:** ...
+        **App version:** ...
+        ...
+      render: markdown
+    validations:
+      required: false

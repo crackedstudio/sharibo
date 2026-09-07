@@ -16,13 +16,30 @@ function generate() {
   const config = JSON.parse(fs.readFileSync(path.join(ROOT, "config.json"), "utf8"));
   const template = fs.readFileSync(path.join(ROOT, "membership.template.circom"), "utf8");
 
-  const output =
-    template.trimEnd() +
-    `\n\ncomponent main { public [root, externalNullifier] } = Sharibo(${config.levels});\n`;
+  // Allow overriding levels via environment variable `LEVELS` or by
+  // passing an explicit override when calling `generate(overrideLevels)`.
+  const env = process.env.LEVELS;
+  const levelsFromEnv = typeof env === "string" && env !== "" ? Number(env) : undefined;
 
-  const outPath = path.join(ROOT, "membership.circom");
-  fs.writeFileSync(outPath, output);
-  return { outPath, levels: config.levels };
+  function generateWithOverride(overrideLevels) {
+    const levels = Number(
+      levelsFromEnv ?? (typeof overrideLevels !== "undefined" ? overrideLevels : config.levels),
+    );
+    if (!Number.isInteger(levels) || levels < 1) {
+      throw new Error(`invalid levels: ${levels}`);
+    }
+
+    const output =
+      template.trimEnd() +
+      `\n\ncomponent main { public [root, externalNullifier, recipientHash] } = Sharibo(${levels});\n`;
+
+    const outPath = path.join(ROOT, "membership.circom");
+    fs.writeFileSync(outPath, output);
+    return { outPath, levels };
+  }
+
+  // Default API: no argument -> use env or config.json
+  return generateWithOverride();
 }
 
 if (require.main === module) {
@@ -30,4 +47,22 @@ if (require.main === module) {
   console.log(`generated ${outPath} for levels=${levels}`);
 }
 
-module.exports = { generate };
+// Export a function that optionally accepts an explicit levels override.
+module.exports = { generate: function (override) {
+  // If an override was provided, regenerate with that levels value.
+  if (typeof override !== 'undefined') {
+    const cfg = JSON.parse(fs.readFileSync(path.join(ROOT, "config.json"), "utf8"));
+    const template = fs.readFileSync(path.join(ROOT, "membership.template.circom"), "utf8");
+    const env = process.env.LEVELS;
+    const levelsFromEnv = typeof env === "string" && env !== "" ? Number(env) : undefined;
+    const levels = Number(levelsFromEnv ?? override ?? cfg.levels);
+    if (!Number.isInteger(levels) || levels < 1) {
+      throw new Error(`invalid levels: ${levels}`);
+    }
+    const output = template.trimEnd() + `\n\ncomponent main { public [root, externalNullifier, recipientHash] } = Sharibo(${levels});\n`;
+    const outPath = path.join(ROOT, "membership.circom");
+    fs.writeFileSync(outPath, output);
+    return { outPath, levels };
+  }
+  return generate();
+} };

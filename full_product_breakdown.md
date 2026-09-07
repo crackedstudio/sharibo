@@ -183,6 +183,8 @@ struct Circle {
     round: u32,
     pot: i128,
     vk: VerificationKey,
+    contributors: Vec<Address>,  // current round funders in order
+    cancelled: bool,             // emergency closure flag
 }
 struct VerificationKey { alpha: G1Affine, beta: G2Affine, gamma: G2Affine, delta: G2Affine, ic: Vec<G1Affine> }
 struct Proof { a: G1Affine, b: G2Affine, c: G1Affine }
@@ -194,15 +196,23 @@ enum DataKey { NextCircleId, Circle(u64), Nullifier(u64, Fr) }
 
 ### Functions
 
-- **`create_circle(admin, token, root, contribution, size, vk) -> circle_id`** — `admin.require_auth()`; stores a new `Circle` at the next sequential id.
-- **`fund(circle_id, from)`** — `from.require_auth()`; transfers `contribution` of `token` from `from` into the contract; `pot += contribution`.
+- **`create_circle(admin, token, root, contribution, size, vk) -> circle_id`** — `admin.require_auth()`; stores a new `Circle` at the next sequential id with `round = 0`, `pot = 0`, `cancelled = false`, and refreshes TTLs.
+- **`fund(circle_id, from)`** — `from.require_auth()`; transfers `contribution` of `token` from `from` into the contract; records `from` in `contributors` and increases `pot`. Reverts if cancelled (`Error::CircleCancelled`), if pot is already full (`Error::RoundFull`), or on overflow (`Error::Overflow`).
 - **`claim(circle_id, recipient, nullifier_hash, external_nullifier, proof)`** — **no auth required from the claimant** (deliberate — the ZK proof itself is the authorization, not a Stellar account signature; the transaction's fee-paying source account can be anyone, e.g. a relayer). Checks run in this exact order:
-  1. `pot == contribution * size` → else `Error::RoundNotFunded` (2)
-  2. `external_nullifier == compute_external_nullifier(circle_id, round)` → else `Error::WrongRoundTag` (3)
-  3. `(circle_id, nullifier_hash)` not already recorded → else `Error::AlreadyClaimed` (4)
-  4. `verify_groth16(vk, proof, [nullifier_hash, root, external_nullifier])` → else `Error::InvalidProof` (5)
-     Then: mark the nullifier used, transfer the pot to `recipient`, zero the pot, increment the round.
-- **`get_circle(circle_id) -> Circle`** — plain read.
+  1. Circle not cancelled → else `Error::CircleCancelled` (8)
+  2. `pot == contribution * size` → else `Error::RoundNotFunded` (2)
+  3. `external_nullifier == compute_external_nullifier(circle_id, round)` → else `Error::WrongRoundTag` (3)
+  4. `(circle_id, nullifier_hash)` not already recorded → else `Error::AlreadyClaimed` (4)
+  5. `verify_groth16(vk, proof, [nullifier_hash, root, external_nullifier])` → else `Error::InvalidProof` (5)
+     Then: mark the nullifier used, transfer the pot to `recipient`, zero the pot, increment the round, clear contributors, and extend storage TTLs.
+- **`get_circle(circle_id) -> Circle`** — plain view read returning full circle state.
+- **`get_circle_count() -> u64`** — view read returning the total number of circles created (`NextCircleId`).
+- **`get_round(circle_id) -> u32`** — view read returning the current round number for a circle.
+- **`get_pot(circle_id) -> i128`** — view read returning the current pot balance.
+- **`get_status(circle_id) -> (u32, i128, i128, bool)`** — compact view returning `(round, pot, target, cancelled)` in a single RPC call.
+- **`get_contributors(circle_id) -> Vec<Address>`** — view read returning ordered contributor addresses for the current round.
+- **`has_claimed(circle_id, nullifier_hash) -> bool`** — view read probing whether an identity nullifier has already been claimed in this circle.
+- **`cancel_circle(circle_id)`** — `admin.require_auth()`; emergency escape hatch that refunds all current-round contributors in FIFO order, sets `cancelled = true`, zeros the pot, and permanently closes the circle.
 
 ### The real verifier
 
@@ -237,13 +247,16 @@ This binds a proof to a specific `(circle_id, round)` so it can't be replayed ag
 
 ### Error codes
 
-| Code | Name             | Meaning                                                      |
-| ---- | ---------------- | ------------------------------------------------------------ |
-| 1    | `CircleNotFound` | No circle at that id                                         |
-| 2    | `RoundNotFunded` | `pot != contribution * size`                                 |
-| 3    | `WrongRoundTag`  | `external_nullifier` doesn't match this circle+round         |
-| 4    | `AlreadyClaimed` | This nullifier has already paid out (any round, this circle) |
-| 5    | `InvalidProof`   | The Groth16/pairing check failed                             |
+| Code | Name              | Meaning                                                                 |
+| ---- | ----------------- | ----------------------------------------------------------------------- |
+| 1    | `CircleNotFound`  | No circle exists at the specified `circle_id`                           |
+| 2    | `RoundNotFunded`  | `claim` called when `pot != contribution * size`                        |
+| 3    | `WrongRoundTag`   | `external_nullifier` doesn't match expected SHA-256 circle+round tag    |
+| 4    | `AlreadyClaimed`  | Nullifier hash has already been used to claim in this circle            |
+| 5    | `InvalidProof`    | The Groth16 BLS12-381 pairing check failed                              |
+| 6    | `RoundFull`       | `fund` called when the pot is already fully funded                      |
+| 7    | `Overflow`        | Checked arithmetic failed during pot target or pot addition calculation |
+| 8    | `CircleCancelled` | Interaction attempted on a circle that was cancelled                    |
 
 Note the nullifier map is keyed `(circle_id, nullifier_hash)` with **no round component** — reusing a nullifier across _different_ rounds is also blocked, as defense-in-depth beyond what's cryptographically implied.
 

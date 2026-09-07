@@ -18,9 +18,10 @@
     "rosca"
   ],
   "scripts": {
+    "doctor": "tsx doctor.ts",
     "e2e": "tsx e2e.ts",
     "smoke": "tsx smoke.ts",
-    "test": "node --import tsx --test smoke.test.ts"
+    "test": "node --import tsx/esm --test *.test.ts"
   },
   "dependencies": {
     "@sharibo/client": "*",

@@ -7,12 +7,14 @@
 //   node scripts/sync-circuit.mjs --watch    # watch & auto-sync on change
 import { copyFileSync, existsSync, mkdirSync, watch } from "node:fs";
 import path from "node:path";
+import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const appDir = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const repoRoot = path.join(appDir, "..");
 const buildDir = path.join(repoRoot, "circuits", "build");
 const outDir = path.join(appDir, "public", "circuits");
+const verifierPath = path.join(repoRoot, "circuits", "scripts", "verify-artifacts.mjs");
 
 const files = [
   { from: path.join(buildDir, "membership_js", "membership.wasm"), to: "membership.wasm" },
@@ -23,6 +25,16 @@ const files = [
 const isWatch = process.argv.includes("--watch");
 
 function sync() {
+  const verify = spawnSync(process.execPath, [verifierPath], {
+    cwd: repoRoot,
+    stdio: "inherit",
+  });
+
+  if (verify.status !== 0) {
+    if (!isWatch) process.exit(verify.status ?? 1);
+    return;
+  }
+
   mkdirSync(outDir, { recursive: true });
 
   let missing = false;

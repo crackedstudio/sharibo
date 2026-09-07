@@ -24,6 +24,21 @@ function resolvePkgFile(pkg, rel) {
   return path.join(path.dirname(pkgJson), rel);
 }
 
+function readPackageVersion(pkg) {
+  const pkgJsonPath = require.resolve(`${pkg}/package.json`);
+  const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, "utf8"));
+  const versionMatch = /^(\d+)\.(\d+)\.(\d+)$/.exec(pkgJson.version ?? "");
+  if (!versionMatch) {
+    throw new Error(`Could not parse ${pkg} version: ${pkgJson.version}`);
+  }
+  return {
+    raw: pkgJson.version,
+    major: Number(versionMatch[1]),
+    minor: Number(versionMatch[2]),
+    patch: Number(versionMatch[3]),
+  };
+}
+
 function parseHexLiterals(src) {
   const matches = src.match(/0x[0-9a-fA-F]+n?/g) ?? [];
   return matches.map((m) => BigInt(m.replace(/n$/, "")));
@@ -129,6 +144,15 @@ function diffMds(a, b) {
 }
 
 function main() {
+  const jsPkg = readPackageVersion("poseidon-bls12381");
+  const circomPkg = readPackageVersion("poseidon-bls12381-circom");
+  if (jsPkg.major !== circomPkg.major || jsPkg.minor !== circomPkg.minor) {
+    throw new Error(
+      `Poseidon package versions are incompatible: poseidon-bls12381@${jsPkg.raw} and poseidon-bls12381-circom@${circomPkg.raw}. ` +
+        "Bump them together in the same commit and keep the same major.minor release family.",
+    );
+  }
+
   // Constants live in the file included by poseidon255.circom.
   const circomMain = resolvePkgFile("poseidon-bls12381-circom", "circuits/poseidon255.circom");
   const circomDir = path.dirname(circomMain);
@@ -151,6 +175,9 @@ function main() {
     process.exit(1);
   }
 
+  console.log(
+    `Poseidon package compatibility OK: poseidon-bls12381@${jsPkg.raw} and poseidon-bls12381-circom@${circomPkg.raw} share the same ${jsPkg.major}.${jsPkg.minor}.x release family.`,
+  );
   console.log(
     `Poseidon constants OK (t=${T}): ${circom.roundConstants.length} round constants, ${T}×${T} MDS — circom ↔ poseidon2 match.`,
   );

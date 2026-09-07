@@ -93,6 +93,21 @@ template Sharibo(levels) {
     // public inputs (checked in the contract)
     signal input root;              // circle's committed member set
     signal input externalNullifier; // see docs/wire-format.md §2 for derivation
+    // = SHA-256(circleId, roundIndex) mod r, reduced into the contract by
+    // the same rule (see NOTES.md — this is SHA-256, not Poseidon, by
+    // design: it binds the proof to a round outside the circuit's
+    // constraint system, where Soroban has a native accelerated SHA-256 but
+    // no native Poseidon; Poseidon is kept for everything hashed *inside*
+    // the circuit, where constraint-efficiency actually matters).
+    signal input externalNullifier;
+    // Recipient-binding signal (issue #266). A squaring constraint binds
+    // recipientHash into the proof without adding a Poseidon evaluation.
+    // The verifier (contract) checks this public signal against the
+    // expected payout-address hash, preventing proof transfer to an
+    // arbitrary recipient.
+    signal input recipientHash;
+    signal recipientSquare;
+    recipientSquare <== recipientHash * recipientHash;
 
     // public output (recorded by the contract)
     signal output nullifierHash;    // Poseidon(identityNullifier, externalNullifier)
