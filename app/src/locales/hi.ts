@@ -20,6 +20,8 @@ const hi = {
   "landing.previousCirclePrefix": "आपका पिछला chit fund अभी भी यहाँ मौजूद है",
   "landing.previousCircleLink": "chit fund #{id} ↗",
   "landing.testnetFineprint": "केवल टेस्टनेट। डेमो identities आपके ब्राउज़र में हर बार नई बनाई जाती हैं और दोबारा उपयोग नहीं की जातीं।",
+  "pot.fee": "शुल्क {feePercent}% → {feeRecipient}",
+  "pot.feeUnknown": "अज्ञात",
   "circle.onChainLink": "चेन पर chit fund #{id} ↗",
   "common.startNewCircle": "नया chit fund शुरू करें"
 } as const;

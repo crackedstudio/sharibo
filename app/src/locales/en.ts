@@ -69,6 +69,8 @@ const en = {
   "ring.check": "✓",
 
   "pot.label": "pot: {pot} / {total} XLM · round {round}",
+  "pot.fee": "fee {feePercent}% → {feeRecipient}",
+  "pot.feeUnknown": "unknown",
 
   "fund.heading": "Fund",
   "fund.memberLabel": "member {index}",

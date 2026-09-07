@@ -4,9 +4,9 @@ This directory contains the Soroban smart contracts for **Sharibo**, private rot
 
 | Method          | Kind  | Purpose                                                            |
 | --------------- | ----- | ------------------------------------------------------------------ |
-| `create_circle` | write | Admin creates a circle (Merkle root, contribution, size, vk).      |
+| `create_circle` | write | Admin creates a circle (Merkle root, contribution, size, vk, fee).  |
 | `fund`          | write | Deposit one `contribution` into the current round's pot.           |
-| `claim`         | write | Pay the pot to `recipient` given a valid Groth16 membership proof. |
+| `claim`         | write | Pay the pot (minus protocol fee) to `recipient` given a valid proof.|
 | `get_circle`    | view  | Read circle state.                                                 |
 | `has_claimed`   | view  | Whether a nullifier has already been used in this circle.          |
 
@@ -75,6 +75,40 @@ After a successful `RestoreFootprintOp` the circle's full state (including `roun
 
 ---
 
+## Changing the Merkle tree depth
+
+The membership circuit's depth is declared in [`circuits/config.json`](../circuits/config.json)
+(`"levels": 4`). The Merkle tree it generates holds `2^levels` commitments at
+most, so the contract enforces the same bound at circle creation:
+
+| Constant | Value | Source of truth |
+| --- | --- | --- |
+| `MAX_CIRCLE_SIZE` (in [`contracts/sharibo/src/lib.rs`](sharibo/src/lib.rs)) | `2^levels = 16` | `circuits/config.json` `levels` |
+
+`create_circle` rejects `size > MAX_CIRCLE_SIZE` with
+`Error::InvalidCircleParams`: a larger size would accept funding the tree can
+never contain enough members to claim, bricking every round until
+`cancel_circle`. A test (`max_circle_size_matches_circuit_levels`) asserts the
+constant equals `2^levels` by reading `circuits/config.json`, so a depth change
+fails the build loudly.
+
+### Runbook: raising the depth
+
+Because `MAX_CIRCLE_SIZE` is compiled into the contract WASM, a depth change
+**requires redeploying the contract** — the bound a deployed instance enforces
+cannot change without shipping a new WASM build:
+
+1. Bump `levels` in `circuits/config.json`.
+2. Regenerate the circuit (`circuits/scripts/compile.sh`, setup, and proof
+   pipeline) so roots/proofs match the new depth.
+3. Update `MAX_CIRCLE_SIZE = 2^levels` in `contracts/sharibo/src/lib.rs` — the
+   `max_circle_size_matches_circuit_levels` test fails until this matches.
+4. Rebuild (`stellar contract build`) and **redeploy**; existing deployments
+   keep enforcing the old bound. Any existing circles are unaffected (their
+   `size` was validated at creation).
+
+---
+
 ## 3. Deploying the Contracts
 
 ### Required CLI
@@ -114,16 +148,22 @@ Below is the documentation for all public contract methods.
       root: Fr,
       contribution: i128,
       size: u32,
+      round_deadline_ledgers: u32,
       vk: VerificationKey,
+      fee_bps: u32,
+      fee_recipient: Address,
   ) -> u64
   ```
+  (See [`docs/adr/003-protocol-fees.md`](../docs/adr/003-protocol-fees.md) for
+  the fee design.)
 
 * **Purpose**:
-  Allows an administrator to initialize a new rotating savings circle with a designated payment token, Merkle root containing member commitments, expected contribution amount per member, total circle size (number of members), and the Groth16 verification key (`vk`).
+  Allows an administrator to initialize a new rotating savings circle with a designated payment token, Merkle root containing member commitments, expected contribution amount per member, total circle size (number of members), an optional round deadline (in ledgers), and the Groth16 verification key (`vk`). `fee_bps` (0–10,000 basis points; `0` = no fee) and `fee_recipient` commit an immutable protocol fee paid out of the pot on each `claim`.
 
 * **Preconditions**:
   * The admin must authorize the transaction (`admin.require_auth()`).
   * The contribution amount and circle size must be valid and must not result in an integer overflow when multiplied to determine the pot target.
+  * `fee_bps` must be `<= 10_000` (`Error::InvalidFeeParams` otherwise), and when `fee_bps > 0` the `fee_recipient` must not be the contract itself (`Error::InvalidRecipient`).
 
 ---
 
@@ -163,7 +203,14 @@ Below is the documentation for all public contract methods.
   ```
 
 * **Purpose**:
-  Anonymously pays out the full round pot (`contribution * size`) to the designated `recipient` address upon presenting a valid Groth16 zero-knowledge proof of membership.
+  Anonymously pays out the round pot (`contribution * size` minus the
+  committed protocol fee) to the designated `recipient` address upon
+  presenting a valid Groth16 zero-knowledge proof of membership. `claim`
+  splits the pot with `apply_fee`: `fee` bps goes to
+  `circle.fee_recipient` (the fee transfer is skipped entirely when
+  `fee_bps = 0`, keeping the `claim` CPU cost identical to a no-fee
+  circle), and the net goes to `recipient`. The `claimed` event reports
+  the full pot.
 
 * **Preconditions**:
   * The circle associated with `circle_id` must exist and must **not** be cancelled.

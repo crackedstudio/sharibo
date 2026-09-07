@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 // Pre-commit hook: scan staged files for Stellar secret keys.
-// Used by scripts/install-hooks.sh as an opt-in git hook.
+// Used by scripts/maintenance/install-hooks.sh as an opt-in git hook.
 //
 // Pattern: Stellar secret keys start with S followed by 55 base32 chars.
 // This deliberately excludes C... (contract IDs) and G... (public keys).
 //
 // Usage (direct):
-//   node scripts/check-secrets.mjs
+//   node scripts/maintenance/check-secrets.mjs
 //
 // The script reads staged files from `git diff --cached` and scans each
 // for the secret-key regex. Exit code is 0 (pass) or 1 (blocked).
