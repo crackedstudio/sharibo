@@ -191,6 +191,52 @@ describe("Sharibo membership circuit (BLS12-381)", function () {
     await expectThrows(() => circuit.calculateWitness(input, true));
   });
 
+  // --- out-of-range pathElements (issue #269) ---
+  // pathElements[i] is fed straight into Poseidon255 in MerkleTreeChecker
+  // with NO explicit range constraint (unlike pathIndices, whose
+  // booleanity is constrained). Empirically the wasm witness generator
+  // REDUCES every input mod FR_MODULUS on assignment, so a non-canonical
+  // value is an alias for its canonical residue:
+  //   * an alias of the TRUE sibling (`sibling + k*FR_MODULUS`) wraps to
+  //     that sibling and yields a VALID proof — the circuit cannot and does
+  //     not reject it (this is what the SDK gate below exists for);
+  //   * a non-canonical value whose residue is NOT the true sibling (e.g.
+  //     FR_MODULUS itself ≡ 0) fails the Merkle root check exactly like any
+  //     other wrong sibling.
+  // The tests below pin this behavior so it is a fact, not an assumption.
+  // The SDK-side range gate that prevents non-canonical encodings from ever
+  // reaching the prover is exercised in packages/client/src/prove.test.ts.
+
+  it("rejects a pathElement of exactly FR_MODULUS (wraps to 0, fails root check)", async () => {
+    const input = await buildInput(2, 1, 0);
+    // FR_MODULUS ≡ 0 (mod FR_MODULUS) — the canonical-zero sibling, which
+    // is never the real sibling, so the root check must fail.
+    input.pathElements[0] = FR_MODULUS.toString();
+    await expectThrows(() => circuit.calculateWitness(input, true));
+  });
+
+  it("rejects a pathElement of FR_MODULUS - 1 when it is not the real sibling", async () => {
+    const input = await buildInput(2, 1, 0);
+    // Upper boundary of the field range: a valid canonical element but the
+    // wrong sibling for the genuine member — fails the Merkle root check
+    // exactly like any other non-sibling value.
+    input.pathElements[0] = (FR_MODULUS - 1n).toString();
+    await expectThrows(() => circuit.calculateWitness(input, true));
+  });
+
+  it("accepts a non-canonical alias of the true sibling (wraps to the same value)", async () => {
+    // The dangerous-looking case the issue flagged: `sibling + FR_MODULUS`
+    // reduces to the true sibling, so the witness generator accepts it and
+    // the root check PASSES. This is NOT a forgery vector (it is the same
+    // witness), but it does mean the circuit has no range check of its own —
+    // which is exactly why packages/client rejects x >= FR_MODULUS before
+    // proving (see prove.test.ts).
+    const input = await buildInput(2, 1, 0);
+    input.pathElements[0] = (BigInt(input.pathElements[0]) + FR_MODULUS).toString();
+    const witness = await circuit.calculateWitness(input, true);
+    await circuit.checkConstraints(witness);
+  });
+
   // --- recipientHash binding tests (issue #266) ---
 
   it("accepts a genuine member with a valid recipientHash", async () => {

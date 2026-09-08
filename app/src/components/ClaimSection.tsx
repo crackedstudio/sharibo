@@ -59,7 +59,7 @@ export function ClaimSection({
       </button>
       {busy && (
         <p className={styles.techline}>
-          Groth16 · BLS12-381 · 1,452 constraints · proving locally in your browser, nothing sent
+          Groth16 · BLS12-381 · 3,757 constraints · proving locally in your browser, nothing sent
           anywhere until the proof is done
         </p>
       )}

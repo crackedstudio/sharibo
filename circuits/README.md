@@ -108,6 +108,28 @@ standalone without regenerating anything:
 
 (See `NOTES.md` at the repo root for more context.)
 
+## `pathElements` are not range-checked in the circuit (issue #269)
+
+`MerkleTreeChecker` constrains `pathIndices[i]` to be boolean with an explicit
+quadratic constraint, but `pathElements[i]` is fed straight into
+`Poseidon255` with **no range check**. The behavior is pinned by tests in
+`circuits/test/membership.test.js`:
+
+- **The wasm witness generator wraps any input mod FR_MODULUS on assignment.**
+  A non-canonical value is an alias for its canonical residue:
+  - `FR_MODULUS` itself (≡ 0) is rejected, because a 0 sibling is never the
+    real sibling and the Merkle root check fails.
+  - A non-canonical alias of the **true** sibling (`sibling + k*FR_MODULUS`)
+    wraps to that sibling and produces a **valid** proof — the circuit
+    cannot and does not reject it (verified by
+    "accepts a non-canonical alias of the true sibling").
+- **This is not a forgery vector**: the wrapped value is the same witness,
+  so proving soundness is unaffected. But because the circuit has no native
+  range gate, the defense is the SDK: `validateCircuitInput()` in
+  `packages/client/src/prove.ts` rejects any `pathElements[i] >= FR_MODULUS`
+  **before** the WASM proving phase runs (wired into `generateProof`, tested
+  in `packages/client/src/prove.test.ts`).
+
 ## Expected outputs
 
 When a contributor runs the workflow scripts (compile → setup → prove):

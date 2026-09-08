@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import {
+  generateProof,
   validateCircuitInput,
   type CircuitInput,
   feToBytes,
@@ -13,6 +14,7 @@ import {
   verificationKeyToContractFormat,
 } from "./prove.js";
 import { FR_MODULUS } from "./identity.js";
+import { InvalidInputError } from "./errors.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -231,6 +233,39 @@ test("rejects pathElements[i] >= FR_MODULUS", () => {
   );
 });
 
+// ── generateProof entry-point gate (issue #269) ──────────────────────
+//
+// validateCircuitInput is wired into generateProof so out-of-range
+// pathElements (the circuit itself wraps them mod FR_MODULUS) are rejected
+// BEFORE the un-interruptible WASM proving phase. These tests assert the
+// gate fires with the typed error even though the artifacts passed here are
+// empty placeholders — if the gate were removed, snarkjs would instead
+// fail on the missing artifact bytes, so the specific InvalidInputError
+// also proves prove() never ran.
+
+test("generateProof rejects out-of-range pathElements before proving", async () => {
+  const input = validInput();
+  input.pathElements[2] = FR_MODULUS;
+  await assert.rejects(
+    generateProof(input, new Uint8Array(), new Uint8Array()),
+    (err) =>
+      err instanceof InvalidInputError &&
+      err.message.includes("pathElements[2]: must be in [0, FR_MODULUS)"),
+  );
+});
+
+test("generateProof accepts FR_MODULUS - 1 pathElements and proceeds to the prove phase", async () => {
+  const input = validInput();
+  input.pathElements[2] = FR_MODULUS - 1n;
+  // The gate passes (upper boundary is canonical); the subsequent
+  // snarkjs fullProve on empty artifact bytes must then fail with a
+  // non-InvalidInputError, proving we got past the gate.
+  await assert.rejects(
+    generateProof(input, new Uint8Array(), new Uint8Array()),
+    (err) => !(err instanceof InvalidInputError),
+  );
+});
+
 test("accepts all values at FR_MODULUS - 1 (upper boundary)", () => {
   const max = FR_MODULUS - 1n;
   const input: CircuitInput = {
@@ -351,19 +386,20 @@ test("g2ToBytes places limbs in Xc1||Xc0||Yc1||Yc0 order", () => {
 // ── verificationKeyToContractFormat: round-trip against the committed  ──
 // ── circuits/verification_key.json                                     ──
 
-test("verificationKeyToContractFormat produces the right shapes for the committed verification key (3 public signals)", () => {
+test("verificationKeyToContractFormat produces the right shapes for the committed verification key (4 public signals)", () => {
   const vkPath = join(__dirname, "..", "..", "..", "circuits", "verification_key.json");
   const vkJson = JSON.parse(readFileSync(vkPath, "utf8"));
 
   // Sanity-check the fixture itself hasn't drifted from what this test
-  // assumes: 3 public signals (nullifierHash, root, externalNullifier).
-  assert.equal(vkJson.nPublic, 3);
+  // assumes: 4 public signals (nullifierHash, root, externalNullifier,
+  // recipientHash — recipientHash added in issue #266).
+  assert.equal(vkJson.nPublic, 4);
 
   const vk = verificationKeyToContractFormat(vkJson);
 
   // ic.length === public signals + 1 (the constant term) — the
   // acceptance criterion from issue #48.
-  assert.equal(vk.ic.length, 4);
+  assert.equal(vk.ic.length, 5);
 
   // G1 fields (alpha, and every ic entry) are 96 bytes; G2 fields (beta,
   // gamma, delta) are 192 bytes.
