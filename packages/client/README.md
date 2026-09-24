@@ -164,16 +164,18 @@ The package ships a conditional `exports` map:
 
 | Condition | Entry point | Side effects |
 |-----------|-------------|--------------|
-| `browser` | `src/index.browser.ts` | Mounts the "Preparing prover…" DOM toast; starts background artifact pre-fetch |
+| `browser` | `src/index.browser.ts` | None — same headless barrel as `index.ts` |
 | `default` (Node, tests) | `src/index.ts` | None — safe to import in scripts, tests, and CI |
 
 Bundlers that honour the `browser` exports condition (Vite, webpack) resolve to the
-browser entry automatically. Node and test runners get the side-effect-free default.
+browser entry automatically. Node and test runners get the default entry.
 
-If you need the background pre-fetch in a browser app that imports the package
-directly (without a bundler resolving the `browser` condition), call
-`prefetchMembershipArtifacts()` explicitly after import. The progress UI lives
-in the app and subscribes via `subscribeToArtifactPrefetch()`.
+Importing the package never starts a download. The background pre-fetch is opt-in:
+call `prefetchMembershipArtifacts()` where you want it (the app calls it when the
+circle screen mounts — see `app/src/components/ArtifactProgress.tsx`), and drive the
+progress UI from `subscribeToArtifactPrefetch()`. Keeping it out of the barrel is
+what lets a landing screen import the SDK's types without pulling ~1.5 MB of wasm
+and zkey onto its critical path (issue #300).
 
 ## Retry Semantics
 

@@ -8,6 +8,12 @@ export default defineConfig({
   define: {
     global: "globalThis",
   },
+  build: {
+    // The landing-page budget check (scripts/check-bundle-budget.mjs) walks the
+    // build manifest to find which chunks the entry actually imports, so it can
+    // assert none of them contain proving code and that they stay small.
+    manifest: true,
+  },
   test: {
     environment: "jsdom",
     setupFiles: ["./src/setupTests.ts"],

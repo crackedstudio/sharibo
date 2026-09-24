@@ -111,7 +111,9 @@ export async function diagnose(e: unknown): Promise<{ message: string; retryable
   }
 
   try {
-    const health = await checkContractDeployed(config.rpcUrl, config.contractId);
+    // `config` is null only when the app already rendered the setup screen
+    // instead of the demo, so the empty-string fallbacks are unreachable here.
+    const health = await checkContractDeployed(config?.rpcUrl ?? "", config?.contractId ?? "");
     if (!health.ok) {
       return {
         message: health.message ?? "The testnet appears to have been reset and your circle no longer exists.",

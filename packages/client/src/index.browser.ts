@@ -1,20 +1,17 @@
 /**
  * Browser entry point for @sharibo/client.
  *
- * Identical to the default index, plus one browser-only side effect:
- *  - prefetchMembershipArtifacts: starts downloading wasm + zkey in the
- *    background so they're ready when the user clicks "Claim".
+ * This is now identical to the default entry: the SDK is headless, and the
+ * import-time artifact prefetch that used to live here is gone. Starting the
+ * download from inside the barrel meant every consumer that merely *imported*
+ * the SDK — including a landing screen that proves nothing — began pulling
+ * ~1.5 MB of wasm + zkey. The app now drives it explicitly instead
+ * (app/src/components/ArtifactProgress.tsx calls
+ * `prefetchMembershipArtifacts()`), which keeps circuit artifacts off the
+ * critical path until a user actually starts a circle (issue #300).
  *
- * The "Preparing prover…" indicator now lives in the app (ArtifactProgress),
- * driven by subscribeToArtifactPrefetch — the SDK no longer touches the DOM.
- *
- * Bundlers that honour the "browser" exports condition (Vite, webpack, etc.)
- * will resolve @sharibo/client to this file automatically. Node and test
- * runners get index.ts instead, which has no DOM or network side effects.
+ * The `browser` condition in package.json is kept so bundlers that resolve it
+ * (Vite, webpack, etc.) still get a browser-safe entry — this file just no
+ * longer has browser-only side effects.
  */
 export * from "./index.js";
-import { prefetchMembershipArtifacts } from "./artifacts.js";
-prefetchMembershipArtifacts().catch(() => {
-  // Errors are surfaced through subscribeToArtifactPrefetch; swallow here so
-  // an unhandled rejection doesn't abort the page.
-});

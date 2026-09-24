@@ -19,7 +19,10 @@ import { Buffer } from "buffer";
 
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { configureArtifacts } from "@sharibo/client";
+// No `@sharibo/client` import here on purpose: the entry module is part of the
+// landing bundle, so importing the SDK would drag snarkjs / the Stellar SDK
+// back onto the critical path for a visitor who never starts a circle. The
+// SDK is reached only from the lazily-loaded circle screen (see App.tsx).
 import App from "./App.js";
 import { ErrorBoundary } from "./ErrorBoundary.js";
 import { getCapabilityReport } from "./lib/capabilities.js";

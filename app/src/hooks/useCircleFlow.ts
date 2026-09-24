@@ -29,11 +29,11 @@ export type CirclePhase = "idle" | "loading" | "ready" | "error";
 
 // Derive constants from config (same as App.tsx does)
 const NETWORK = {
-  contractId: config.contractId,
-  rpcUrl: config.rpcUrl,
-  networkPassphrase: config.networkPassphrase,
+  contractId: config?.contractId ?? "",
+  rpcUrl: config?.rpcUrl ?? "",
+  networkPassphrase: config?.networkPassphrase ?? "",
 };
-const TOKEN = config.testTokenContractId;
+const TOKEN = config?.testTokenContractId ?? "";
 const LEVELS = TREE_LEVELS;
 const CIRCLE_SIZE = 5;
 

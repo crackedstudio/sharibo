@@ -28,15 +28,12 @@ export default defineConfig({
     // globally before every test file.
     setupFiles: ["./src/setupTests.ts"],
     globals: true,
-    // Config.ts validates VITE_* env vars at module load and the app renders
-    // a blocking "setup required" screen when they're missing. Supply valid
-    // values here so component tests exercise the real landing screen.
-    env: {
-      VITE_SHARIBO_CONTRACT_ID: "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-      VITE_STELLAR_RPC_URL: "https://soroban-testnet.stellar.org",
-      VITE_STELLAR_NETWORK_PASSPHRASE: "Test SDF Network ; September 2015",
-      VITE_TEST_TOKEN_CONTRACT_ID: "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-    },
+    // No `test.env` VITE_* defaults here on purpose. Whatever is stubbed here
+    // is baked into import.meta.env for the whole run, so config.test.ts's
+    // "reports missing" cases could never see a genuinely absent variable —
+    // vi.stubEnv(key, undefined) cannot undo a value that was injected at
+    // transform time. Tests that need a valid config mock ./config (see
+    // App.test.tsx) or stub the variables themselves (config.test.ts).
     coverage: {
       provider: "v8",
       reporter: ["text", "lcov", "json"],
