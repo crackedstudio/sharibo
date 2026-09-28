@@ -951,7 +951,17 @@ fn create_circle_rejects_size_above_max_capacity() {
     // The Merkle tree holds at most 2^4 = 16 commitments (circuits/config.json);
     // a larger size can never be fully claimed.
     let oversized = MAX_CIRCLE_SIZE + 1;
-    client.create_circle(&admin, &token, &root, &100i128, &oversized, &0u32, &vk);
+    client.create_circle(
+        &admin,
+        &token,
+        &root,
+        &100i128,
+        &oversized,
+        &0u32,
+        &vk,
+        &0u32,
+        &Address::generate(&env),
+    );
 }
 
 #[test]
@@ -968,7 +978,17 @@ fn create_circle_accepts_max_capacity_size() {
     let root = real_root(&env);
     let vk = real_verification_key(&env);
 
-    let circle_id = client.create_circle(&admin, &token, &root, &100i128, &MAX_CIRCLE_SIZE, &0u32, &vk);
+    let circle_id = client.create_circle(
+        &admin,
+        &token,
+        &root,
+        &100i128,
+        &MAX_CIRCLE_SIZE,
+        &0u32,
+        &vk,
+        &0u32,
+        &Address::generate(&env),
+    );
     let circle = client.get_circle(&circle_id);
     assert_eq!(circle.size, MAX_CIRCLE_SIZE);
 }

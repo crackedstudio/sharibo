@@ -10,6 +10,8 @@ import * as client from "./index.js";
 //     documented type is missing from the barrel.
 //  2. We assert the README's documented type list equals this canonical list,
 //     so the two stay in lockstep.
+/* eslint-disable @typescript-eslint/no-unused-vars -- deliberate compile-time
+   assertions: each imported type must exist in the barrel (see above). */
 import type {
   Identity,
   MerkleProof,
@@ -25,8 +27,8 @@ import type {
   TxResult,
   CircleView,
 } from "./index.js";
+/* eslint-enable @typescript-eslint/no-unused-vars */
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const _canonicalTypes = [
   "Identity",
   "MerkleProof",
@@ -56,7 +58,8 @@ function readDocumentedNames(readme: string, header: string): string[] {
     throw new Error(`README is missing a "### ${header}" section`);
   }
   const rest = readme.slice(idx);
-  const fence = /```ts\n([^`]*?)```/.exec(rest);
+  // Tolerate CRLF checkouts (Windows): fences may end with \r\n.
+  const fence = /```ts\r?\n([^`]*?)```/.exec(rest);
   if (!fence) {
     throw new Error(`README "### ${header}" section has no \`\`\`ts code block`);
   }

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
-import React, { useEffect } from 'react';
+import React from 'react';
 import { I18nProvider, useI18n } from './i18n';
 
 describe('i18n', () => {
@@ -61,26 +61,6 @@ describe('i18n', () => {
     expect(screen.getByTestId('locale').textContent).toBe('es');
     expect(document.documentElement.lang).toBe('es');
     expect(localStorage.getItem('sharibo.locale')).toBe('es');
-  });
-
-  it('handles rtl locales correctly', () => {
-    function TestComponent() {
-      const { setLocale } = useI18n();
-      // Using 'ar' as it might be added later, or we can just simulate setting it
-      // if 'ar' isn't in locales, it might not switch. The code checks `dictionaries[next]`.
-      // Since we don't have 'ar' mock, let's just observe what happens if we set a dummy.
-      // Wait, setLocale checks `if (!dictionaries[next]) return;`
-      // We can mock the dictionaries indirectly or just trust the logic.
-      useEffect(() => {
-        // We'll just test that applyLocale does its job if we somehow got 'ar',
-        // but since we can't easily mock module internal dictionaries here, 
-        // we'll rely on the source test. 
-      }, []);
-      return null;
-    }
-    
-    // Instead of testing 'ar' which might not be in the dictionary,
-    // let's test that localStorage throwing doesn't crash.
   });
 
   it('does not crash when localStorage throws', () => {

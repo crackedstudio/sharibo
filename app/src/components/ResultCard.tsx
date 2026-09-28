@@ -8,7 +8,6 @@ export function ResultCard({
   rejection,
   busy,
   nullifierClaimed,
-  circleId,
   onClaimAgain,
   onReset,
 }: {
@@ -16,7 +15,9 @@ export function ResultCard({
   rejection: string | null;
   busy: string | null;
   nullifierClaimed: boolean;
-  circleId: bigint | null;
+  // Reserved: the result card will link the circle explorer view once the
+  // circle‐overview section lands. Kept in the type so callers can pass it.
+  circleId?: bigint | null;
   onClaimAgain: () => void;
   onReset: () => void;
 }) {

@@ -242,6 +242,20 @@ else
   fi
 fi
 
+section "Doctor verdict"
+
+# The honest gate: report what this machine can and cannot do yet, so a
+# newcomer learns "my environment is incomplete" instead of concluding the
+# repo is broken (see #517). Non-blocking by design here — bootstrap itself
+# only ever needed Node + npm; the doctor distinguishes blocking from
+# optional toolchain gaps.
+if npm run doctor --workspace=scripts --silent; then
+  ok "doctor: blocking checks pass — 'just ci' should be green from here"
+else
+  warn "doctor: blocking checks FAILED (see above). 'just ci' will fail until they pass;"
+  warn "optional (⚠️) items only matter for circuits/contracts/e2e work."
+fi
+
 section "Next steps (not run by bootstrap)"
 
 cat <<'NEXTSTEPS'

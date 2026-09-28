@@ -9,6 +9,7 @@
 import { parseArgs } from "node:util";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { fetchWithTimeout } from "./fetch.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 process.loadEnvFile(path.join(__dirname, "..", ".env"));
@@ -53,9 +54,7 @@ async function checkRpcHealth(): Promise<DiagResult> {
     return { name, ok: false, detail: "STELLAR_RPC_URL is not set in .env" };
   }
   try {
-    const res = await fetch(`${RPC_URL}/health`, {
-      signal: AbortSignal.timeout(10_000),
-    });
+    const res = await fetchWithTimeout(`${RPC_URL}/health`, 10_000);
     if (!res.ok) {
       return { name, ok: false, detail: `HTTP ${res.status} from ${RPC_URL}/health` };
     }
@@ -73,9 +72,7 @@ async function checkRpcHealth(): Promise<DiagResult> {
 async function checkHorizon(): Promise<DiagResult> {
   const name = "Horizon root";
   try {
-    const res = await fetch(HORIZON_URL, {
-      signal: AbortSignal.timeout(10_000),
-    });
+    const res = await fetchWithTimeout(HORIZON_URL, 10_000);
     if (!res.ok) {
       return { name, ok: false, detail: `HTTP ${res.status} from ${HORIZON_URL}` };
     }

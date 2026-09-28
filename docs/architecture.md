@@ -45,6 +45,7 @@ These are non-negotiable across all the directories touched by a change — see 
 - **Nullifier:** `nullifierHash = Poseidon(identityNullifier, externalNullifier)`.
 - **Round tag:** `externalNullifier = SHA256(circle_id, round) mod r`, computed outside the circuit.
 - **Public signal order:** `[nullifierHash, root, externalNullifier]` — circuit, contract, and client must all agree.
+- **Merkle depth / circle capacity:** `circuits/config.json` (`levels`) is the source of truth. The circuit template, the client SDK's `TREE_LEVELS`, and the contract's `MAX_CIRCLE_SIZE = 2^MERKLE_LEVELS` must all agree — a depth change requires recompile + trusted setup + contract constant update + redeploy (see README §Changing the Merkle tree depth).
 
 ## Where to dig deeper
 

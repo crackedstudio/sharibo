@@ -273,15 +273,19 @@ export function prefetchMembershipArtifacts(signal?: AbortSignal): Promise<Prove
   return prefetchPromise;
 }
 
-/**
- * Retrieves the compiled circuit artifacts, prefetching them if not already started.
- */
-function getArtifacts(): Promise<ProverArtifacts> {
-  return prefetchMembershipArtifacts();
-}
-
 export function getArtifactPrefetchProgress(): ArtifactPrefetchProgress {
   return currentProgress;
+}
+
+/**
+ * Test-only reset back to pristine module state: default config, idle
+ * progress, no in-flight prefetch, no listeners. The public
+ * `resetArtifactsConfig` keeps listeners (a running app may hold them);
+ * tests need full isolation between cases instead.
+ */
+export function __resetForTesting(): void {
+  resetArtifactsConfig();
+  listeners.clear();
 }
 
 export function subscribeToArtifactPrefetch(

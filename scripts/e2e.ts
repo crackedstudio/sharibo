@@ -8,7 +8,7 @@
 // Flags (node:util parseArgs, no new deps):
 //   --skip-replay         Stop after the successful claim (skip round 2 funding + replay check)
 //   --reuse-circle <id>   Skip circle creation; run against an existing circle
-//   --verbose             Echo each RPC/curl interaction
+//   --verbose             Echo each RPC/HTTP interaction
 //
 // Requires: circuits/build/{membership_js/membership.wasm,membership_final.zkey}
 // (run circuits/scripts/{compile,setup}.sh first) and a populated .env.
@@ -25,10 +25,7 @@
 import { readFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
-import { execFile } from "node:child_process";
-import { promisify, parseArgs } from "node:util";
-
-const execFileAsync = promisify(execFile);
+import { parseArgs } from "node:util";
 import { Keypair } from "@stellar/stellar-sdk";
 import {
   ShariboSDK,
@@ -36,16 +33,14 @@ import {
   computeExternalNullifier,
   MerkleTree,
   generateProof,
-  estimateClaimFee,
   verificationKeyToContractFormat,
   TREE_LEVELS,
   xlmToStroops,
-  ContractError,
-  type CircleId,
   makeCircleId,
 } from "@sharibo/client";
 import { config } from "./config.js";
 import { checkContractDeployed } from "./testnet-health.js";
+import { fetchWithTimeout } from "./fetch.js";
 
 // --- CLI flag parsing (node:util parseArgs — no new deps) ---
 
@@ -62,7 +57,7 @@ const SKIP_REPLAY = flags["skip-replay"]!;
 const REUSE_CIRCLE = flags["reuse-circle"] != null ? BigInt(flags["reuse-circle"]) : null;
 const VERBOSE = flags.verbose!;
 
-function verbose(...args: any[]) {
+function verbose(...args: unknown[]) {
   if (args.length === 2 && args[1] && typeof args[1] === "object" && "type" in args[1]) {
     runArtifact.events?.push(args[1]);
   }
@@ -91,15 +86,19 @@ async function timed<T>(label: string, fn: () => Promise<T>): Promise<T> {
   return result;
 }
 
-// Node's own fetch()/undici hung indefinitely against these two endpoints in
-// this environment even with AbortSignal.timeout set, while plain `curl`
-// consistently worked in seconds (see NOTES.md) — so these two HTTP calls
-// specifically shell out to curl rather than use fetch.
-async function curlGet(url: string): Promise<string> {
-  verbose("curl GET", url);
-  const { stdout } = await execFileAsync("curl", ["-s", "--max-time", "15", url]);
-  verbose("curl response length:", stdout.length, "bytes");
-  return stdout;
+// Plain fetch with an AbortSignal timeout. An earlier revision shelled out
+// to `curl` because undici hung against these endpoints in one environment;
+// re-investigated in #94 (Node 20/22/24, 5 clean runs each) — the hang no
+// longer reproduces, so the `curl`/`child_process` dependency is gone.
+async function httpGet(url: string): Promise<string> {
+  verbose("fetch GET", url);
+  const res = await fetchWithTimeout(url, 15_000);
+  if (!res.ok) {
+    throw new Error(`HTTP ${res.status} from ${url}: ${await res.text()}`);
+  }
+  const body = await res.text();
+  verbose("fetch response length:", body.length, "bytes");
+  return body;
 }
 
 async function friendbotFund(publicKey: string): Promise<void> {
@@ -107,7 +106,7 @@ async function friendbotFund(publicKey: string): Promise<void> {
   for (let attempt = 1; attempt <= attempts; attempt++) {
     try {
       verbose(`friendbot attempt ${attempt}/${attempts} for ${publicKey}`);
-      await curlGet(`https://friendbot.stellar.org?addr=${publicKey}`);
+      await httpGet(`https://friendbot.stellar.org?addr=${publicKey}`);
       return;
     } catch (err) {
       if (attempt === attempts) throw err;
@@ -120,7 +119,7 @@ async function friendbotFund(publicKey: string): Promise<void> {
 
 async function nativeBalance(publicKey: string): Promise<bigint> {
   verbose("fetching balance for", publicKey);
-  const body = await curlGet(`https://horizon-testnet.stellar.org/accounts/${publicKey}`);
+  const body = await httpGet(`https://horizon-testnet.stellar.org/accounts/${publicKey}`);
   const account = JSON.parse(body);
   const native = account.balances.find((b: { asset_type: string }) => b.asset_type === "native");
   // Horizon reports balances as decimal XLM strings; convert to stroops.
@@ -203,7 +202,7 @@ interface RunArtifact {
   members: RunArtifactMember[];
   claim?: { recipient: string; txHash: string; nullifierHash: string };
   replayAttempt?: { rejected: boolean; detail: string };
-  events?: any[];
+  events?: unknown[];
 }
 
 const runArtifact: RunArtifact = {
@@ -319,6 +318,8 @@ async function main() {
         contribution: CONTRIBUTION,
         size: CIRCLE_SIZE,
         vk,
+        feeBps: 0,
+        feeRecipient: admin.publicKey(),
       }),
       30_000,
       "createCircle",
@@ -364,8 +365,6 @@ async function main() {
     "circuits",
     "build",
   );
-  const claimant = members[CLAIMANT_INDEX];
-  const merkleProof = tree.proofOf(claimant.identity.commitment);
   verbose("generating proof with wasm + zkey from", circuitsBuildDir);
   const { proof, nullifierHash, root: proofRoot, externalNullifier: proofExternalNullifier } =
     await timed("proof generation", () =>
@@ -426,12 +425,6 @@ async function main() {
   assert(claimedCircle.pot === 0n, "pot should be empty after claim");
   assert(claimedCircle.round === 1, "round should have advanced to 1");
   console.log("   payout confirmed: pot -> 0, round -> 1");
-  
-  // Log fee estimate vs actual charged delta if available
-  if (feeCharged) {
-    const feeChargedNum = typeof feeCharged === "string" ? BigInt(feeCharged) : feeCharged;
-    console.log("   claim fee charged:", feeChargedNum.toString(), "stroops");
-  }
 
   if (SKIP_REPLAY) {
     console.log("\n--skip-replay: skipping round 2 funding + replay check.");

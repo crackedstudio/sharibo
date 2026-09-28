@@ -37,7 +37,7 @@ function chooseInitialLocale(): LocaleCode {
   try {
     const stored = localStorage.getItem("sharibo.locale");
     if (stored && dictionaries[stored]) return stored;
-  } catch (e) {
+  } catch {
     // Ignore localStorage errors (e.g., privacy modes)
   }
 
@@ -78,7 +78,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     setLocaleState(next);
     try {
       localStorage.setItem("sharibo.locale", next);
-    } catch (e) {
+    } catch {
       // Ignore localStorage errors
     }
     applyLocale(next);

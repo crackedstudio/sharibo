@@ -1,38 +1,26 @@
 import type { FeeEstimate } from "@sharibo/client";
 import type { Member } from "../types.js";
 import styles from "./ClaimSection.module.css";
-import { useI18n } from "../i18n.js";
 import type { ClaimStage } from "../types.js";
-
-const STROOPS_PER_XLM = 10_000_000n;
-
-/** Format a stroop amount as a human-readable XLM string, e.g. "0.0123456 XLM". */
-function formatXlm(stroops: bigint): string {
-  const whole = stroops / STROOPS_PER_XLM;
-  const frac = stroops % STROOPS_PER_XLM;
-  return `${whole}.${frac.toString().padStart(7, "0")} XLM`;
-}
 
 export function ClaimSection({
   members,
   claimantIndex,
   onSelectClaimant,
   busy,
-  claimStage,
-  proveElapsedSeconds,
   onClaim,
-  feeEstimate,
 }: {
   members: Member[];
   claimantIndex: number;
   onSelectClaimant: (i: number) => void;
   busy: string | null;
-  claimStage: ClaimStage | null;
-  proveElapsedSeconds: number;
   onClaim: () => void;
+  // Reserved for the stepper/fee UI (not rendered yet — kept so the
+  // component's intended API stays visible to consumers).
+  claimStage?: ClaimStage | null;
+  proveElapsedSeconds?: number;
   feeEstimate?: FeeEstimate | null;
 }) {
-  const { t } = useI18n();
   return (
     <>
       <h2>Claim</h2>

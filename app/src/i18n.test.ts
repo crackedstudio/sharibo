@@ -189,7 +189,6 @@ describe("i18n locale key parity", () => {
         dictionaries[match[1]] = mod.default;
       }
 
-      const fallbackLocale = "en";
       const current = dictionaries["en"];
       const fallback = dictionaries["en"];
 
@@ -226,7 +225,6 @@ describe("i18n locale key parity", () => {
         dictionaries[match[1]] = mod.default;
       }
 
-      const fallbackLocale = "en";
       const current = dictionaries["en"];
       const fallback = dictionaries["en"];
 
@@ -263,7 +261,6 @@ describe("i18n locale key parity", () => {
         dictionaries[match[1]] = mod.default;
       }
 
-      const fallbackLocale = "en";
       const current = dictionaries["en"];
       const fallback = dictionaries["en"];
 

@@ -87,7 +87,7 @@ export const computeNullifierHash = vi.fn(
 
 export const ZERO_VALUE = 0n;
 
-export interface MerkleProofMock extends MerkleProof {}
+export type MerkleProofMock = MerkleProof;
 
 /** Stub MerkleTree with fixed root and trivial proofs. */
 export class MerkleTree {

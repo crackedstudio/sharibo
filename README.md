@@ -222,6 +222,18 @@ Install the Rust target after installing Rust:
 rustup target add wasm32v1-none
 ```
 
+Verify the whole setup (and only the setup) in one command — this is the
+honest gate before you conclude anything is broken:
+
+```bash
+npm run doctor --workspace=scripts   # or: just doctor
+```
+
+❌ blocking items stop `just ci`; ⚠️ optional items only matter for
+circuits/contracts/e2e work (see [CONTRIBUTING.md](CONTRIBUTING.md#what-you-need-per-area)).
+`npm run doctor --workspace=scripts -- --fix` resolves the mechanical ones
+(wasm target, SDK build) automatically.
+
 ### 1. Install and configure
 
 ```bash
@@ -292,7 +304,7 @@ Runs a full round against testnet for real: creates a 5-member circle, funds it 
 | `--reuse-circle <id>` | Skip circle creation; run against an existing circle |
 | `--verbose` | Echo each RPC/curl interaction for debugging |
 
-> This script shells out to `curl` for friendbot/Horizon calls rather than using `fetch()` — see `NOTES.md` if you're curious why. Run it in the foreground (not backgrounded) for the same reason.
+> This script uses native `fetch()` with `AbortSignal.timeout(15_000)` for friendbot/Horizon calls — an earlier revision shelled out to `curl` (see `NOTES.md`), but re-investigation in #94 showed the hang no longer reproduces.
 
 ### 6. Browser demo
 

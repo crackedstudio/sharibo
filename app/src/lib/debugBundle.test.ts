@@ -41,7 +41,7 @@ const CLEAN_INPUT: BundleInput = {
 };
 
 // Real-shaped Stellar secret seed — base-32, starts with S, 56 chars.
-const STELLAR_SECRET = "SCECFBGD3WTYXZPFG6BHZWLZJSB7BXPX4VHDOZFXVLGHXCV5GFQABCD";
+const STELLAR_SECRET = "SCECFBGD3WTYXZPFG6BHZWLZJSB7BXPX4VHDOZFXVLGHXCV5GFQABCDE";
 
 // A 77-digit decimal field element (BLS12-381 scalar field, just under r).
 const FIELD_ELEMENT_SCALAR =

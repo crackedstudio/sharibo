@@ -16,7 +16,7 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "lint:dead": "knip",
-    "typecheck": "npm run typecheck --workspace=packages/client",
+    "typecheck": "npm run typecheck --workspace=packages/core && npm run typecheck --workspace=packages/client && npm run typecheck --workspace=app && npm run typecheck --workspace=scripts",
     "check:stellar-sdk": "node scripts/maintenance/check-stellar-sdk-version.mjs",
     "clean": "node scripts/maintenance/clean.mjs"
   },

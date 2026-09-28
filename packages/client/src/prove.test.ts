@@ -313,12 +313,14 @@ test("g1ToBytes places X in bytes 0-47 and Y in bytes 48-95", () => {
   assert.deepEqual(bytes.subarray(48, 96), feToBytes(y));
 });
 
-// ── g2ToBytes: length and limb placement (Xc1||Xc0||Yc1||Yc0) ────────
+// ── g2ToBytes: length and limb placement (Xc0||Xc1||Yc0||Yc1) ────────
 //
-// This is the highest-risk spot in the encoding: Xc1 is written BEFORE
-// Xc0 (and Yc1 before Yc0) — the opposite of the natural [c0, c1] input
-// order. A deliberate limb swap is exercised below (see the acceptance
-// criterion in issue #48) to confirm this test suite actually catches it.
+// This is the highest-risk spot in the encoding: limbs must stay in the
+// snarkjs c0-first input order to match arkworks `serialize_uncompressed`
+// (see `g2_from_coords` in contracts/sharibo/src/test.rs — the contract
+// builds G2Affine from ark bytes, c0 first). A deliberate limb swap is
+// exercised below (see the acceptance criterion in issue #48) to confirm
+// this test suite actually catches it.
 
 test("g2ToBytes always produces 192 bytes", () => {
   const bytes = g2ToBytes([
@@ -329,9 +331,9 @@ test("g2ToBytes always produces 192 bytes", () => {
   assert.equal(bytes.length, 192);
 });
 
-test("g2ToBytes places limbs in Xc1||Xc0||Yc1||Yc0 order", () => {
+test("g2ToBytes places limbs in Xc0||Xc1||Yc0||Yc1 order", () => {
   // Four distinguishable, non-trivial values — one per limb — so any
-  // transposition (not just Xc1/Xc0) would be caught.
+  // transposition (not just Xc0/Xc1) would be caught.
   const xc0 = "111111";
   const xc1 = "222222";
   const yc0 = "333333";
@@ -342,28 +344,29 @@ test("g2ToBytes places limbs in Xc1||Xc0||Yc1||Yc0 order", () => {
     ["1", "0"],
   ]);
   assert.equal(bytes.length, 192);
-  assert.deepEqual(bytes.subarray(0, 48), feToBytes(xc1), "bytes 0-47 must be Xc1");
-  assert.deepEqual(bytes.subarray(48, 96), feToBytes(xc0), "bytes 48-95 must be Xc0");
-  assert.deepEqual(bytes.subarray(96, 144), feToBytes(yc1), "bytes 96-143 must be Yc1");
-  assert.deepEqual(bytes.subarray(144, 192), feToBytes(yc0), "bytes 144-191 must be Yc0");
+  assert.deepEqual(bytes.subarray(0, 48), feToBytes(xc0), "bytes 0-47 must be Xc0");
+  assert.deepEqual(bytes.subarray(48, 96), feToBytes(xc1), "bytes 48-95 must be Xc1");
+  assert.deepEqual(bytes.subarray(96, 144), feToBytes(yc0), "bytes 96-143 must be Yc0");
+  assert.deepEqual(bytes.subarray(144, 192), feToBytes(yc1), "bytes 144-191 must be Yc1");
 });
 
 // ── verificationKeyToContractFormat: round-trip against the committed  ──
 // ── circuits/verification_key.json                                     ──
 
-test("verificationKeyToContractFormat produces the right shapes for the committed verification key (3 public signals)", () => {
+test("verificationKeyToContractFormat produces the right shapes for the committed verification key (4 public signals)", () => {
   const vkPath = join(__dirname, "..", "..", "..", "circuits", "verification_key.json");
   const vkJson = JSON.parse(readFileSync(vkPath, "utf8"));
 
   // Sanity-check the fixture itself hasn't drifted from what this test
-  // assumes: 3 public signals (nullifierHash, root, externalNullifier).
-  assert.equal(vkJson.nPublic, 3);
+  // assumes: 4 public signals (nullifierHash, root, externalNullifier,
+  // recipientHash) — must match PUBLIC_INPUT_COUNT in the contract.
+  assert.equal(vkJson.nPublic, 4);
 
   const vk = verificationKeyToContractFormat(vkJson);
 
   // ic.length === public signals + 1 (the constant term) — the
   // acceptance criterion from issue #48.
-  assert.equal(vk.ic.length, 4);
+  assert.equal(vk.ic.length, 5);
 
   // G1 fields (alpha, and every ic entry) are 96 bytes; G2 fields (beta,
   // gamma, delta) are 192 bytes.

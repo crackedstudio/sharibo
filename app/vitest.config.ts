@@ -12,7 +12,7 @@ try {
   const data = fs.readFileSync(thresholdsPath, "utf8");
   const parsed = JSON.parse(data);
   if (parsed && parsed.app) appThreshold = parsed.app;
-} catch (e) {
+} catch {
   // Missing thresholds file is non-fatal; continue with permissive defaults
 }
 

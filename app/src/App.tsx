@@ -9,23 +9,9 @@ import {
   signTransaction as freighterSignTx
 } from "@stellar/freighter-api";
 import {
-  generateIdentity,
-  computeExternalNullifier,
   MerkleTree,
-  generateProof,
-  verifyProofLocally,
-  verificationKeyToContractFormat,
-  connect,
-  connectReadOnly,
-  createCircle,
-  fund,
-  claim,
-  cancelCircle,
-  getCircle,
-  hasClaimed,
   TREE_LEVELS,
   xlmToStroops,
-  formatXlm,
   type Identity,
   type ContractProof,
   type CircleId,
@@ -63,16 +49,10 @@ import { checkNetworkMatch } from "./lib/wallet.freighter";
 import { Toaster } from "./components/Toaster";
 import { ConnectionStatus } from "./components/ConnectionStatus";
 import { useOnlineStatus } from "./hooks/useOnlineStatus";
-import { diagnose, type Failure } from "./state/circleMachine";
+import { type Failure } from "./state/circleMachine";
 import { copyDebugBundle, type BundleInput } from "./lib/debugBundle";
 
 const BIGINT_MARKER = 'BIGINT::';
-function replacer(key: string, value: unknown): unknown {
-  if (typeof value === 'bigint') {
-    return BIGINT_MARKER + value.toString();
-  }
-  return value;
-}
 
 function reviver(key: string, value: unknown): unknown {
   if (typeof value === 'string' && value.startsWith(BIGINT_MARKER)) {
@@ -93,23 +73,6 @@ const NETWORK = {
 const TOKEN = config?.testTokenContractId ?? "";
 const LEVELS = TREE_LEVELS;
 const CIRCLE_SIZE = 5;
-const README_URL = "https://github.com/crackedstudio/sharibo#honest-limitations";
-
-const isTestnet = networkOf(NETWORK.networkPassphrase) === "testnet";
-const BANNER_TEXT = isTestnet ? "Stellar testnet — no real funds" : "";
-
-function TestnetBanner() {
-  const { t } = useI18n();
-  if (!isTestnet) return null;
-  return (
-    <div className={styles.testnetBanner}>
-      <span>{BANNER_TEXT}</span>
-      <a className={styles.bannerLink} href={README_URL} target="_blank" rel="noreferrer">
-        honest limitations ↗
-      </a>
-    </div>
-  );
-}
 
 function LanguageSwitcher({ className = "" }: { className?: string }) {
   const { locale, locales, setLocale } = useI18n();
@@ -297,10 +260,10 @@ function CopyDebugBundleButton({
     const input: BundleInput = {
       appVersion: APP_VERSION,
       network: {
-        contractId: config.contractId,
-        rpcUrl: config.rpcUrl,
-        networkPassphrase: config.networkPassphrase,
-        tokenContractId: config.testTokenContractId,
+        contractId: config?.contractId ?? "",
+        rpcUrl: config?.rpcUrl ?? "",
+        networkPassphrase: config?.networkPassphrase ?? "",
+        tokenContractId: config?.testTokenContractId ?? "",
       },
       circleId,
       round,
@@ -396,46 +359,6 @@ const CLAIM_STAGE_LABELS: Record<ClaimStage, string> = {
   funding: "Funding a fresh, unlinked recipient…",
   submitting: "Submitting the claim…",
 };
-
-const CLAIM_STAGES: ClaimStage[] = ["artifacts", "proving", "verifying", "funding", "submitting"];
-
-// So a claim never reads as a hung tab: each real substage of doClaim gets
-// its own line here (fullProve itself stays one opaque "proving" step, per
-// snarkjs, but that step gets a live elapsed-seconds counter + spinner so a
-// slow prove still visibly ticks rather than sitting static).
-function ClaimProgress({ stage, elapsedSeconds }: { stage: ClaimStage; elapsedSeconds: number }) {
-  const { t } = useI18n();
-  const activeIndex = CLAIM_STAGES.indexOf(stage);
-  const stageLabels: Record<ClaimStage, string> = {
-    artifacts: t("claim.stage.artifacts"),
-    proving: t("claim.stage.proving"),
-    verifying: t("claim.stage.verifying"),
-    funding: t("claim.stage.funding"),
-    submitting: t("claim.stage.submitting"),
-  };
-  return (
-    <div className={styles.claimProgress}>
-      <div className={styles.stepper}>
-        {CLAIM_STAGES.map((s, i) => (
-          <div
-            key={s}
-            className={`${styles.step} ${i < activeIndex ? styles.done : i === activeIndex ? styles.active : ""}`}
-          >
-            <span className={styles.stepDot}>{i < activeIndex ? "✓" : i + 1}</span>
-            {CLAIM_STAGE_LABELS[s]}
-          </div>
-        ))}
-      </div>
-      {stage === "proving" && (
-        <p className={styles.techline}>
-          <span className={styles.spinner} aria-hidden="true" /> Groth16 · BLS12-381 · 3,757 constraints ·
-          proving locally in your browser, nothing sent anywhere until the proof is done ·{" "}
-          {elapsedSeconds}s elapsed
-        </p>
-      )}
-    </div>
-  );
-}
 
 function Stepper({ step }: { step: 0 | 1 | 2 | 3 }) {
   const { t } = useI18n();
@@ -648,15 +571,11 @@ export default function App() {
   const online = useOnlineStatus();
   const [failure, setFailure] = useState<Failure | null>(null);
 
-  if (configError.length > 0) {
-    return <EnvSetupScreen errors={configError} />;
-  }
-
   const [screen, setScreen] = useState<"landing" | "circle">("landing");
   const [circlePhase, setCirclePhase] = useState<CirclePhase>("idle");
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [events, setEvents] = useState<any[]>([]);
+  const [, setEvents] = useState<unknown[]>([]);
 
   const [contributionXlm, setContributionXlm] = useState(10);
   const [admin, setAdmin] = useState<Keypair | null>(null);
@@ -679,34 +598,59 @@ export default function App() {
   const [nullifierHash, setNullifierHash] = useState<bigint | null>(null);
   const [claimResult, setClaimResult] = useState<ClaimResult | null>(null);
   const [isProving, setIsProving] = useState(false);
-  const [provingElapsedMs, setProvingElapsedMs] = useState<number | null>(null);
   const [nullifierClaimed, setNullifierClaimed] = useState(false);
   const [rejection, setRejection] = useState<string | null>(null);
   const [claimStage, setClaimStage] = useState<ClaimStage | null>(null);
   const [proveElapsedSeconds, setProveElapsedSeconds] = useState(0);
   // Step timings (ms) collected during doClaim for the debug bundle.
-  const [stepTimings, setStepTimings] = useState<Record<string, number>>({});
+  const [stepTimings] = useState<Record<string, number>>({});
   // Survives a reset so the landing screen can point back at the circle you
   // just left — it keeps living on-chain even though the UI has moved on.
   const [previousCircleId, setPreviousCircleId] = useState<CircleId | null>(null);
 
-  const [resumePrompt, setResumePrompt] = useState<any>(null);
+  // Shape of the persisted demo state in sessionStorage ("sharibo_demo_state").
+  // Restored on launch so the landing screen can offer to resume; written
+  // back by the circle flow (see resetToLanding / resume effect below).
+  interface SavedCircleState {
+    circleId: CircleId;
+    contributionXlm: number;
+    adminSecret: string;
+    members: Array<{
+      secret: string;
+      identity: Identity;
+      fundHash?: string;
+      ineligible?: boolean;
+    }>;
+    round: number;
+    proof: ContractProof | null;
+    nullifierHash: bigint | null;
+    claimResult: ClaimResult | null;
+    rejection: string | null;
+    claimantIndex: number;
+  }
 
-  useEffect(() => {
-    const saved = typeof sessionStorage !== "undefined" ? sessionStorage.getItem("sharibo_demo_state") : null;
-    if (saved) {
+  function readSavedState(): SavedCircleState | null {
+    try {
+      const saved = typeof sessionStorage !== "undefined" ? sessionStorage.getItem("sharibo_demo_state") : null;
+      if (!saved) return null;
+      const parsed = JSON.parse(saved, reviver) as Partial<SavedCircleState> | null;
+      if (!parsed || parsed.circleId === undefined || parsed.circleId === null) return null;
+      return parsed as SavedCircleState;
+    } catch {
       try {
-        const parsed = JSON.parse(saved, reviver);
-        if (parsed && parsed.circleId) {
-          setResumePrompt(parsed);
-        }
-      } catch {
         sessionStorage.removeItem("sharibo_demo_state");
+      } catch {
+        // Storage unavailable — nothing to clean up.
       }
+      return null;
     }
-  }, []);
+  }
 
-  const [prevCircle, setPrevCircle] = useState<{ id: string; explorerUrl: string } | null>(null);
+  // Lazy initializer (not an effect): reading storage during render keeps
+  // the value stable without a setState-in-effect cycle.
+  const [resumePrompt, setResumePrompt] = useState<SavedCircleState | null>(readSavedState);
+
+  const [prevCircle] = useState<{ id: string; explorerUrl: string } | null>(null);
 
   const contribution = xlmToStroops(contributionXlm);
   // Holds the AbortController for the currently-running claim flow so that
@@ -754,10 +698,14 @@ export default function App() {
     }
   }, [admin, circleId]);
 
-  // Sync funding state when circleId changes or on mount
+  // Sync funding state when circleId changes or on mount. Deferred past
+  // the synchronous effect body so the polling/subscription stays
+  // side-effect free at setup time.
   useEffect(() => {
     if (circleId !== null && admin) {
-      syncFundingState();
+      void (async () => {
+        await syncFundingState();
+      })();
     }
   }, [circleId, admin, syncFundingState]);
 
@@ -795,7 +743,7 @@ export default function App() {
     if (fullyFunded) {
       announce(t("liveRegion.claimStepReady"));
     }
-  }, [announce, busy, circlePhase, claimResult, error, fullyFunded]);
+  }, [announce, busy, circlePhase, claimResult, error, fullyFunded, t]);
 
   // ── Focus management ────────────────────────────────────────────────────
   // When a screen or major section appears, move keyboard focus to its
@@ -852,6 +800,9 @@ export default function App() {
     }
     checkEligibility();
     return () => { mounted = false; };
+  // `members` is written by this effect via setMembers — subscribing to it
+  // would loop, so deps stay keyed on fullyFunded/claimResult/circleId/round/admin.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fullyFunded, claimResult, circleId, round, admin]);
   // ────────────────────────────────────────────────────────────────────────
 
@@ -901,7 +852,6 @@ export default function App() {
     setNullifierHash(null);
     setClaimResult(null);
     setIsProving(false);
-    setProvingElapsedMs(null);
     setNullifierClaimed(false);
     setRejection(null);
     setClaimStage(null);
@@ -909,12 +859,12 @@ export default function App() {
     setScreen("landing");
   }
 
-  function loadState(parsed: any) {
+  function loadState(parsed: SavedCircleState) {
     setCirclePhase("loading");
     setContributionXlm(parsed.contributionXlm);
     setAdmin(Keypair.fromSecret(parsed.adminSecret));
-    
-    const loadedMembers = parsed.members.map((m: any) => ({
+
+    const loadedMembers: Member[] = parsed.members.map((m) => ({
       keypair: Keypair.fromSecret(m.secret),
       identity: m.identity,
       funded: false, // Will be synced from on-chain
@@ -923,10 +873,10 @@ export default function App() {
       pending: false,
     }));
     setMembers(loadedMembers);
-    
+
     const newTree = MerkleTree.create(
       LEVELS,
-      loadedMembers.map((m: any) => m.identity.commitment)
+      loadedMembers.map((m) => m.identity.commitment)
     );
     setTree(newTree);
 
@@ -1016,7 +966,7 @@ export default function App() {
     setError(null);
     setBusy(t("fund.busy", { index: i + 1 }));
     try {
-      const [{ Keypair }, { connect, fund }] = await Promise.all([
+      const [, { connect, fund }] = await Promise.all([
         import("@stellar/stellar-sdk"),
         import("@sharibo/client")
       ]);
@@ -1088,8 +1038,7 @@ export default function App() {
       
       const freighterSigner = {
         publicKey: pubKey,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        signTransaction: async (txXdr: string, opts?: any) => {
+        signTransaction: async (txXdr: string) => {
           // Re-check network before signing to catch mid-session network switches
           const currentNetworkRes = await getNetworkDetails();
           const currentMismatch = checkNetworkMatch(currentNetworkRes.network, NETWORK.networkPassphrase);
@@ -1159,7 +1108,7 @@ export default function App() {
     setRejection(null);
     setBusy(t("busy.claiming"));
     try {
-      const [{ Keypair }, { computeExternalNullifier, generateProof, verifyProofLocally, connect, claim, getCircle, hasClaimed }] = await Promise.all([
+      const [{ Keypair }, { computeExternalNullifier, generateProof, verifyProofLocally, connect, claim, hasClaimed }] = await Promise.all([
         import("@stellar/stellar-sdk"),
         import("@sharibo/client")
       ]);
@@ -1370,14 +1319,10 @@ export default function App() {
             ))}
           </div>
           <h1>SHARIBO</h1>
-          <p className={styles.tagline}>
-            A private rotating savings circle — on Stellar, with real
-            zero-knowledge proofs.
-          </p>
+          <p className={styles.tagline}>{t("landing.tagline")}</p>
           <p className={styles.sub}>
-            Every round, everyone contributes. Every round, one member takes the
-            pot. Sharibo proves <em>who's entitled to claim</em> without ever
-            revealing <em>who</em> claimed.
+            {t("landing.sub.before")} <em>{t("landing.sub.em1")}</em> {t("landing.sub.middle")}{" "}
+            <em>{t("landing.sub.em2")}</em> {t("landing.sub.after")}
           </p>
           <button
             className={`${styles.btn} ${styles.btnPrimary}`}
@@ -1390,7 +1335,7 @@ export default function App() {
           <Toaster failure={failure} busy={!!busy} online={online} onDismiss={() => setFailure(null)} />
           {previousCircleId !== null && (
             <p className={styles.fineprint}>
-              Your previous circle lives on at{" "}
+              {t("landing.previousCirclePrefix")}{" "}
               <a
                 className={styles.link}
                 href={explorerContract()}
@@ -1401,10 +1346,7 @@ export default function App() {
               </a>
             </p>
           )}
-          <p className={styles.fineprint}>
-            Testnet only. Demo identities are generated fresh in your browser,
-            never reused.
-          </p>
+          <p className={styles.fineprint}>{t("landing.testnetFineprint")}</p>
           {prevCircle && (
             <p className={styles.fineprint}>
               Your previous circle #{prevCircle.id} lives on-chain —{" "}

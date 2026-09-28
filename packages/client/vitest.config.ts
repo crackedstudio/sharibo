@@ -8,7 +8,7 @@ try {
   const data = fs.readFileSync(thresholdsPath, "utf8");
   const parsed = JSON.parse(data);
   if (parsed && parsed["packages/client"]) clientThreshold = parsed["packages/client"];
-} catch (e) {
+} catch {
   // continue with defaults
 }
 

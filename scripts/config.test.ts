@@ -17,6 +17,8 @@ const rootDir = path.join(__dirname, "..");
 const envPath = path.join(rootDir, ".env");
 
 // Backup/restore .env around tests since config.ts reads it eagerly on import.
+// The root .env is shared with smoke.test.ts, so the workspace runs with
+// --test-concurrency=1 (see package.json) — parallel files would race here.
 let envBackup: string | null = null;
 
 function writeEnv(content: string) {
@@ -63,8 +65,10 @@ async function loadConfigSubprocess(
     }
   `;
   try {
+    // process.execPath (not the bare "node" string) so the spawn does not
+    // depend on PATH resolution — same reason as smoke.test.ts.
     const { stdout, stderr } = await execFileAsync(
-      "node",
+      process.execPath,
       ["--import", "tsx/esm", "--eval", script],
       { cwd: __dirname, timeout: 10_000 },
     );

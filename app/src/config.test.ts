@@ -45,11 +45,19 @@ const CONTRACT_SHAPE_SUFFIX =
 
 /**
  * Reloads config.ts (fresh module) with `withEnv` stubbed into
- * `import.meta.env`. Keys whose value is `undefined` are intentionally left
- * unstubbed, so they read as genuinely missing.
+ * `import.meta.env`. All four keys are deleted from both env objects first
+ * so keys whose value is `undefined` read as genuinely missing — this also
+ * neutralizes the ambient VITE_* values vitest.config.ts provides for
+ * component tests.
  */
+const ALL_KEYS = [CONTRACT, RPC, PASSPHRASE, TOKEN] as const;
+
 async function loadConfig(withEnv: Partial<EnvMap>) {
   vi.resetModules();
+  for (const key of ALL_KEYS) {
+    delete process.env[key];
+    delete (import.meta.env as Record<string, unknown>)[key];
+  }
   for (const [key, value] of Object.entries(withEnv)) {
     if (typeof value === "string") vi.stubEnv(key, value);
   }

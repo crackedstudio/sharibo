@@ -3,7 +3,7 @@ import {
   subscribeToArtifactPrefetch,
   prefetchMembershipArtifacts,
   type ArtifactPrefetchProgress,
-} from "@sharibo/client";
+} from "@sharibo/client/internal";
 
 const IDLE = "idle";
 const READY = "ready";

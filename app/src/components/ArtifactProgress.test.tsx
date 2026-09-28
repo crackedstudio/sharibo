@@ -14,7 +14,7 @@ type Listener = (progress: ArtifactPrefetchProgress) => void;
 
 let lastListener: Listener | null = null;
 
-vi.mock("@sharibo/client", () => ({
+vi.mock("@sharibo/client/internal", () => ({
   subscribeToArtifactPrefetch: (listener: Listener) => {
     lastListener = listener;
     return () => {

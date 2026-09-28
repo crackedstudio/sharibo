@@ -110,16 +110,20 @@ export async function diagnose(e: unknown): Promise<{ message: string; retryable
     };
   }
 
-  try {
-    const health = await checkContractDeployed(config.rpcUrl, config.contractId);
-    if (!health.ok) {
-      return {
-        message: health.message ?? "The testnet appears to have been reset and your circle no longer exists.",
-        retryable: false,
-      };
+  // Misconfigured builds have no contract to probe — skip straight to the
+  // generic error rather than masking the setup problem.
+  if (config !== null) {
+    try {
+      const health = await checkContractDeployed(config.rpcUrl, config.contractId);
+      if (!health.ok) {
+        return {
+          message: health.message ?? "The testnet appears to have been reset and your circle no longer exists.",
+          retryable: false,
+        };
+      }
+    } catch {
+      // The health probe itself failed — don't mask the original error.
     }
-  } catch {
-    // The health probe itself failed — don't mask the original error.
   }
 
   return {

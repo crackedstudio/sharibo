@@ -98,7 +98,7 @@ verify:
     if [ -f app/package.json ]; then (cd app && npx -y tsc --noEmit) || s_type=1; fi; \
 
     echo "\n== 2) ESLint =="; \
-    npx -y eslint . --ext .js,.ts,.tsx || s_eslint=1; \
+    npx -y eslint . || s_eslint=1; \
 
     echo "\n== 3) Dead-code check (ts-prune; best-effort) =="; \
     npx -y ts-prune --summary || s_deadcode=1; \
@@ -195,9 +195,28 @@ test:
 all: circuits contract test
     @echo 'All recipes completed (e2e skipped — uses testnet funds/friendbot quota)'
 
-# Verify: run lint and client checks
-verify: client
+# ── CI (local merge gate) ─────────────────────────────────────────────────────
+# Local equivalent of .github/workflows/ci.yml — the single command a clean
+# clone runs to prove the tree is green. Intentionally excludes the pieces
+# that need extra toolchains or live funds (see below); `just doctor` runs
+# first so a missing toolchain reads as "environment incomplete", not "repo
+# broken". Excluded here (run them explicitly when you have the toolchain):
+#   stellar contract build  (needs the stellar CLI)
+#   just circuits            (needs circom + trusted setup)
+#   just e2e                 (needs testnet funds/friendbot quota)
+ci: doctor
+    npm run build --workspace=packages/client
+    npm run typecheck
     npm run lint
+    npm test --workspace=packages/core
+    npm test --workspace=packages/client
+    npm test --workspace=app
+    npm test --workspace=scripts
+    # Contract gate: runs when cargo exists, skips LOUDLY otherwise so the
+    # Node-only path stays green (see CONTRIBUTING §What you need per area).
+    # A contracts/ change with a skipped suite needs a Rust run before merge.
+    if command -v cargo >/dev/null 2>&1; then (cd contracts && cargo test); else echo 'SKIPPED cargo test: cargo not installed.'; fi
+    if command -v cargo >/dev/null 2>&1; then (cd contracts && cargo clippy -- -D warnings); else echo 'SKIPPED cargo clippy: cargo not installed.'; fi
 
 # Run coverage for all workspaces and print a short per-workspace summary.
 # This is a local instrument (not a merge gate). It runs each workspace's

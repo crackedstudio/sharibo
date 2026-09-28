@@ -56,9 +56,53 @@ This repo has **no CI**, so human review is the gate — a merged PR is effectiv
 
 Use the templates in `.github/ISSUE_TEMPLATE/`: **Bug Report** for defects, **Feature Request** for new capabilities, and **Refactor / Architecture Proposal** for restructuring work — when there is no bug and no new feature, but there is a current shape, a proposed shape, a blast radius, and a migration path (e.g. moving code between packages, changing the contract's storage layout, changing the circuit's public signals). The refactor template requires the "where" (current state with file paths) and a behaviour-preservation plan, because those are the two things a refactor issue most often leaves out.
 
+## What you need per area
+
+Different parts of the repo need different toolchains. Install only what your
+issue touches:
+
+| Area | Needs | You can do with Node only |
+|---|---|---|
+| `app/` | Node 20+ | ✅ everything (typecheck, lint, tests) |
+| `packages/` | Node 20+ | ✅ everything (typecheck, lint, tests) |
+| `scripts/` | Node 20+ | ✅ everything (unit tests; `smoke`/`e2e` need testnet, see below) |
+| `contracts/` | Node 20+ **plus** Rust + `wasm32v1-none` target (+ Stellar CLI for `stellar contract build`) | typecheck/lint of TS only — `cargo test` needs Rust |
+| `circuits/` | Node 20+ **plus** `circom` (built from source for bls12381) + trusted setup | nothing beyond reading the sources |
+
+`just doctor` (or `npm run doctor --workspace=scripts`) is the honest gate:
+blocking failures stop `just ci`; ⚠️ optional items only matter for the
+heavier flows above. Run it before concluding the repo is broken.
+
+## Your first contribution walkthrough
+
+One linear path, with what you should see at each step. Assumes Node 20+
+only (no Rust, no circom, no Stellar CLI).
+
+```bash
+git clone https://github.com/crackedstudio/sharibo.git
+cd sharibo
+npm install
+# → "added N packages", exit 0. (If this fails, check Node version: `node --version`.)
+
+npm run doctor --workspace=scripts
+# → ✅ Node.js, ✅ just, ✅ Built SDK … plus ⚠️ warnings for toolchains you
+#   don't have (stellar, circom, circuit artifacts, .env). Warnings are fine —
+#   only ❌ blocking items stop you. No ❌ should remain on a fresh clone.
+
+just ci
+# → doctor → SDK build → typecheck (4 workspaces) → lint → unit tests
+#   (core, client, app, scripts) → cargo test/clippy if Rust is present.
+#   Ends with per-suite PASS lines. This is the merge gate: if it's green
+#   before your change and green after, you broke nothing.
+```
+
+Then pick a labelled issue (see below), make the change, and re-run `just ci`
+before opening the PR. If `just` isn't installed, every recipe shows its raw
+commands — `just` is optional, the commands are not.
+
 ## Picking an Issue
 
-When looking for issues to work on, start by filtering by the `good first issue` label. These issues are specifically marked as suitable for newcomers and provide a great way to get familiar with the codebase. Before you start working on an issue, leave a comment to claim it and let the maintainers know you're working on it. If you have questions about the issue or need clarification, ask them directly on the issue rather than in a pull request—this helps keep the PR focused on the implementation.
+When looking for issues to work on, start by filtering by the `good first issue` label. These issues are specifically marked as suitable for newcomers and provide a great way to get familiar with the codebase. Each entry names the toolchain it needs — prefer the "no toolchain beyond Node" subset (issues touching only `app/`, `packages/`, or `scripts/` unit tests) unless you already have Rust/circom set up; check [What you need per area](#what-you-need-per-area) first. Before you start working on an issue, leave a comment to claim it and let the maintainers know you're working on it. If you have questions about the issue or need clarification, ask them directly on the issue rather than in a pull request—this helps keep the PR focused on the implementation.
 
 ## SDK API Changes
 

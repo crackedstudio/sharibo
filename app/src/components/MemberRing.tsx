@@ -35,6 +35,7 @@ export function MemberRing({
   const { t } = useI18n();
   const radius = 100;
   const center = 170;
+  const funded = members.filter((m) => m.funded).length;
 
   return (
     <div className="ring-wrap">
@@ -43,7 +44,11 @@ export function MemberRing({
         viewBox="0 0 340 340"
         width="100%"
         role="img"
-        aria-label="Member ring"
+        aria-label={
+          revealed
+            ? t("ring.label.revealed", { count: members.length })
+            : t("ring.label.loading", { count: members.length, funded })
+        }
       >
         <circle
           cx={center}
@@ -60,7 +65,7 @@ export function MemberRing({
           dominantBaseline="middle"
           className="ring-center"
         >
-          {revealed ? "✓" : "pot"}
+          {revealed ? t("ring.check") : t("ring.pot")}
         </text>
 
         {members.map((m, i) => {
@@ -104,9 +109,7 @@ export function MemberRing({
 
       {revealed && (
         <p className="ring-caption">
-          Payout landed on the address above — cryptographically, it could be
-          tied to <em>any</em> of the 5 members in the ring. An outside
-          observer cannot tell which.
+          {t("ring.caption", { count: members.length })}
         </p>
       )}
     </div>

@@ -11,9 +11,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { createRequire } from "node:module";
-import { fileURLToPath } from "node:url";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
 
 /** Arity used by membership.circom (`Poseidon255(2)`) and the client (`poseidon2`). */

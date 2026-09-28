@@ -19,7 +19,6 @@ import { Buffer } from "buffer";
 
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { configureArtifacts } from "@sharibo/client";
 import App from "./App.js";
 import { ErrorBoundary } from "./ErrorBoundary.js";
 import { getCapabilityReport } from "./lib/capabilities.js";

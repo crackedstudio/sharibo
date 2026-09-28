@@ -61,28 +61,24 @@ export function Landing({
           ))}
         </div>
         <h1>SHARIBO</h1>
-        <p className={styles.tagline}>
-          A private rotating savings circle — on Stellar, with real zero-knowledge proofs.
-        </p>
+        <p className={styles.tagline}>{t("landing.tagline")}</p>
         <p className={styles.sub}>
-          Every round, everyone contributes. Every round, one member takes the pot. Sharibo proves{" "}
-          <em>who's entitled to claim</em> without ever revealing <em>who</em> claimed.
+          {t("landing.sub.before")} <em>{t("landing.sub.em1")}</em> {t("landing.sub.middle")}{" "}
+          <em>{t("landing.sub.em2")}</em> {t("landing.sub.after")}
         </p>
         <button className={`${styles.btn} ${styles.btnPrimary}`} disabled={!!busy} onClick={onLaunch}>
-          {busy ?? "Launch a 5-member circle on testnet"}
+          {busy ?? t("landing.launch")}
         </button>
         {error && <p className={styles.error}>{error}</p>}
         {previousCircleId !== null && (
           <p className={styles.fineprint}>
-            Your previous circle lives on at{" "}
+            {t("landing.previousCirclePrefix")}{" "}
             <a className={styles.link} href={explorerContract()} target="_blank" rel="noreferrer">
-              circle #{previousCircleId.toString()} ↗
+              {t("landing.previousCircleLink", { id: previousCircleId.toString() })}
             </a>
           </p>
         )}
-        <p className={styles.fineprint}>
-          Testnet only. Demo identities are generated fresh in your browser, never reused.
-        </p>
+        <p className={styles.fineprint}>{t("landing.testnetFineprint")}</p>
       </div>
     </div>
   );

@@ -16,11 +16,9 @@ export function xlmToStroops(xlm: number | bigint | string): bigint {
 
   const wholeUnits = BigInt(wholePart || "0");
   const adjustedFraction = fractionalPart.padEnd(7, "0").slice(0, 7);
-  let result = wholeUnits * STROOPS_PER_XLM + BigInt(adjustedFraction || "0");
-
-  if (fractionalPart.length > 7 && fractionalPart[7] >= "5") {
-    result += 1n;
-  }
+  // Truncate (never round up): sub-stroop dust is dropped so a conversion
+  // can never charge more than the specified XLM value.
+  const result = wholeUnits * STROOPS_PER_XLM + BigInt(adjustedFraction || "0");
 
   return negative ? -result : result;
 }

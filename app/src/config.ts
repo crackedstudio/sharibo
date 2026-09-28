@@ -1,4 +1,3 @@
-import { NETWORKS } from "@sharibo/client";
 /**
  * Reads and validates all required VITE_* environment variables at module
  * load time.  Import `config` wherever you need the values; import
@@ -8,8 +7,7 @@ import { NETWORKS } from "@sharibo/client";
  * system forces callers to check `configError` (or `config !== null`) before
  * dereferencing it — there is no fake empty object that silently surfaces
  * `undefined` fields at runtime.
- */
-import { TREE_LEVELS } from "@sharibo/client";
+  */
 
 export interface AppConfig {
   contractId: string;
@@ -41,9 +39,11 @@ function isHttpUrl(value: string): boolean {
 export function validate(): ValidationResult {
   const errors: string[] = [];
 
+  // All four variables are required — no silent testnet fallbacks. A missing
+  // value must surface on the setup screen, never as a half-configured app.
   const contractId = import.meta.env.VITE_SHARIBO_CONTRACT_ID as string | undefined;
-  const rpcUrl = import.meta.env.VITE_STELLAR_RPC_URL as string | undefined ?? NETWORKS.testnet.rpcUrl;
-  const networkPassphrase = import.meta.env.VITE_STELLAR_NETWORK_PASSPHRASE as string | undefined ?? NETWORKS.testnet.passphrase;
+  const rpcUrl = import.meta.env.VITE_STELLAR_RPC_URL as string | undefined;
+  const networkPassphrase = import.meta.env.VITE_STELLAR_NETWORK_PASSPHRASE as string | undefined;
   const testTokenContractId = import.meta.env.VITE_TEST_TOKEN_CONTRACT_ID as string | undefined;
 
   if (!contractId) {
@@ -54,8 +54,14 @@ export function validate(): ValidationResult {
     );
   }
 
-  if (!isHttpUrl(rpcUrl)) {
+  if (!rpcUrl) {
+    errors.push("VITE_STELLAR_RPC_URL — missing or empty");
+  } else if (!isHttpUrl(rpcUrl)) {
     errors.push(`VITE_STELLAR_RPC_URL — invalid URL (got "${rpcUrl}"; expected an http/https URL)`);
+  }
+
+  if (!networkPassphrase) {
+    errors.push("VITE_STELLAR_NETWORK_PASSPHRASE — missing or empty");
   }
 
   if (!testTokenContractId) {
@@ -73,8 +79,8 @@ export function validate(): ValidationResult {
   return {
     config: {
       contractId: contractId!,
-      rpcUrl,
-      networkPassphrase,
+      rpcUrl: rpcUrl!,
+      networkPassphrase: networkPassphrase!,
       testTokenContractId: testTokenContractId!,
     },
     errors: [],
@@ -92,14 +98,20 @@ export const configError: string[] = result.errors;
  * an actual runtime error to use it before checking the gate — the type
  * system enforces the setup-screen check instead of pretending.
  */
-export const config: AppConfig = result.config ?? ({} as AppConfig);
+export const config: AppConfig | null = result.config;
 
-/** Network connection parameters shared by every SDK call. */
+/**
+ * Network connection parameters shared by every SDK call.
+ *
+ * Empty strings when `config` is null (misconfigured build) — only ever
+ * read on the happy path behind the `configError` gate, which renders the
+ * setup screen instead.
+ */
 export const NETWORK = {
-  contractId: config.contractId,
-  rpcUrl: config.rpcUrl,
-  networkPassphrase: config.networkPassphrase,
+  contractId: config?.contractId ?? "",
+  rpcUrl: config?.rpcUrl ?? "",
+  networkPassphrase: config?.networkPassphrase ?? "",
 };
 
-/** Token contract that funds each round's pot. */
-export const TOKEN = config.testTokenContractId;
+/** Token contract that funds each round's pot ("" when misconfigured; see above). */
+export const TOKEN = config?.testTokenContractId ?? "";

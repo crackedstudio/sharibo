@@ -14,14 +14,16 @@ import { promisify } from "node:util";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { NETWORKS } from "@sharibo/client";
-import { writeFileSync, unlinkSync, existsSync } from "node:fs";
+import { writeFileSync, unlinkSync, existsSync, readFileSync } from "node:fs";
 
 const execFileAsync = promisify(execFile);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.join(__dirname, "..");
 const envPath = path.join(rootDir, ".env");
 
-// Backup/restore .env around tests since smoke.ts reads it.
+// Backup/restore .env around tests since smoke.ts reads it. The root .env
+// is shared with config.test.ts, so the workspace runs with
+// --test-concurrency=1 (see package.json) — parallel files would race here.
 let envBackup: string | null = null;
 
 function writeEnv(content: string) {
@@ -50,9 +52,13 @@ async function runSmoke(
 ): Promise<{ stdout: string; stderr: string; exitCode: number }> {
   writeEnv(envContent);
   try {
+    // Spawn the current Node binary directly (not `npx tsx`): `npx` is a
+    // .cmd shim that child_process cannot resolve without a shell on
+    // Windows, while process.execPath works on every platform. tsx resolves
+    // from rootDir/node_modules (hoisted workspace dependency).
     const { stdout, stderr } = await execFileAsync(
-      "npx",
-      ["tsx", path.join(__dirname, "smoke.ts"), ...extraArgs],
+      process.execPath,
+      ["--import", "tsx/esm", path.join(__dirname, "smoke.ts"), ...extraArgs],
       { cwd: rootDir, timeout: 30_000 },
     );
     return { stdout, stderr, exitCode: 0 };

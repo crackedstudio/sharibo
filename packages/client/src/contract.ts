@@ -1,9 +1,8 @@
-import { networkOf } from "./networks.js";
 import { Client as ContractClient, basicNodeSigner } from "@stellar/stellar-sdk/contract";
 import { Keypair } from "@stellar/stellar-sdk";
 import { Api } from "@stellar/stellar-sdk/rpc";
 import type { ContractProof, ContractVerificationKey } from "./prove.js";
-import { ContractError, RpcError, InvalidInputError } from "./errors.js";
+import { InvalidInputError } from "./errors.js";
 import { decodeContractError } from "./decodeError.js";
 import { withRetry, DEFAULT_RETRY_POLICY, type RetryPolicy } from "./retry.js";
 import { validateContractProof, validateContractVerificationKey } from "./validate.js";

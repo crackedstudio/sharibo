@@ -117,16 +117,22 @@ function packG1(coords: [string, string, string]): Uint8Array {
   return packed;
 }
 
+/**
+ * Pack snarkjs G2 coordinates (c0-first: [x_c0, x_c1, y_c0, y_c1]) into the
+ * 192-byte uncompressed layout the contract expects: x_c0||x_c1||y_c0||y_c1,
+ * each 48 bytes big-endian. Matches arkworks `serialize_uncompressed` (see
+ * `g2_from_coords` in contracts/sharibo/src/test.rs) and `encodeG2` below.
+ */
 function packG2(coords: [string, string, string, string]): Uint8Array {
-  const x1 = decimalStringToUint8Array(coords[0], 48);
-  const x0 = decimalStringToUint8Array(coords[1], 48);
-  const y1 = decimalStringToUint8Array(coords[2], 48);
-  const y0 = decimalStringToUint8Array(coords[3], 48);
+  const xC0 = decimalStringToUint8Array(coords[0], 48);
+  const xC1 = decimalStringToUint8Array(coords[1], 48);
+  const yC0 = decimalStringToUint8Array(coords[2], 48);
+  const yC1 = decimalStringToUint8Array(coords[3], 48);
   const packed = new Uint8Array(192);
-  packed.set(x1, 0);
-  packed.set(x0, 48);
-  packed.set(y1, 96);
-  packed.set(y0, 144);
+  packed.set(xC0, 0);
+  packed.set(xC1, 48);
+  packed.set(yC0, 96);
+  packed.set(yC1, 144);
   return packed;
 }
 
@@ -185,35 +191,6 @@ export function verificationKeyToContractFormat(vkJson: unknown): ContractVerifi
   }
 
   return { alpha, beta, gamma, delta, ic: icPoints };
-}
-
-// Internal helper: races a snarkjs prove call against an optional abort signal.
-// snarkjs does not accept an AbortSignal, so we use Promise.race — the WASM
-// worker keeps running in the background but the caller stops waiting.
-async function raceProve(
-  input: Record<string, unknown>,
-  wasm: string | Uint8Array,
-  zkey: string | Uint8Array,
-  signal: AbortSignal | undefined,
-): Promise<{ proof: unknown; publicSignals: string[] }> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const provePromise = (groth16 as any).fullProve(input, wasm, zkey);
-
-  if (!signal) return provePromise;
-
-  const abortPromise = new Promise<never>((_, reject) => {
-    if (signal.aborted) {
-      reject(new DOMException("Aborted", "AbortError"));
-      return;
-    }
-    signal.addEventListener(
-      "abort",
-      () => reject(new DOMException("Aborted", "AbortError")),
-      { once: true },
-    );
-  });
-
-  return Promise.race([provePromise, abortPromise]);
 }
 
 /**
@@ -300,13 +277,15 @@ export function encodeG1(point: string[]): Uint8Array {
   return bytes;
 }
 
-/** Encode a snarkjs G2 affine point [[x0,x1],[y0,y1]] to 192-byte uncompressed form. */
+/** Encode a snarkjs G2 affine point [[x_c0,x_c1],[y_c0,y_c1]] to 192-byte uncompressed form. */
 export function encodeG2(point: string[][]): Uint8Array {
-  // G2 is a point over Fp2; x = x0 + x1*u, y = y0 + y1*u.
-  // Contract expects 192 bytes: x1||x0||y1||y0, each 48 bytes big-endian.
+  // G2 is a point over Fp2; x = x_c0 + x_c1*u, y = y_c0 + y_c1*u.
+  // Contract expects arkworks uncompressed layout: x_c0||x_c1||y_c0||y_c1,
+  // each 48 bytes big-endian (see `g2_from_coords` in
+  // contracts/sharibo/src/test.rs and `packG2` above).
   const [x, y] = point;
   const bytes = new Uint8Array(192);
-  const fields = [x[1], x[0], y[1], y[0]];
+  const fields = [x[0], x[1], y[0], y[1]];
   for (let f = 0; f < 4; f++) {
     const hex = BigInt(fields[f]).toString(16).padStart(96, "0");
     for (let i = 0; i < 48; i++) {

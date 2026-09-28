@@ -1,9 +1,5 @@
 import { test } from "vitest";
 import assert from "node:assert";
-import * as fs from "node:fs";
-import * as path from "node:path";
-import * as url from "node:url";
-import { xdr, scValToNative } from "@stellar/stellar-sdk";
 import { fund } from "./contract.js";
 import { DEFAULT_RETRY_POLICY } from "./retry.js";
 

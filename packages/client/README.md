@@ -85,47 +85,108 @@ an explicit opt-in.
 ### Values
 
 ```ts
+// Amounts
+STROOPS_PER_XLM
+formatXlm
+stroopsToXlm
+xlmToStroops
+
 // Identity
+FR_MODULUS
+computeExternalNullifier
+computeNullifierHash
+computeRecipientHash
 generateIdentity
 poseidon
 randomFieldElement
-computeExternalNullifier
-computeNullifierHash
 
 // Merkle tree
 MerkleTree
 ZERO_VALUE
-TREE_LEVELS
+
+// Config
 MAX_CIRCLE_SIZE
+TREE_LEVELS
 
 // Proving
+encodeG1
+encodeG2
+feToBytes
+FP_BYTES
+fullProve
+g1ToBytes
+g2ToBytes
 generateProof
-verificationKeyToContractFormat
+prove
 validateCircuitInput
+validateContractProof
+validateContractVerificationKey
+verificationKeyToContractFormat
 verifyProofLocally
-estimateClaimFee
 
 // Contract client
-connect
-createCircle
-fund
+cancelCircle
 claim
+clearContractClientCache
+connect
+connectReadOnly
+createCircle
+estimateClaimFee
+explorerTxUrl
+EXPLORER_NETWORKS
+fund
+getArtifacts
 getCircle
 getCircleCount
-getRound
-getPot
-getStatus
+getCircleStatus
 getContributors
+getPot
+getRound
+getStatus
 hasClaimed
-cancelCircle
-explorerTxUrl
+makeCircleId
+resolveSigner
+
+// Networks
+isTestnet
+NETWORKS
+networkOf
+
+// Artifacts (side-effect-free configuration only; prefetching is internal)
+configureArtifacts
+getArtifactsConfig
+resetArtifactsConfig
 
 // Errors
-ShariboError
-InvalidInputError
-ProvingError
-RpcError
+AlreadyClaimedError
+CircleCancelledError
+CircleNotFoundError
 ContractError
+InvalidInputError
+InvalidProofError
+OverflowError
+ProvingError
+RoundFullError
+RoundNotFundedError
+RpcError
+ShariboError
+WrongRoundTagError
+
+// Events
+SdkEventEmitter
+
+// Retry
+DEFAULT_RETRY_POLICY
+withRetry
+
+// SDK facade
+ShariboSDK
+
+// Error decoding
+decodeContractError
+describeContractError
+describeError
+parseContractErrorCode
 ```
 
 ### Types

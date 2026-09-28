@@ -1,8 +1,6 @@
-import { NETWORKS } from "@sharibo/client";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
-import { NETWORKS } from "@sharibo/client";
 
 /**
  * Exported typed configuration loaded from the repo-root .env file.
@@ -89,14 +87,18 @@ const rules: ValidationRule[] = [
     key: "STELLAR_RPC_URL",
     label: "STELLAR_RPC_URL",
     validate: (v) => {
-      if (v && !isValidUrl(v)) return `"${v}" is not a valid HTTP(S) URL`;
+      if (!isNonEmpty(v)) return "is missing or empty";
+      if (!isValidUrl(v)) return `"${v}" is not a valid HTTP(S) URL`;
       return null;
     },
   },
   {
     key: "STELLAR_NETWORK_PASSPHRASE",
     label: "STELLAR_NETWORK_PASSPHRASE",
-    validate: (v) => null,
+    validate: (v) => {
+      if (!isNonEmpty(v)) return "is missing or empty";
+      return null;
+    },
   },
   {
     key: "TEST_TOKEN_CONTRACT_ID",
@@ -156,9 +158,12 @@ function loadConfig(): ScriptConfig {
     throw new Error(aggregated);
   }
 
+  // All five variables are required (validated above) — no silent testnet
+  // fallbacks. A missing value must fail fast with the aggregated error,
+  // never run against a half-configured network.
   return {
-    stellarRpcUrl: process.env.STELLAR_RPC_URL || NETWORKS.testnet.rpcUrl,
-    stellarNetworkPassphrase: process.env.STELLAR_NETWORK_PASSPHRASE || NETWORKS.testnet.passphrase,
+    stellarRpcUrl: process.env.STELLAR_RPC_URL!,
+    stellarNetworkPassphrase: process.env.STELLAR_NETWORK_PASSPHRASE!,
     testTokenContractId: process.env.TEST_TOKEN_CONTRACT_ID!,
     shariboContractId: process.env.SHARIBO_CONTRACT_ID!,
     adminSecretKey: process.env.ADMIN_SECRET_KEY!,

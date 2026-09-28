@@ -27,13 +27,14 @@ import type { Member, ClaimResult } from "../types.js";
  *  skeletons instead of an empty ring while the first read is in flight. */
 export type CirclePhase = "idle" | "loading" | "ready" | "error";
 
-// Derive constants from config (same as App.tsx does)
+// Derive constants from config (same as App.tsx does). Empty strings when
+// misconfigured — this hook only ever runs behind the configError gate.
 const NETWORK = {
-  contractId: config.contractId,
-  rpcUrl: config.rpcUrl,
-  networkPassphrase: config.networkPassphrase,
+  contractId: config?.contractId ?? "",
+  rpcUrl: config?.rpcUrl ?? "",
+  networkPassphrase: config?.networkPassphrase ?? "",
 };
-const TOKEN = config.testTokenContractId;
+const TOKEN = config?.testTokenContractId ?? "";
 const LEVELS = TREE_LEVELS;
 const CIRCLE_SIZE = 5;
 

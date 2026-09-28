@@ -21,7 +21,8 @@
     "doctor": "tsx doctor.ts",
     "e2e": "tsx e2e.ts",
     "smoke": "tsx smoke.ts",
-    "test": "node --import tsx/esm --test *.test.ts"
+    "test": "node --import tsx/esm --test --test-concurrency=1 *.test.ts",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@sharibo/client": "*",

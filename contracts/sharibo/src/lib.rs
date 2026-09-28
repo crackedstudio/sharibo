@@ -255,6 +255,18 @@ const PUBLIC_INPUT_COUNT: u32 = 4;
 /// `apply_fee` and `create_circle` share this single source of truth.
 const MAX_FEE_BASIS_POINTS: u32 = 10_000;
 
+/// Merkle depth of `circuits/membership.template.circom`, from
+/// `circuits/config.json` ("levels"). A circle can never hold more
+/// commitments than the tree has leaves.
+const MERKLE_LEVELS: u32 = 4;
+/// Maximum members a circle may declare: 2^MERKLE_LEVELS.
+///
+/// Coupled to `circuits/config.json`: bumping `levels` without updating
+/// `MERKLE_LEVELS` breaks the `max_circle_size_matches_circuit_levels` test
+/// (and a redeploy is required, since the bound is compiled into the WASM).
+/// See `docs/architecture.md` §wire-format invariants.
+const MAX_CIRCLE_SIZE: u32 = 1 << MERKLE_LEVELS;
+
 const LEDGER_THRESHOLD: u32 = 100;
 
 /// TTL (in ledgers) that persistent and instance entries are extended to on
@@ -280,6 +292,13 @@ const LEDGER_EXTEND_TO: u32 = 500_000;
 const _: () = assert!(
     LEDGER_THRESHOLD < LEDGER_EXTEND_TO,
     "LEDGER_THRESHOLD must be strictly less than LEDGER_EXTEND_TO",
+);
+
+// Compile-time sanity check: the circle-size bound must stay tied to the
+// Merkle depth, so a depth change forces both to move together.
+const _: () = assert!(
+    MAX_CIRCLE_SIZE == 1 << MERKLE_LEVELS,
+    "MAX_CIRCLE_SIZE must equal 2^MERKLE_LEVELS",
 );
 
 /// Sharibo contract: permissionless Semaphore-style contribution circles on
