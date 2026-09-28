@@ -1,0 +1,56 @@
+name: Repo structure
+
+# Drift guards for documentation, configuration and source-tree invariants (#537).
+#
+# This is a deliberately separate workflow from `coverage.yml`, which is scoped to
+# Rust contract line-coverage only. The suite below is dependency-free (plain
+# `node --test`, no npm install) and finishes in well under a second, so it can
+# gate every documentation/config change without a checkout-and-install cost.
+
+on:
+  push:
+    paths:
+      - ".github/workflows/repo-structure.yml"
+      - ".nvmrc"
+      - "*.md"
+      - "app/src/**/*.css"
+      - "circuits/verification_key.json"
+      - "contracts/sharibo/src/lib.rs"
+      - "docs/**"
+      - "judges/**"
+      - "knip.jsonc"
+      - "package.json"
+      - "scripts/**"
+      - "test-vectors/public-signals.json"
+      - "justfile"
+  pull_request:
+    paths:
+      - ".github/workflows/repo-structure.yml"
+      - ".nvmrc"
+      - "*.md"
+      - "app/src/**/*.css"
+      - "circuits/verification_key.json"
+      - "contracts/sharibo/src/lib.rs"
+      - "docs/**"
+      - "judges/**"
+      - "knip.jsonc"
+      - "package.json"
+      - "scripts/**"
+      - "test-vectors/public-signals.json"
+      - "justfile"
+
+jobs:
+  repo-structure:
+    name: repo structure invariants
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      # No `npm ci`: the suite uses only node: builtins, so there is nothing to
+      # install. This keeps the check fast and immune to lockfile churn.
+      - name: Repo structure invariants
+        run: node --test scripts/repo-structure.test.mjs

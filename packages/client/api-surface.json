@@ -34,8 +34,12 @@
   },
   "errors": {
     "ContractError": "function",
+    "InvalidCircleParamsError": "class",
+    "InvalidFeeParamsError": "class",
     "InvalidInputError": "function",
+    "InvalidRecipientError": "class",
     "ProvingError": "function",
+    "RoundNotExpiredError": "class",
     "RpcError": "function",
     "ShariboError": "function"
   }

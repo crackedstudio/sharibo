@@ -88,7 +88,7 @@ verify:
     echo "Running verify from $root"; \
     cd "$root"; \
     set -o pipefail; \
-    s_type=0; s_eslint=0; s_deadcode=0; s_tests=0; s_cargo=0; \
+    s_type=0; s_eslint=0; s_deadcode=0; s_tests=0; s_cargo=0; s_structure=0; \
 
     echo "\n== 1) TypeScript typecheck (packages/client + app if present) =="; \
     npm run -s typecheck --workspace=packages/client || s_type=1; \
@@ -105,7 +105,10 @@ verify:
     npm run -s test --workspace=packages/client || s_tests=1; \
     if [ -f circuits/package.json ]; then (cd circuits && npm test --if-present) || true; fi; \
 
-    echo "\n== 5) Cargo tests & clippy =="; \
+    echo "\n== 5) Repo structure invariants (docs/config/tree drift guards, #537) =="; \
+    node --test scripts/repo-structure.test.mjs || s_structure=1; \
+
+    echo "\n== 6) Cargo tests & clippy =="; \
     (cd contracts && cargo test) || s_cargo=1; \
     (cd contracts && cargo clippy -- -D warnings) || s_cargo=1; \
 
@@ -114,9 +117,10 @@ verify:
     printf "%-36s %s\n" "ESLint" "$( [ $s_eslint -eq 0 ] && echo PASS || echo FAIL )"; \
     printf "%-36s %s\n" "Dead-code (ts-prune)" "$( [ $s_deadcode -eq 0 ] && echo PASS || echo WARN )"; \
     printf "%-36s %s\n" "Unit tests (app + client)" "$( [ $s_tests -eq 0 ] && echo PASS || echo FAIL )"; \
+    printf "%-36s %s\n" "Repo structure invariants" "$( [ $s_structure -eq 0 ] && echo PASS || echo FAIL )"; \
     printf "%-36s %s\n" "Cargo tests + clippy" "$( [ $s_cargo -eq 0 ] && echo PASS || echo FAIL )"; \
 
-    if [ $s_type -eq 0 -a $s_eslint -eq 0 -a $s_tests -eq 0 -a $s_cargo -eq 0 ]; then \
+    if [ $s_type -eq 0 -a $s_eslint -eq 0 -a $s_tests -eq 0 -a $s_structure -eq 0 -a $s_cargo -eq 0 ]; then \
         echo "\nverify: All checks passed."; \
     else \
         echo "\nverify: Some checks failed. See above for details."; \
@@ -163,6 +167,7 @@ test:
         fi
     }
 
+    run_suite "repo structure"   node --test scripts/repo-structure.test.mjs
     run_suite "dead-code check"   npm run lint:dead
     run_suite "client typecheck"  npm run typecheck --workspace=packages/client
     run_suite "client tests"      npm test          --workspace=packages/client

@@ -5,26 +5,20 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
+import { checkDependencyVersions } from "../repo-structure.mjs";
+
 const DEP = "@stellar/stellar-sdk";
 
+/**
+ * Every workspace must declare @stellar/stellar-sdk at the same range, so a
+ * partial bump can't silently install two SDK copies.
+ *
+ * The policy itself lives in `checkDependencyVersions` (scripts/repo-structure.mjs)
+ * so `scripts/repo-structure.test.mjs` can assert the same rule for vitest and
+ * typescript without a second implementation drifting out of sync.
+ */
 export function checkSdkVersions(manifests) {
-  /** @type {Map<string, string>} */
-  const versions = new Map();
-  /** @type {string[]} */
-  const missing = [];
-
-  for (const [ws, pkg] of Object.entries(manifests)) {
-    const range = pkg.dependencies?.[DEP] ?? pkg.devDependencies?.[DEP];
-    if (!range) {
-      missing.push(ws);
-      continue;
-    }
-    versions.set(ws, range);
-  }
-
-  const distinct = new Set(versions.values());
-  const ok = missing.length === 0 && distinct.size <= 1;
-  return { ok, versions, missing, distinct: [...distinct] };
+  return checkDependencyVersions(manifests, DEP, Object.keys(manifests));
 }
 
 function main() {

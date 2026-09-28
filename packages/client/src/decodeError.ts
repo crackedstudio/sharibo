@@ -23,6 +23,10 @@ import {
   RoundFullError,
   OverflowError,
   CircleCancelledError,
+  InvalidFeeParamsError,
+  InvalidCircleParamsError,
+  InvalidRecipientError,
+  RoundNotExpiredError,
   RpcError,
 } from "./errors.js";
 
@@ -61,6 +65,14 @@ function createContractError(
       return new OverflowError(message, { cause });
     case 8:
       return new CircleCancelledError(message, { cause });
+    case 9:
+      return new InvalidFeeParamsError(message, { cause });
+    case 10:
+      return new InvalidCircleParamsError(message, { cause });
+    case 11:
+      return new InvalidRecipientError(message, { cause });
+    case 12:
+      return new RoundNotExpiredError(message, { cause });
     default:
       // Unknown code — still a contract error, just use the base class.
       return new ContractError(message, code, { cause });

@@ -70,7 +70,7 @@ export class ContractError extends ShariboError {
   }
 }
 
-// ── Typed contract-error subclasses (error codes 1..8) ──────────────────────
+// ── Typed contract-error subclasses (error codes 1..12) ─────────────────────
 // Each mirrors a `#[contracterror]` variant in contracts/sharibo/src/lib.rs.
 // Callers can use `instanceof` to branch on the specific failure reason
 // without parsing XDR dumps.
@@ -128,6 +128,34 @@ export class OverflowError extends ContractError {
 export class CircleCancelledError extends ContractError {
   constructor(message: string, options?: { cause?: unknown }) {
     super(message, 8, options);
+  }
+}
+
+/** #9 – create_circle rejected a fee_bps outside 0..=10_000. */
+export class InvalidFeeParamsError extends ContractError {
+  constructor(message: string, options?: { cause?: unknown }) {
+    super(message, 9, options);
+  }
+}
+
+/** #10 – create_circle rejected the circle setup (size, contribution, deadline or vk length). */
+export class InvalidCircleParamsError extends ContractError {
+  constructor(message: string, options?: { cause?: unknown }) {
+    super(message, 10, options);
+  }
+}
+
+/** #11 – a payout, refund or fee target was the contract's own address. */
+export class InvalidRecipientError extends ContractError {
+  constructor(message: string, options?: { cause?: unknown }) {
+    super(message, 11, options);
+  }
+}
+
+/** #12 – expire_round called before the deadline, or fund called after it passed. */
+export class RoundNotExpiredError extends ContractError {
+  constructor(message: string, options?: { cause?: unknown }) {
+    super(message, 12, options);
   }
 }
 

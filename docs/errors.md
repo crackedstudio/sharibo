@@ -17,7 +17,10 @@ strings from Stellar RPC failures and maps them to typed subclasses in
 | 6    | `RoundFull`           | `RoundFullError`          | Pot is already at `contribution × size`; no more funds accepted.     |
 | 7    | `Overflow`            | `OverflowError`           | Checked pot arithmetic overflowed (absurd contribution / size).       |
 | 8    | `CircleCancelled`     | `CircleCancelledError`    | `cancel_circle` or `fund`/`claim` called on a cancelled circle.     |
-| 9    | `InvalidFeeParams`    | — (generic `ContractError`) | `create_circle` rejected a `fee_bps` outside `0..=10_000`.         |
+| 9    | `InvalidFeeParams`    | `InvalidFeeParamsError`  | `create_circle` rejected a `fee_bps` outside `0..=10_000`.         |
+| 10   | `InvalidCircleParams` | `InvalidCircleParamsError` | `create_circle` rejected the setup: `size == 0`, `size > 16` (the `2^levels` tree capacity), `contribution <= 0`, `pot_target` overflow, a `round_deadline_ledgers` at or above `LEDGER_EXTEND_TO`, or a `vk.ic` length that is not `PUBLIC_INPUT_COUNT + 1`. |
+| 11   | `InvalidRecipient`    | `InvalidRecipientError`  | A payout, refund, or fee target would strand the tokens — the contract's own address. Raised by `claim`, `cancel_circle` and `expire_round`, and by `create_circle` when `fee_recipient` is the contract while `fee_bps > 0`. |
+| 12   | `RoundNotExpired`     | `RoundNotExpiredError`   | `expire_round` was called before the round's deadline, or `fund` was called on a round whose deadline had already passed. |
 
 All subclasses extend `ContractError`, which in turn extends `ShariboError`.
 

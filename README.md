@@ -342,6 +342,7 @@ sharibo/
 ├── scripts/             e2e/smoke helpers + maintenance checkers (secrets, SDK pin, clean)
 ├── app/                 React + Vite browser demo
 ├── docs/                long-form docs, ADRs, and docs/hackathon/ (point-in-time archive)
+├── judges/              hackathon judge checklist — a stub redirecting to docs/hackathon/VERIFY.md
 ├── README.md            this file
 ├── NOTES.md             historical append-only build log (not the authority for current invariants)
 ├── full_product_breakdown.md  every facet of the system, in detail

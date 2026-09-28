@@ -60,6 +60,19 @@
       "includeEntryExports": false
     },
 
+    // ── packages/core workspace ────────────────────────────────────────────
+    // Pure crypto primitives (Poseidon, Merkle tree, identity). `src/index.ts`
+    // is the package `main` and the public barrel, so its re-exports are API.
+    "packages/core": {
+      "entry": [
+        "src/index.ts",
+        "src/*.test.ts",
+        "vitest.config.ts"
+      ],
+      "project": ["src/**/*.ts", "vitest.config.ts"],
+      "includeEntryExports": false
+    },
+
     // ── scripts workspace ───────────────────────────────────────────────────
     "scripts": {
       "entry": [

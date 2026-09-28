@@ -13,7 +13,9 @@ each covers and where to find it.
 | [`NOTES.md`](../NOTES.md) | **Historical** append-only build log — not authoritative for current invariants |
 | [`full_product_breakdown.md`](../full_product_breakdown.md) | Complete technical deep-dive: every system layer, engineering decisions, security properties, honest limitations |
 | [`CODE_OF_CONDUCT.md`](../CODE_OF_CONDUCT.md) | Contributor code of conduct |
+| [`CONTRIBUTING.md`](../CONTRIBUTING.md) | Contribution workflow, code-ownership map, SDK API-surface and pre-PR checklist |
 | [`SECURITY.md`](../SECURITY.md) | Security policy and responsible disclosure |
+| [`TODO.md`](../TODO.md) | Completed a11y live-region task checklist (historical scratch note) |
 | [`LICENSE`](../LICENSE) | Project license |
 
 ## Hackathon-era artifacts (`docs/hackathon/` — point-in-time archive, not maintained)
@@ -43,6 +45,8 @@ an archive is allowed to contain stale claims.
 | [`observability.md`](observability.md) | SDK `SdkEvent` taxonomy (`onEvent`) for retries, proofs, artifacts, transactions |
 | [`deployment.md`](deployment.md) | How the live browser demo is built and manually deployed to Vercel |
 | [`glossary.md`](glossary.md) | Plain-language crypto + ROSCA terms |
+| [`errors.md`](errors.md) | Contract error-code table: Rust variant -> docs -> SDK class mapping |
+| [`licenses.md`](licenses.md) | Licenses of every direct third-party dependency and copyleft obligations |
 
 ## Architecture decision records (`docs/adr/`)
 
@@ -52,6 +56,8 @@ an archive is allowed to contain stale claims.
 | [`adr/002-multi-round-turn-ordering.md`](adr/002-multi-round-turn-ordering.md) | ADR 002: multi-round turn ordering and cycle-scoped nullifier behavior |
 | [`adr/003-client-boundary.md`](adr/003-client-boundary.md) | ADR 003: app ↔ SDK ↔ contract boundary and the current free-function design |
 | [`adr/003-protocol-fees.md`](adr/003-protocol-fees.md) | ADR 003 (fees): protocol fee on claim |
+| [`adr/003-storage-migration.md`](adr/003-storage-migration.md) | ADR 003 (schema): `schema_version` field and the Circle-layout migration playbook |
+| [`adr/003-leanimt-dynamic-depth-merkle-tree.md`](adr/003-leanimt-dynamic-depth-merkle-tree.md) | ADR 003 (LeanIMT): rejected dynamic-depth Merkle tree, with the constraint-count analysis |
 | [`adr/004-storage-archival.md`](adr/004-storage-archival.md) | ADR 004: per-key storage TTL/archival analysis, including the nullifier double-claim fence's residual risk |
 | [`adr/005-bls12-381-curve-choice.md`](adr/005-bls12-381-curve-choice.md) | ADR 005: BLS12-381 instead of BN254 (CPU budget) |
 | [`adr/006-recipient-binding.md`](adr/006-recipient-binding.md) | ADR 006: `recipientHash` public input for payout binding |
@@ -63,6 +69,12 @@ an archive is allowed to contain stale claims.
 | [`audit/README.md`](audit/README.md) | Audit package index: toolchain pins, repro steps, scope links (#547) |
 | [`audit/SCOPE.md`](audit/SCOPE.md) | Draft engagement scope for circuit, setup, contract, client |
 | [`audit/NEGATIVE_TESTS.md`](audit/NEGATIVE_TESTS.md) | Existing negative tests and known gaps |
+
+## Operations
+
+| File | Description |
+|---|---|
+| [`runbook-testnet-reset.md`](runbook-testnet-reset.md) | Operator runbook for the quarterly Stellar testnet reset: redeploy, re-fund, re-run e2e |
 
 ## Circuit docs
 
