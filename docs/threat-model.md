@@ -29,7 +29,7 @@ Scope: `contracts/sharibo/src/lib.rs`, `circuits/membership.template.circom`, `p
 
 **Mechanism.** The circuit's `MerkleTreeChecker` (`circuits/membership.template.circom:21-70`) constrains `Poseidon(identityNullifier, identitySecret)` to hash up to the declared `root` along a private path, with a booleanity constraint on each path index (`:45`) so a prover can't pick an out-of-range selector to fabricate an arbitrary hash input. The `Sharibo` template wires the private leaf into that check (`:99-110`). On-chain, `verify_groth16` (`lib.rs:339-368`) runs the real Groth16 pairing equation over BLS12-381 using Soroban's native `pairing_check`, against the `vk` stored on the `Circle` at creation.
 
-**Tests.** `circuits/test/membership.test.js:74` (genuine member accepted), `:86` (wrong root rejected), `:92` (tampered path rejected), `:116` (non-boolean path index rejected). `contracts/sharibo/src/test.rs:194` (real proof accepted end-to-end), `:232` (tampered public input rejected — a real pairing failure, not a mock).
+**Tests.** `circuits/test/membership.test.js` (genuine member accepted, wrong root, tampered path, non-boolean path index). `contracts/sharibo/src/test.rs` (`happy_path_round_pays_out_and_advances` accepts real proof, `claim_reverts_on_tampered_public_input` rejects with real pairing failure).
 
 **Limits.**
 - The verification key is supplied by whoever calls `create_circle`, per circle, and is never checked against a canonical hash on-chain (`lib.rs:85-93`). A circle admin who supplies a weak or malicious `vk` can make membership unverifiable or trivially satisfiable *for that circle* — the guarantee is only as strong as the vk the admin chose.
@@ -51,7 +51,7 @@ Scope: `contracts/sharibo/src/lib.rs`, `circuits/membership.template.circom`, `p
 
 **Mechanism.** `externalNullifier = SHA256(circle_id, round) mod r`, computed identically by the client (`packages/client/src/identity.ts:63-90`) and the contract (`lib.rs:325-331`), deliberately outside the circuit (Soroban has accelerated SHA-256 but no native Poseidon; see the comment at `lib.rs:314-324`). The contract compares the proof's public `external_nullifier` signal against its own freshly computed expectation for `circle.round` before accepting a claim (`lib.rs:207-211`).
 
-**Tests.** `contracts/sharibo/src/test.rs:328` (`claim_reverts_on_stale_round_tag`); `circuits/test/membership.test.js:98` (nullifier hash changes across rounds for the same identity).
+**Tests.** `contracts/sharibo/src/test.rs` (`claim_reverts_on_stale_round_tag`); `circuits/test/membership.test.js` (nullifier determinism tests).
 
 **Limits.**
 - The circuit itself does **not** constrain `externalNullifier` to any particular value — it will happily produce a witness for any value passed in (`circuits/test/membership.test.js:163,172,182`). Round binding is entirely an on-chain equality check (`lib.rs:207-211`), not an in-circuit constraint. A proof is only "for round N" because the contract refuses to accept any other `external_nullifier`, not because the SNARK enforces it.
@@ -88,9 +88,9 @@ Scope: `contracts/sharibo/src/lib.rs`, `circuits/membership.template.circom`, `p
 
 | Property | Enforcing code | Test evidence | Known limit |
 |---|---|---|---|
-| Membership | `membership.template.circom:21-70,99-110`; `lib.rs:339-368` | `membership.test.js:74,86,92,116`; `test.rs:194,232` | vk not pinned on-chain; single-party setup |
-| No double claim | `lib.rs:213-217,231` | `test.rs:284,548` | recipient not bound to proof — front-run/hijack risk (see [Known attack](#known-attack-payout-redirection-recipient-front-running), issue #246) |
-| Round binding | `identity.ts:63-90`; `lib.rs:207-211,325-331` | `test.rs:328`; `membership.test.js:98` | binding is on-chain equality, not an in-circuit constraint |
+| Membership | `membership.template.circom:21-70,99-110`; `lib.rs:339-368` | `membership.test.js`; `test.rs` (happy path, tampered input) | vk not pinned on-chain; single-party setup |
+| No double claim | `lib.rs:213-217,231` | `test.rs` (reused nullifier, TTL expiry) | recipient not bound to proof — front-run/hijack risk (see [Known attack](#known-attack-payout-redirection-recipient-front-running), issue #246) |
+| Round binding | `identity.ts:63-90`; `lib.rs:207-211,325-331` | `test.rs` (stale round tag); `membership.test.js` | binding is on-chain equality, not an in-circuit constraint |
 | Unlinkability | `lib.rs:236-237` (unconstrained `recipient`) | `scripts/e2e.ts` fresh-recipient assertions | funding side is fully public; admin relays the claim tx in the demo |
 | Token contract trust | `lib.rs:82` (`Circle.token` stored unvalidated) | none — accepted design risk | hostile token can refuse transfers, charge fees, or reenter; mitigation is out-of-band address verification by members |
 
@@ -136,7 +136,7 @@ Run the suites the matrix above cites:
 
 ```bash
 cd circuits && npm test        # circuit-level properties
-cd contracts && cargo test     # contract-level properties (8/8)
+cd contracts && cargo test     # contract-level properties
 npm run e2e                    # unlinkability + round-binding, against live testnet
 ```
 

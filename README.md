@@ -119,9 +119,13 @@ Full structured breakdown — assets, adversaries, and which code enforces each 
 
 | Suite                                      | Coverage                                                                                                                                | Result      |
 | ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
-| Circuit (`circuits/test/`)                 | valid proof, wrong root, tampered path, nullifier determinism, non-boolean path index                                                   | **5/5**     |
-| Contract (`contracts/sharibo/src/test.rs`) | happy path **with a real proof**, underfunded, replay, stale round tag, forged public input (real pairing failure), CPU budget, auth ×2 | **8/8**     |
-| E2E (`scripts/e2e.ts`, live testnet)       | create → 5× fund → prove → claim to fresh address → assertions → round 2 fund → replay → `AlreadyClaimed`                               | **passing** |
+| Circuit (`circuits/test/`)                 | valid proof, wrong root, tampered path, nullifier determinism, non-boolean path index                                                   | passing     |
+| Contract (`contracts/sharibo/src/test/`)   | happy path **with a real proof**, underfunded, replay, stale round tag, forged public input (real pairing failure), CPU budget, auth ×2 | passing     |
+| Core (`packages/core/`)                    | cryptography primitives, poseidon hashes, merkle tree logic                                                                             | passing     |
+| Client (`packages/client/`)                | identity generation, tree construction, proof generation, typed contract calls                                                          | passing     |
+| App (`app/`)                               | browser UI, identity state, funding flow, proof generation in-browser                                                                   | passing     |
+| Scripts (`scripts/`)                       | e2e and smoke test helpers, maintenance checkers                                                                                        | passing     |
+| E2E (`scripts/e2e.ts`, live testnet)       | create → 5× fund → prove → claim to fresh address → assertions → round 2 fund → replay → `AlreadyClaimed`                               | passing     |
 
 ## Architecture
 
@@ -261,8 +265,7 @@ cd ..
 
 ```bash
 cd contracts
-cargo test                 # 8/8: happy path (real proof!), underfunded, double-claim, stale round tag,
-                             # tampered-proof rejection, CPU budget, both auth checks
+cargo test                 # runs all tests in contracts/sharibo/src/test/
 stellar contract build
 stellar contract deploy --wasm target/wasm32v1-none/release/sharibo.wasm --source admin --network testnet
 cd ..
