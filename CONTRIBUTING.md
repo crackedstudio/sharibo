@@ -60,6 +60,8 @@ Use the templates in `.github/ISSUE_TEMPLATE/`: **Bug Report** for defects, **Fe
 
 When looking for issues to work on, start by filtering by the `good first issue` label. These issues are specifically marked as suitable for newcomers and provide a great way to get familiar with the codebase. Before you start working on an issue, leave a comment to claim it and let the maintainers know you're working on it. If you have questions about the issue or need clarification, ask them directly on the issue rather than in a pull request—this helps keep the PR focused on the implementation.
 
+Per-task scratch files (e.g. `TODO.md`, checklists, or notes) are not committed; use the issue thread to track your work instead.
+
 ## SDK API Changes
 
 The SDK (`@sharibo/client`) has a committed snapshot of its public API surface in `packages/client/api-surface.json`. When you intentionally add, remove, or rename exported functions, types, or constants, the test `packages/client/src/api-surface.test.ts` will catch the mismatch.

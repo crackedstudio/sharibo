@@ -48,4 +48,5 @@ packages/client/reports/
 .claude/
 .agents/
 issue.md
+TODO.md
 skills-lock.json
