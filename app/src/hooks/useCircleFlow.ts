@@ -22,7 +22,7 @@ import {
   getArtifacts,
 } from "@sharibo/client";
 import { config } from "../config.js";
-import { friendbotFund } from "../lib/friendbot.js";
+import { friendbotFund, friendbotFundMany, FriendbotRetryableError, type FriendbotFundResult } from "../lib/friendbot.js";
 import type { Member, ClaimResult } from "../types.js";
 
 /** Where the circle view is in its on-chain load cycle, so the UI can show
@@ -67,6 +67,8 @@ export function useCircleFlow() {
   // Survives a reset so the landing screen can point back at the circle you
   // just left — it keeps living on-chain even though the UI has moved on.
   const [previousCircleId, setPreviousCircleId] = useState<bigint | null>(null);
+  // Track friendbot funding results for partial success handling and retry
+  const [fundingResults, setFundingResults] = useState<FriendbotFundResult[]>([]);
 
   const contribution = xlmToStroops(contributionXlm);
   const fundedCount = members.filter((m) => m.funded).length;
@@ -180,6 +182,139 @@ export function useCircleFlow() {
       const circle = await getCircle(adminClient, circleId, POLL_RETRY_POLICY);
       setPot(circle.pot);
       setRound(circle.round);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  // Fund all members via friendbot with partial success handling.
+  // Returns per-account results so the UI can show which succeeded/failed
+  // and offer a targeted retry for failed accounts.
+  async function fundAllMembers() {
+    if (!admin || circleId === null) return;
+    setError(null);
+    setBusy("Funding all members via friendbot…");
+    try {
+      const publicKeys = members.map((m) => m.keypair.publicKey());
+      const results = await friendbotFundMany(publicKeys, {
+        delayMs: 500,
+        onProgress: (result) => {
+          setFundingResults((prev) => {
+            const existing = prev.find((r) => r.publicKey === result.publicKey);
+            if (existing) {
+              return prev.map((r) => (r.publicKey === result.publicKey ? result : r));
+            }
+            return [...prev, result];
+          });
+        },
+      });
+      setFundingResults(results);
+
+      // For each successful friendbot funding, submit the on-chain fund transaction
+      for (const result of results) {
+        if (!result.success) continue;
+        const memberIndex = members.findIndex((m) => m.keypair.publicKey() === result.publicKey);
+        if (memberIndex === -1) continue;
+        const m = members[memberIndex];
+        try {
+          const memberClient = await connect(NETWORK, m.keypair);
+          const { hash } = await fund(memberClient, {
+            circleId,
+            from: m.keypair.publicKey(),
+          });
+          setMembers((prev) =>
+            prev.map((mm, idx) => (idx === memberIndex ? { ...mm, funded: true, fundHash: hash } : mm)),
+          );
+        } catch (e) {
+          // On-chain fund failed — mark as not funded so it can be retried
+          setMembers((prev) =>
+            prev.map((mm, idx) => (idx === memberIndex ? { ...mm, funded: false } : mm)),
+          );
+          result.success = false;
+          result.error = e instanceof FriendbotRetryableError ? e : new FriendbotRetryableError(String(e));
+        }
+      }
+
+      const adminClient = await connect(NETWORK, admin);
+      const circle = await getCircle(adminClient, circleId, POLL_RETRY_POLICY);
+      setPot(circle.pot);
+      setRound(circle.round);
+
+      const failedCount = results.filter((r) => !r.success).length;
+      if (failedCount > 0) {
+        setError(`${failedCount} of ${results.length} accounts failed to fund. Use "Retry failed" to try again.`);
+      }
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  // Retry friendbot funding for only the accounts that previously failed
+  async function retryFailedFunding() {
+    if (!admin || circleId === null) return;
+    const failedKeys = fundingResults.filter((r) => !r.success).map((r) => r.publicKey);
+    if (failedKeys.length === 0) return;
+
+    setError(null);
+    setBusy(`Retrying funding for ${failedKeys.length} account(s)…`);
+    try {
+      const results = await friendbotFundMany(failedKeys, {
+        delayMs: 500,
+        onProgress: (result) => {
+          setFundingResults((prev) =>
+            prev.map((r) => (r.publicKey === result.publicKey ? result : r)),
+          );
+        },
+      });
+
+      // Merge new results with existing ones
+      setFundingResults((prev) => {
+        const merged = [...prev];
+        for (const result of results) {
+          const idx = merged.findIndex((r) => r.publicKey === result.publicKey);
+          if (idx >= 0) merged[idx] = result;
+          else merged.push(result);
+        }
+        return merged;
+      });
+
+      // For each newly successful funding, submit on-chain fund transaction
+      for (const result of results) {
+        if (!result.success) continue;
+        const memberIndex = members.findIndex((m) => m.keypair.publicKey() === result.publicKey);
+        if (memberIndex === -1) continue;
+        const m = members[memberIndex];
+        try {
+          const memberClient = await connect(NETWORK, m.keypair);
+          const { hash } = await fund(memberClient, {
+            circleId,
+            from: m.keypair.publicKey(),
+          });
+          setMembers((prev) =>
+            prev.map((mm, idx) => (idx === memberIndex ? { ...mm, funded: true, fundHash: hash } : mm)),
+          );
+        } catch (e) {
+          setMembers((prev) =>
+            prev.map((mm, idx) => (idx === memberIndex ? { ...mm, funded: false } : mm)),
+          );
+          result.success = false;
+          result.error = e instanceof FriendbotRetryableError ? e : new FriendbotRetryableError(String(e));
+        }
+      }
+
+      const adminClient = await connect(NETWORK, admin);
+      const circle = await getCircle(adminClient, circleId, POLL_RETRY_POLICY);
+      setPot(circle.pot);
+      setRound(circle.round);
+
+      const failedCount = results.filter((r) => !r.success).length;
+      if (failedCount > 0) {
+        setError(`${failedCount} of ${results.length} accounts still failed. You can retry again.`);
+      }
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -340,9 +475,12 @@ export function useCircleFlow() {
     fundedCount,
     fullyFunded,
     feeEstimate,
+    fundingResults,
     resetToLanding,
     startCircle,
     fundMember,
+    fundAllMembers,
+    retryFailedFunding,
     doClaim,
     claimAgain,
   };
