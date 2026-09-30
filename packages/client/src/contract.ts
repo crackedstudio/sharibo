@@ -6,7 +6,7 @@ import type { ContractProof, ContractVerificationKey } from "./prove.js";
 import { ContractError, RpcError, InvalidInputError } from "./errors.js";
 import { decodeContractError } from "./decodeError.js";
 import { withRetry, DEFAULT_RETRY_POLICY, type RetryPolicy } from "./retry.js";
-import { validateContractProof, validateContractVerificationKey } from "./validate.js";
+import { validateContractProof, validateContractVerificationKey, assertInField } from "./validate.js";
 import { SdkEventEmitter, type OnEventFn } from "./events.js";
 
 /**
@@ -385,6 +385,7 @@ export async function createCircle(
     );
   }
   validateContractVerificationKey(args.vk);
+  assertInField(args.root, "root");
   try {
     const tx: ContractTx = await withRetry(() => client.create_circle({
       admin: args.admin,
@@ -454,6 +455,8 @@ export async function claim(
   retryPolicy: RetryPolicy = DEFAULT_RETRY_POLICY,
 ): Promise<TxResult<void>> {
   validateContractProof(args.proof);
+  assertInField(args.nullifierHash, "nullifierHash");
+  assertInField(args.externalNullifier, "externalNullifier");
   try {
     const tx: ContractTx = await withRetry(() => client.claim({
       circle_id: args.circleId,

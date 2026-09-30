@@ -11,6 +11,7 @@ import {
 } from "./artifacts.js";
 import { ProvingError, InvalidInputError } from "./errors.js";
 import type { OnEventFn } from "./events.js";
+import { assertInField } from "./validate.js";
 
 /**
  * Options for a proving run.
@@ -406,6 +407,10 @@ export async function verifyProofLocally(
   snarkjsProof: unknown,
 ): Promise<number> {
   const startedAt = perf.now();
+  for (let i = 0; i < publicSignals.length; i++) {
+    const sig = BigInt(publicSignals[i]);
+    assertInField(sig, `publicSignals[${i}]`);
+  }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const valid = await (groth16 as any).verify(vkJson, publicSignals, snarkjsProof);
   const verifyTimeMs = Math.max(0, perf.now() - startedAt);

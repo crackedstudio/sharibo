@@ -5,6 +5,7 @@
     "ZERO_VALUE": "bigint"
   },
   "functions": {
+    "assertInField": "function",
     "cancelCircle": "function",
     "claim": "function",
     "computeExternalNullifier": "function",

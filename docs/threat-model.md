@@ -84,6 +84,12 @@ Scope: `contracts/sharibo/src/lib.rs`, `circuits/membership.template.circom`, `p
 
 **Fix (tracked separately).** Binding the recipient into the proof — for example adding a `recipientHash` public input to the membership circuit (issue [#266](https://github.com/crackedstudio/sharibo/issues/266)) — is a substantial change: circuit + trusted setup + contract + redeploy. The implementation is tracked in issue [#246](https://github.com/crackedstudio/sharibo/issues/246). Until it lands, this limitation is stated here plainly rather than left for a reader to discover; do not evaluate Sharibo for real-funds use based on the current proof.
 
+## Out-of-range scalars (client-side validation)
+
+**Finding:** The contract's public inputs (`nullifier_hash`, `external_nullifier`, `root`) are `Fr` elements. If a caller submits a value `≥ r` (the BLS12-381 scalar field modulus), Soroban's XDR decoding and host functions reject it rather than silently reducing it modulo `r`. As a result, out-of-range inputs revert with a generic `InvalidProof` or host error rather than creating an aliasing vulnerability (where `x` and `x + r` could theoretically both verify). 
+
+**Impact:** Because the contract rejects out-of-range values, there is no soundness gap (aliasing is not possible). The client-side range validation (`assertInField`) is purely a "better error message" fix — it fails the transaction client-side with a clear `InvalidInputError` before the user pays for a doomed transaction that would otherwise fail with an opaque on-chain error.
+
 ## Property → code → test matrix
 
 | Property | Enforcing code | Test evidence | Known limit |
