@@ -123,6 +123,11 @@ Full structured breakdown — assets, adversaries, and which code enforces each 
 | Contract (`contracts/sharibo/src/test.rs`) | happy path **with a real proof**, underfunded, replay, stale round tag, forged public input (real pairing failure), CPU budget, auth ×2 | **8/8**     |
 | E2E (`scripts/e2e.ts`, live testnet)       | create → 5× fund → prove → claim to fresh address → assertions → round 2 fund → replay → `AlreadyClaimed`                               | **passing** |
 
+## Benchmarks
+
+- **On-chain contract CPU limits:** [contracts/BENCHMARKS.md](contracts/BENCHMARKS.md) (run with `just bench-contract`).
+- **Off-chain client proving wall-clock time:** [packages/client/BENCHMARKS.md](packages/client/BENCHMARKS.md) (run with `just bench-prove`).
+
 ## Architecture
 
 ```mermaid

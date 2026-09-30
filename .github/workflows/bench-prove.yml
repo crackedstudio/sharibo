@@ -1,0 +1,41 @@
+name: Proving Benchmark
+
+on:
+  schedule:
+    - cron: '0 4 * * *' # Run daily at 04:00 UTC
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Circom
+        run: |
+          git clone https://github.com/iden3/circom.git
+          cd circom
+          cargo build --release
+          cargo install --path circom
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build circuits and artifacts
+        run: |
+          cd circuits
+          npm ci
+          npm run compile
+          npm run setup
+          cd ..
+
+      - name: Run proving benchmark
+        run: npm run bench:prove --workspace=packages/client -- --n 20
+        # If it fails or deviates heavily, we can output a warning. For now we just run it so we have a nightly record.
+        # It's not a hard gate, just an observability cron.

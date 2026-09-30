@@ -236,3 +236,7 @@ coverage:
 # Refresh the committed contract CPU benchmark table
 bench-contract:
     WRITE_BENCHMARKS=1 cargo test -p sharibo cpu_instruction_benchmarks -- --nocapture
+
+# Refresh the committed client proving benchmark table
+bench-prove:
+    WRITE_BENCHMARKS=1 npm run bench:prove --workspace=packages/client

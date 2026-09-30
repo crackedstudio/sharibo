@@ -2,6 +2,8 @@
 
 This document details the CPU instruction consumption and budget analysis for the **Sharibo** Soroban smart contract operations on Stellar.
 
+For off-chain proving wall-clock benchmarks on the client, see [packages/client/BENCHMARKS.md](../packages/client/BENCHMARKS.md).
+
 ---
 
 ## 1. Overview & Constraints
