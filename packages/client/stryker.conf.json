@@ -9,8 +9,10 @@
     "configFile": "vitest.config.ts"
   },
   "mutate": [
-    "src/identity.ts",
-    "src/tree.ts"
+    "../core/src/identity.ts",
+    "../core/src/tree.ts",
+    "src/prove.ts",
+    "src/validate.ts"
   ],
   "mutator": {
     "excludedMutations": [
@@ -18,14 +20,17 @@
     ]
   },
   "coverageAnalysis": "perTest",
-  "reporters": ["html", "clear-text", "progress"],
+  "reporters": ["html", "clear-text", "progress", "json"],
   "htmlReporter": {
     "fileName": "reports/mutation/mutation.html"
   },
+  "jsonReporter": {
+    "fileName": "reports/mutation/mutation.json"
+  },
   "thresholds": {
-    "high": 80,
-    "low": 60,
-    "break": null
+    "high": 95,
+    "low": 85,
+    "break": 90
   },
   "timeoutMS": 30000,
   "timeoutFactor": 2.5,

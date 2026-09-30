@@ -42,7 +42,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "bench:prove": "tsx bench/prove.bench.ts",
-    "mutate": "stryker run stryker.conf.json"
+    "mutate": "stryker run stryker.conf.json && node scripts/generate-mutation-score.js"
   },
   "dependencies": {
     "@stellar/stellar-sdk": "^16.2.0",
