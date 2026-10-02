@@ -157,7 +157,11 @@ body {
   background: var(--bg);
   color: var(--ink);
   font-family: "Space Grotesk", system-ui, sans-serif;
-  background-image: radial-gradient(circle, var(--bg-noise) var(--space-xs), transparent var(--space-xs));
+  background-image: radial-gradient(
+    circle,
+    var(--bg-noise) var(--space-xs),
+    transparent var(--space-xs)
+  );
   background-size: var(--dot-grid-size) var(--dot-grid-size);
   overflow-x: hidden;
 }
@@ -563,7 +567,8 @@ h2 {
 }
 
 @keyframes pulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
   }
   50% {
@@ -644,7 +649,8 @@ h2 {
 }
 
 @keyframes pulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
   }
   50% {
@@ -818,7 +824,6 @@ a:focus-visible {
 .connection-status.is-offline .connection-dot {
   background: #c0392b;
 }
-
 
 .testnet-banner {
   display: flex;

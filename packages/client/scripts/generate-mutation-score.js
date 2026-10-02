@@ -27,13 +27,13 @@ for (const [filepath, fileData] of Object.entries(files)) {
   const filename = path.basename(filepath);
   moduleNames.push(filename);
   const mutants = fileData.mutants || [];
-  
+
   let mKilled = 0;
   let mSurvived = 0;
   let mTimeout = 0;
   let mNoCoverage = 0;
   let mTotal = 0;
-  
+
   for (const m of mutants) {
     mTotal++;
     if (m.status === "Killed") mKilled++;
@@ -41,26 +41,33 @@ for (const [filepath, fileData] of Object.entries(files)) {
     else if (m.status === "Timeout") mTimeout++;
     else if (m.status === "NoCoverage") mNoCoverage++;
   }
-  
+
   totalMutants += mTotal;
   totalKilled += mKilled;
   totalSurvived += mSurvived;
   totalTimeout += mTimeout;
   totalNoCoverage += mNoCoverage;
-  
-  const score = mTotal === 0 ? "100.00%" : ((mKilled + mTimeout) / mTotal * 100).toFixed(2) + "%";
-  
-  rows.push(`| \`${filepath}\` | ${score} | ${mKilled} | ${mSurvived} | ${mTimeout} | ${mNoCoverage} |`);
+
+  const score = mTotal === 0 ? "100.00%" : (((mKilled + mTimeout) / mTotal) * 100).toFixed(2) + "%";
+
+  rows.push(
+    `| \`${filepath}\` | ${score} | ${mKilled} | ${mSurvived} | ${mTimeout} | ${mNoCoverage} |`,
+  );
 }
 
-const totalScore = totalMutants === 0 ? "100.00%" : ((totalKilled + totalTimeout) / totalMutants * 100).toFixed(2) + "%";
-rows.push(`| **Total** | **${totalScore}** | **${totalKilled}** | **${totalSurvived}** | **${totalTimeout}** | **${totalNoCoverage}** |`);
+const totalScore =
+  totalMutants === 0
+    ? "100.00%"
+    : (((totalKilled + totalTimeout) / totalMutants) * 100).toFixed(2) + "%";
+rows.push(
+  `| **Total** | **${totalScore}** | **${totalKilled}** | **${totalSurvived}** | **${totalTimeout}** | **${totalNoCoverage}** |`,
+);
 
 const dateStr = new Date().toISOString().split("T")[0];
 
 const mdContent = `# Mutation Score — \`packages/client\` crypto modules
 
-Scope: ${moduleNames.map(m => `\`${m}\``).join(", ")}  
+Scope: ${moduleNames.map((m) => `\`${m}\``).join(", ")}  
 Date Generated: ${dateStr}
 Runner: \`@stryker-mutator/vitest-runner\`
 Config: \`stryker.conf.json\`

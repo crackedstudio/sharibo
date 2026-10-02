@@ -43,9 +43,9 @@ describe("ArtifactProgress", () => {
 
     publish({ status: "loading", loaded: 50, total: 100, fraction: 0.5 });
     expect(screen.getByText("Preparing prover… 50%")).toBeTruthy();
-    expect(
-      document.querySelector(".artifact-progress-fill")?.getAttribute("style"),
-    ).toContain("width: 50%");
+    expect(document.querySelector(".artifact-progress-fill")?.getAttribute("style")).toContain(
+      "width: 50%",
+    );
 
     publish({ status: "ready", loaded: 100, total: 100, fraction: 1 });
     expect(document.querySelector(".artifact-progress")).toBeNull();

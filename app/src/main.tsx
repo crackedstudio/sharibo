@@ -77,9 +77,7 @@ startArtifactPrefetch().catch(() => {
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <I18nProvider>
-      <ErrorBoundary>
-        {capabilityReport.ok ? <App /> : <UnsupportedBrowserScreen />}
-      </ErrorBoundary>
+      <ErrorBoundary>{capabilityReport.ok ? <App /> : <UnsupportedBrowserScreen />}</ErrorBoundary>
     </I18nProvider>
   </StrictMode>,
 );

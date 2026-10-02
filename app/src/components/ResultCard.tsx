@@ -40,24 +40,24 @@ export function ResultCard({
         </a>{" "}
         {t("result.recipientOutro")}
       </p>
-      <a className={styles.link} href={explorerTx(claimResult.hash)} target="_blank" rel="noreferrer">
-        {t("result.viewClaimTx")}
+      <a
+        className={styles.link}
+        href={explorerTx(claimResult.hash)}
+        target="_blank"
+        rel="noreferrer"
+      >
+        view claim transaction ↗
       </a>
-      <CopyButton value={claimResult.hash} label={t("result.hashLabel")} />
-      <p className={styles.callout}>{t("result.callout")}</p>
-      {claimResult.proofDurationMs != null && claimResult.verifyTimeMs != null && (
-        <p className="techline">
-          proof generated in {(claimResult.proofDurationMs / 1000).toFixed(1)}s · local verify{" "}
-          {claimResult.verifyTimeMs.toFixed(0)}ms ✓
-        </p>
-      )}
+      <p className={styles.callout}>
+        Compare the 5 funding transactions above to this claim — same contract, no shared address,
+        no visible link.
+      </p>
       <button
         className={`${styles.btn} ${styles.btnDanger}`}
-        disabled={!online || !!busy || (!!rejection && nullifierClaimed)}
+        disabled={!!busy}
         onClick={onClaimAgain}
-        title={rejection && nullifierClaimed ? t("result.claimAgainTitle") : undefined}
       >
-        {busy ?? t("result.claimAgainButton")}
+        {busy ?? "Try to claim again with the same proof"}
       </button>
       {nullifierClaimed && !rejection && (
         <p className={styles.callout}>
@@ -69,8 +69,12 @@ export function ResultCard({
           <div className={styles.rejected}>
             <strong>{t("result.rejectedLabel")}</strong> {rejection}
           </div>
-          <button className={`${styles.btn} ${styles.btnPrimary}`} disabled={!!busy} onClick={onReset}>
-            {t("result.startNewCircle")}
+          <button
+            className={`${styles.btn} ${styles.btnPrimary}`}
+            disabled={!!busy}
+            onClick={onReset}
+          >
+            Start a new circle
           </button>
         </>
       )}

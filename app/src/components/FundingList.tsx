@@ -40,9 +40,9 @@ export function FundingList({
         {members.map((m, i) => (
           <div
             key={i}
-            className={`${styles.member} ${m.funded ? styles.funded : ""} ${m.pending ? styles.pending : ""}`}
+            className={`member ${m.funded ? "funded" : ""} ${m.pending ? "pending" : ""}`}
           >
-            <span className={styles.memberAddr}>
+            <span className="member-addr">
               {t("fund.memberLabel", { index: i + 1 })} · {short(m.keypair.publicKey())}
               <CopyButton
                 value={m.keypair.publicKey()}
@@ -57,7 +57,10 @@ export function FundingList({
                   {t("fund.fundedLink")}
                 </a>
                 {showRefundInfo && (
-                  <span className="refund-indicator" style={{ marginInlineStart: "0.5rem", color: "var(--color-warning-text)" }}>
+                  <span
+                    className="refund-indicator"
+                    style={{ marginInlineStart: "0.5rem", color: "var(--color-warning-text)" }}
+                  >
                     {t("cancel.willBeRefunded")}
                   </span>
                 )}

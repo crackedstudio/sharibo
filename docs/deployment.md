@@ -42,10 +42,10 @@ it to tie a contract ID to a source revision.
 
 ### Deployments
 
-| Tag | Contract ID | Circle schema | vk SHA-256 (`sha256sum circuits/verification_key.json`) | Circom | Notes |
-|-----|-------------|---------------|----------------------------------------------------------|--------|-------|
-| Unreleased (`main`) | `CB64IZIBBSPUY63UMIVACKWDKRFNH6WJ2EPAOLM7QR4ZI6IJOT4N2LCF` | 2 | record with `sha256sum` at release time | 0.0.24 | Current testnet deployment; see README on-chain evidence |
-| v1 / testnet reset | previous testnet ID (wiped) | 1 | previous vk | 0.0.24 | v1 -> v2 added `fee_bps`/`fee_recipient`, required testnet reset |
+| Tag                 | Contract ID                                                | Circle schema | vk SHA-256 (`sha256sum circuits/verification_key.json`) | Circom | Notes                                                            |
+| ------------------- | ---------------------------------------------------------- | ------------- | ------------------------------------------------------- | ------ | ---------------------------------------------------------------- |
+| Unreleased (`main`) | `CB64IZIBBSPUY63UMIVACKWDKRFNH6WJ2EPAOLM7QR4ZI6IJOT4N2LCF` | 2             | record with `sha256sum` at release time                 | 0.0.24 | Current testnet deployment; see README on-chain evidence         |
+| v1 / testnet reset  | previous testnet ID (wiped)                                | 1             | previous vk                                             | 0.0.24 | v1 -> v2 added `fee_bps`/`fee_recipient`, required testnet reset |
 
 > Testnet resets wipe the deployed contract ID. Every reset produces a new row
 > here (see `runbook-testnet-reset.md`): never overwrite the previous row,

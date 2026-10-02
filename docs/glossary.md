@@ -53,7 +53,7 @@ Lean Incremental Merkle Tree — the off-chain Merkle tree shape Sharibo uses fo
 
 ### Merkle root / Merkle tree
 
-A cryptographic data structure that commits to a set of values using only a single hash (the root). Sharibo puts every member's commitment into a Merkle tree and stores only the root on-chain. A claimant proves "my leaf is in this tree" without revealing *which* leaf.  
+A cryptographic data structure that commits to a set of values using only a single hash (the root). Sharibo puts every member's commitment into a Merkle tree and stores only the root on-chain. A claimant proves "my leaf is in this tree" without revealing _which_ leaf.  
 → [`packages/client/src/tree.ts`](../packages/client/src/tree.ts)
 
 ### Nullifier / Nullifier hash
@@ -83,12 +83,12 @@ The first phase of a trusted setup ceremony: a multi-party computation that prod
 
 ### Proof (ZK proof)
 
-A small piece of data (in Groth16: three elliptic curve points A, B, C) that proves a statement is true without revealing *why* it's true. Sharibo's proof says: "one of the members is claiming the pot" — without revealing which one.  
+A small piece of data (in Groth16: three elliptic curve points A, B, C) that proves a statement is true without revealing _why_ it's true. Sharibo's proof says: "one of the members is claiming the pot" — without revealing which one.  
 → [`contracts/sharibo/src/lib.rs`](../contracts/sharibo/src/lib.rs)
 
 ### Public inputs / Public signals
 
-The values that both the prover and verifier agree on publicly. In Sharibo the ordered set is `[nullifierHash, root, externalNullifier, recipientHash]` (see [wire-format.md](wire-format.md) and [`test-vectors/public-signals.json`](../test-vectors/public-signals.json)). `recipientHash` is the SHA-256-derived hash of the payout address, supplied so the proof commits to where the pot goes. The proof demonstrates that some private inputs (identityNullifier, identitySecret, Merkle path) satisfy the circuit *given these public values*.  
+The values that both the prover and verifier agree on publicly. In Sharibo the ordered set is `[nullifierHash, root, externalNullifier, recipientHash]` (see [wire-format.md](wire-format.md) and [`test-vectors/public-signals.json`](../test-vectors/public-signals.json)). `recipientHash` is the SHA-256-derived hash of the payout address, supplied so the proof commits to where the pot goes. The proof demonstrates that some private inputs (identityNullifier, identitySecret, Merkle path) satisfy the circuit _given these public values_.  
 → [wire-format.md](wire-format.md) · [`docs/adr/006-recipient-binding.md`](adr/006-recipient-binding.md) · [`contracts/sharibo/src/lib.rs`](../contracts/sharibo/src/lib.rs)
 
 ### recipientHash
@@ -152,16 +152,16 @@ A cryptographic technique where one party (the prover) convinces another (the ve
 
 Sharibo is a private **ROSCA** (rotating savings and credit association). The same social structure has many local names — the README lists them so people recognise the product. Short definitions:
 
-| Name | Region / language notes |
-| --- | --- |
-| **ajo** / **esusu** | Nigeria and wider West Africa (Yoruba and neighbours) — fixed contribution, rotating payout. |
-| **tanda** / **cundina** | Mexico and parts of Latin America. |
-| **susu** | Ghana, Caribbean, and diaspora communities. |
-| **tontine** | Francophone West Africa and historical European mutual savings. |
-| **junta** / **pandero** | Peru and Andean communities. |
-| **consórcio** | Brazil — often more formalised, still rotating credit at heart. |
-| **hui** | China / Taiwan rotating savings circles. |
-| **paluwagan** | Philippines. |
-| **chit fund** | India — legally regulated variants exist; the social pattern is the same. |
+| Name                    | Region / language notes                                                                      |
+| ----------------------- | -------------------------------------------------------------------------------------------- |
+| **ajo** / **esusu**     | Nigeria and wider West Africa (Yoruba and neighbours) — fixed contribution, rotating payout. |
+| **tanda** / **cundina** | Mexico and parts of Latin America.                                                           |
+| **susu**                | Ghana, Caribbean, and diaspora communities.                                                  |
+| **tontine**             | Francophone West Africa and historical European mutual savings.                              |
+| **junta** / **pandero** | Peru and Andean communities.                                                                 |
+| **consórcio**           | Brazil — often more formalised, still rotating credit at heart.                              |
+| **hui**                 | China / Taiwan rotating savings circles.                                                     |
+| **paluwagan**           | Philippines.                                                                                 |
+| **chit fund**           | India — legally regulated variants exist; the social pattern is the same.                    |
 
-Mechanics are always the same: fixed contribution per round, one payout per round, rotate until everyone has collected once. Sharibo puts that pattern on Stellar and anonymizes the *payout* side with a ZK proof.
+Mechanics are always the same: fixed contribution per round, one payout per round, rotate until everyone has collected once. Sharibo puts that pattern on Stellar and anonymizes the _payout_ side with a ZK proof.

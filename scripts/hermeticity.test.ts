@@ -67,16 +67,16 @@ describe("hermeticity guard", () => {
   it("the default and live scripts use disjoint globs", () => {
     // If these ever overlap, every live assertion is back in the default run.
     assert.match(pkg.scripts.test, /--test\s+"?\*\.test\.ts"?$/, "test must glob only *.test.ts");
-    assert.match(pkg.scripts["test:live"], /--test\s+"?\*\.live\.ts"?$/, "test:live must glob only *.live.ts");
+    assert.match(
+      pkg.scripts["test:live"],
+      /--test\s+"?\*\.live\.ts"?$/,
+      "test:live must glob only *.live.ts",
+    );
   });
 
   it("has no file that both globs would match", () => {
     const overlap = defaultGlobFiles.filter((f) => f.endsWith(".live.ts"));
-    assert.deepEqual(
-      overlap,
-      [],
-      `in both the default and live globs: ${overlap.join(", ")}`,
-    );
+    assert.deepEqual(overlap, [], `in both the default and live globs: ${overlap.join(", ")}`);
   });
 
   it("names every live file with the .live.ts suffix", () => {

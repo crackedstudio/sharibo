@@ -208,9 +208,12 @@ sdk-build:
 ci: sdk-build typecheck lint lint-dead scripts-test repo-structure-test client app-test circuits-test cargo-fmt cargo-clippy cargo-test stellar-build
     @echo "just ci: all gate checks passed."
 
+format-check:
+    npm run format:check
+
 # Fast pre-commit subset. Alias kept for muscle memory; NOT the full gate.
 # Use `just ci` before opening a PR.
-verify: typecheck lint client app-test
+verify: format-check typecheck lint client app-test
     @echo "just verify: fast subset passed. Run \`just ci\` before opening a PR."
 
 # Browser end-to-end test of the whole demo flow (open page → create circle →

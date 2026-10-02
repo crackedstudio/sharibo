@@ -6,7 +6,7 @@
 **Cause:** Stellar testnet is wiped periodically (roughly quarterly). Every deployed contract,
 every SAC (including the native-XLM test token this repo uses), and every account's funded
 state disappears with it. The keypairs themselves (`admin`, `member`, ...) are still valid —
-they're just generated locally by `stellar keys` — but the *accounts* they name no longer exist
+they're just generated locally by `stellar keys` — but the _accounts_ they name no longer exist
 on the new ledger, and `SHARIBO_CONTRACT_ID` / `TEST_TOKEN_CONTRACT_ID` in `.env` now point at
 nothing.
 

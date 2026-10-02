@@ -45,12 +45,12 @@ cd ..
 
 ## Running the app
 
-| Script | What it does | When to use |
-| --- | --- | --- |
-| `npm run dev:full` | `sync-circuit` then Vite | **First run / default.** Ensures artifacts are present. |
-| `npm run dev` | Vite only | Artifacts already synced; faster HMR loop. |
-| `npm run dev:circuits` | Watch-mode sync of circuit files | Editing circuits while the app is open. |
-| `npm run preview` | Serve the production `dist/` | After `npm run build`. |
+| Script                 | What it does                     | When to use                                             |
+| ---------------------- | -------------------------------- | ------------------------------------------------------- |
+| `npm run dev:full`     | `sync-circuit` then Vite         | **First run / default.** Ensures artifacts are present. |
+| `npm run dev`          | Vite only                        | Artifacts already synced; faster HMR loop.              |
+| `npm run dev:circuits` | Watch-mode sync of circuit files | Editing circuits while the app is open.                 |
+| `npm run preview`      | Serve the production `dist/`     | After `npm run build`.                                  |
 
 From the app directory:
 

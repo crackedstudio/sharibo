@@ -4,16 +4,16 @@ This is the detailed version of the [Repository structure](../README.md#reposito
 
 ## Ownership map
 
-| Directory | Responsibility | Toolchain | Tests | Issue label |
-| --------- | -------------- | --------- | ----- | ----------- |
-| [**`app/`**](../app/README.md) | Browser demo: generates a real proof client-side and drives `create`/`fund`/`claim` against testnet | TypeScript, React 19, Vite, Vitest | `npm test` | `frontend` |
-| [**`packages/client/`**](../packages/client/README.md) | Isomorphic TS SDK shared by `app/` and `scripts/` | TypeScript, snarkjs, `@stellar/stellar-sdk` | `npm test -w packages/client` | `sdk` |
-| [**`packages/core/`**](../packages/core/README.md) | Pure crypto — Poseidon hashing, Merkle trees, identity/nullifier derivation, field arithmetic, no I/O | TypeScript | `npm test -w packages/core` | `core` |
-| [**`contracts/`**](../contracts/README.md) | Soroban contract that verifies Groth16 proofs on-chain | Rust, soroban-sdk 23, `wasm32v1-none` | `cd contracts && cargo test` | `contracts` |
-| [**`circuits/`**](../circuits/README.md) | Zero-knowledge membership circuit + trusted-setup pipeline | Circom 2.2.3, snarkjs, bash | `cd circuits && npm test` | `circuits` |
-| [**`scripts/`**](../scripts/package.json) | Node/TS helpers: e2e round runner, smoke health check | TypeScript, tsx | `npm test -w scripts` | `e2e` / `dx` |
-| [**`docs/`**](index.md) | Long-form documentation (this file included); `docs/hackathon/` is a point-in-time archive | Markdown | — | `documentation` |
-| [**`test-vectors/`**](../test-vectors/generate.mjs) | Cross-implementation Poseidon fixture vectors | JSON, Node | exercised by client/circuit suites | `testing` |
+| Directory                                              | Responsibility                                                                                        | Toolchain                                   | Tests                              | Issue label     |
+| ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- | ------------------------------------------- | ---------------------------------- | --------------- |
+| [**`app/`**](../app/README.md)                         | Browser demo: generates a real proof client-side and drives `create`/`fund`/`claim` against testnet   | TypeScript, React 19, Vite, Vitest          | `npm test`                         | `frontend`      |
+| [**`packages/client/`**](../packages/client/README.md) | Isomorphic TS SDK shared by `app/` and `scripts/`                                                     | TypeScript, snarkjs, `@stellar/stellar-sdk` | `npm test -w packages/client`      | `sdk`           |
+| [**`packages/core/`**](../packages/core/README.md)     | Pure crypto — Poseidon hashing, Merkle trees, identity/nullifier derivation, field arithmetic, no I/O | TypeScript                                  | `npm test -w packages/core`        | `core`          |
+| [**`contracts/`**](../contracts/README.md)             | Soroban contract that verifies Groth16 proofs on-chain                                                | Rust, soroban-sdk 23, `wasm32v1-none`       | `cd contracts && cargo test`       | `contracts`     |
+| [**`circuits/`**](../circuits/README.md)               | Zero-knowledge membership circuit + trusted-setup pipeline                                            | Circom 2.2.3, snarkjs, bash                 | `cd circuits && npm test`          | `circuits`      |
+| [**`scripts/`**](../scripts/package.json)              | Node/TS helpers: e2e round runner, smoke health check                                                 | TypeScript, tsx                             | `npm test -w scripts`              | `e2e` / `dx`    |
+| [**`docs/`**](index.md)                                | Long-form documentation (this file included); `docs/hackathon/` is a point-in-time archive            | Markdown                                    | —                                  | `documentation` |
+| [**`test-vectors/`**](../test-vectors/generate.mjs)    | Cross-implementation Poseidon fixture vectors                                                         | JSON, Node                                  | exercised by client/circuit suites | `testing`       |
 
 ## End-to-end data flow
 
@@ -52,6 +52,7 @@ These are non-negotiable across all the directories touched by a change — see 
 - Security properties and limits: [threat model](threat-model.md).
 - Poseidon constant provenance: [poseidon-provenance.md](poseidon-provenance.md).
 - Decision records: [docs/adr](adr/).
+
 # Sharibo — Package Architecture & Import Rules
 
 ## Layer Diagram
@@ -85,14 +86,14 @@ These are non-negotiable across all the directories touched by a change — see 
 
 ## Rules (enforced by ESLint `no-restricted-imports`)
 
-| Consumer | May import | Must NOT import |
-|---|---|---|
-| `app/` | `@sharibo/client`, `@sharibo/core` | `packages/client/src/**`, `packages/core/src/**` (deep paths) |
-| `scripts/` | `@sharibo/client`, `@sharibo/core` | `packages/client/src/**`, `packages/core/src/**` (deep paths) |
-| `packages/client` | `@sharibo/core`, circuit artifacts | `app/`, `scripts/` |
-| `packages/core` | nothing in this repo | `@stellar/stellar-sdk`, `app/`, `scripts/`, `packages/client/` |
-| `contracts/` | nothing in this repo | — |
-| `circuits/` | nothing in this repo | — |
+| Consumer          | May import                         | Must NOT import                                                |
+| ----------------- | ---------------------------------- | -------------------------------------------------------------- |
+| `app/`            | `@sharibo/client`, `@sharibo/core` | `packages/client/src/**`, `packages/core/src/**` (deep paths)  |
+| `scripts/`        | `@sharibo/client`, `@sharibo/core` | `packages/client/src/**`, `packages/core/src/**` (deep paths)  |
+| `packages/client` | `@sharibo/core`, circuit artifacts | `app/`, `scripts/`                                             |
+| `packages/core`   | nothing in this repo               | `@stellar/stellar-sdk`, `app/`, `scripts/`, `packages/client/` |
+| `contracts/`      | nothing in this repo               | —                                                              |
+| `circuits/`       | nothing in this repo               | —                                                              |
 
 ## Rationale
 

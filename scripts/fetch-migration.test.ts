@@ -15,9 +15,7 @@ import { httpGet, httpGetJson, DEFAULT_TIMEOUT_MS } from "./http.js";
 const realFetch = globalThis.fetch;
 
 /** Build a minimal Response-like object good enough for the helper. */
-function stubFetch(
-  impl: (url: string, init?: RequestInit) => Promise<Partial<Response>>,
-): void {
+function stubFetch(impl: (url: string, init?: RequestInit) => Promise<Partial<Response>>): void {
   globalThis.fetch = (async (input: any, init?: any) => {
     const url = String(input?.url ?? input);
     // Real fetch rejects immediately for an already-aborted signal; the stub

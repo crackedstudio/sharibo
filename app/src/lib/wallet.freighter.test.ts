@@ -80,12 +80,12 @@ describe("buildNetworkMismatchMessage", () => {
   it("builds a clear error message from a mismatch error", () => {
     const mismatchError = checkNetworkMatch("PUBLIC", Networks.TESTNET);
     expect(mismatchError).not.toBeNull();
-    
+
     const message = buildNetworkMismatchMessage(
       mismatchError!,
-      "Please switch to Testnet in Freighter."
+      "Please switch to Testnet in Freighter.",
     );
-    
+
     expect(message).toContain("Mainnet");
     expect(message).toContain("Testnet");
     expect(message).toContain("Please switch to Testnet in Freighter.");
@@ -94,12 +94,9 @@ describe("buildNetworkMismatchMessage", () => {
   it("includes both wallet and app network names in the message", () => {
     const mismatchError = checkNetworkMatch("FUTURENET", Networks.PUBLIC);
     expect(mismatchError).not.toBeNull();
-    
-    const message = buildNetworkMismatchMessage(
-      mismatchError!,
-      "Switch in Freighter settings."
-    );
-    
+
+    const message = buildNetworkMismatchMessage(mismatchError!, "Switch in Freighter settings.");
+
     expect(message).toContain("Futurenet");
     expect(message).toContain("Mainnet");
   });

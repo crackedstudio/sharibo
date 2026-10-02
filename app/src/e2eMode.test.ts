@@ -6,12 +6,7 @@
 import { describe, it, expect } from "vitest";
 import pkg from "../package.json";
 import vitestConfig from "../vitest.config";
-import {
-  MOCK_APP_ENV,
-  TESTNET_PASSPHRASE,
-  liveConfigProblems,
-  resolveMode,
-} from "../e2e/mode";
+import { MOCK_APP_ENV, TESTNET_PASSPHRASE, liveConfigProblems, resolveMode } from "../e2e/mode";
 
 const VALID_ID = `C${"B".repeat(55)}`;
 
@@ -51,9 +46,7 @@ describe("liveConfigProblems", () => {
   });
 
   it("treats an unset passphrase as testnet, matching the app's own default", () => {
-    expect(
-      liveConfigProblems({ ...good, VITE_STELLAR_NETWORK_PASSPHRASE: undefined }),
-    ).toEqual([]);
+    expect(liveConfigProblems({ ...good, VITE_STELLAR_NETWORK_PASSPHRASE: undefined })).toEqual([]);
   });
 
   it("reports missing contract IDs", () => {

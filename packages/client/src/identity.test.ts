@@ -10,11 +10,7 @@ import {
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
-async function nullifierFor(
-  identity: Identity,
-  circleId: bigint,
-  round: bigint,
-): Promise<bigint> {
+async function nullifierFor(identity: Identity, circleId: bigint, round: bigint): Promise<bigint> {
   const externalNullifier = await computeExternalNullifier(circleId, round);
   return computeNullifierHash(identity.identityNullifier, externalNullifier);
 }

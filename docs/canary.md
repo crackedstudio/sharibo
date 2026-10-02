@@ -29,7 +29,7 @@ What we know from that investigation:
 **Still: verify on your own machine before trusting a nightly schedule.**
 Run the recipe manually once (`launchctl start` / `run-parts` equivalent /
 `systemctl start --wait`) and confirm the log looks like a normal run, not
-a hang. If your run *does* hang under the scheduler, do not add a timeout
+a hang. If your run _does_ hang under the scheduler, do not add a timeout
 that silently backgrounds the script further — instead compare against a
 plain foreground `npm run e2e` and report the difference; something about
 your scheduler's process environment differs from both cases above.

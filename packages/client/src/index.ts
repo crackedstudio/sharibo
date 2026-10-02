@@ -32,10 +32,7 @@ export * from "./events.js";
 export * from "./sdk.js";
 
 // SDK-specific error classes (base types come from @sharibo/core).
-export {
-  MAX_CIRCLE_SIZE,
-  TREE_LEVELS
-} from "./config.js";
+export { MAX_CIRCLE_SIZE, TREE_LEVELS } from "./config.js";
 export {
   AlreadyClaimedError,
   CircleCancelledError,
@@ -52,27 +49,19 @@ export {
   WrongRoundTagError,
   describeContractError,
   describeError,
-  parseContractErrorCode
+  parseContractErrorCode,
 } from "./errors.js";
-export {
-  configureArtifacts
-} from "./artifacts.js";
-export {
-  decodeContractError
-} from "./decodeError.js";
+export { configureArtifacts } from "./artifacts.js";
+export { decodeContractError } from "./decodeError.js";
 export {
   DEFAULT_RETRY_POLICY,
   PATIENT_RETRY_POLICY,
   POLL_RETRY_POLICY,
   computeDelay,
-  withRetry
+  withRetry,
 } from "./retry.js";
-export {
-  ShariboSDK
-} from "./sdk.js";
-export {
-  makeCircleId
-} from "./brand.js";
+export { ShariboSDK } from "./sdk.js";
+export { makeCircleId } from "./brand.js";
 
 // Types
 export type * from "./amount.js";

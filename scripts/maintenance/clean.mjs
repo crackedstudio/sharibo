@@ -19,7 +19,10 @@ const CLEAN_DIRS = [
   "packages/client/reports",
 ];
 
-export function createCleaner(repoRoot, { all = false, log = console.log, warn = console.warn } = {}) {
+export function createCleaner(
+  repoRoot,
+  { all = false, log = console.log, warn = console.warn } = {},
+) {
   function rel(abs) {
     return abs.startsWith(repoRoot) ? abs.slice(repoRoot.length + 1) : abs;
   }
@@ -164,8 +167,7 @@ export function createCleaner(repoRoot, { all = false, log = console.log, warn =
   return { run, CLEAN_DIRS, rmIfExists };
 }
 
-const isMain =
-  process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
+const isMain = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
 if (isMain) {
   const ALL = process.argv.includes("--all");
   createCleaner(DEFAULT_REPO_ROOT, { all: ALL }).run();

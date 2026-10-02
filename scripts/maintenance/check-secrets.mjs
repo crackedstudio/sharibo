@@ -38,10 +38,7 @@ export function scanContent(content, filePath = "<memory>") {
   return findings;
 }
 
-const IGNORED_FILES = new Set([
-  "scripts/check-secrets.test.mjs",
-  "scripts/config.test.ts"
-]);
+const IGNORED_FILES = new Set(["scripts/check-secrets.test.mjs", "scripts/config.test.ts"]);
 
 export function scanFile(filePath) {
   if (!existsSync(filePath) || IGNORED_FILES.has(filePath)) return [];
@@ -60,24 +57,22 @@ function getFilesToScan() {
   if (allIdx !== -1) {
     return execFileSync("git", ["ls-files"]).toString().trim().split("\n").filter(Boolean);
   }
-  
+
   const prIdx = args.indexOf("--pr");
   if (prIdx !== -1 && args[prIdx + 1]) {
     const base = args[prIdx + 1];
-    return execFileSync("git", [
-      "diff",
-      "--name-only",
-      "--diff-filter=ACMR",
-      `${base}...HEAD`
-    ]).toString().trim().split("\n").filter(Boolean);
+    return execFileSync("git", ["diff", "--name-only", "--diff-filter=ACMR", `${base}...HEAD`])
+      .toString()
+      .trim()
+      .split("\n")
+      .filter(Boolean);
   }
 
-  return execFileSync("git", [
-    "diff",
-    "--cached",
-    "--name-only",
-    "--diff-filter=ACMR",
-  ]).toString().trim().split("\n").filter(Boolean);
+  return execFileSync("git", ["diff", "--cached", "--name-only", "--diff-filter=ACMR"])
+    .toString()
+    .trim()
+    .split("\n")
+    .filter(Boolean);
 }
 
 function main() {
@@ -89,9 +84,7 @@ function main() {
       console.error(
         `\x1b[31m[BLOCKED]\x1b[0m Attempted to commit \`${file}\` which looks like an env file.`,
       );
-      console.error(
-        "  If this is intentional, use `git commit --no-verify` to skip the hook.",
-      );
+      console.error("  If this is intentional, use `git commit --no-verify` to skip the hook.");
       blocked = true;
     }
   }
@@ -116,8 +109,7 @@ function main() {
   }
 }
 
-const isMain =
-  process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
+const isMain = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
 if (isMain) {
   main();
 }

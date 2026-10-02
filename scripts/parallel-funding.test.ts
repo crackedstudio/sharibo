@@ -7,7 +7,10 @@ import assert from "node:assert/strict";
 
 // --- timed() utility tests ---
 // Replicate the timed() function from e2e.ts to test it in isolation.
-async function timed<T>(label: string, fn: () => Promise<T>): Promise<{ result: T; elapsed: number }> {
+async function timed<T>(
+  label: string,
+  fn: () => Promise<T>,
+): Promise<{ result: T; elapsed: number }> {
   const start = performance.now();
   const result = await fn();
   const elapsed = performance.now() - start;
@@ -50,13 +53,7 @@ describe("Promise.all parallelization", () => {
     // Sequential: 5 x 50ms = ~250ms
     // Parallel: max(50ms x 5) = ~50ms
     const start = performance.now();
-    const results = await Promise.all([
-      delay(50),
-      delay(50),
-      delay(50),
-      delay(50),
-      delay(50),
-    ]);
+    const results = await Promise.all([delay(50), delay(50), delay(50), delay(50), delay(50)]);
     const elapsed = performance.now() - start;
 
     assert.deepEqual(results, [50, 50, 50, 50, 50]);
@@ -66,9 +63,7 @@ describe("Promise.all parallelization", () => {
 
   it("collects all results in order", async () => {
     const results = await Promise.all(
-      [1, 2, 3, 4, 5].map(
-        (n) => new Promise<number>((r) => setTimeout(() => r(n * 10), 10)),
-      ),
+      [1, 2, 3, 4, 5].map((n) => new Promise<number>((r) => setTimeout(() => r(n * 10), 10))),
     );
     assert.deepEqual(results, [10, 20, 30, 40, 50]);
   });

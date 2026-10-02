@@ -5,14 +5,14 @@
 > Current reference numbers and ownership live elsewhere — prefer those links
 > over copying figures from this document:
 >
-> | Topic | Source of truth |
-> | --- | --- |
-> | CPU instruction measurements | [`contracts/BENCHMARKS.md`](contracts/BENCHMARKS.md) (regen: `just bench-contract`) |
-> | Repository / package ownership | [`docs/architecture.md`](docs/architecture.md) |
-> | Curve choice & BN254 impossibility | [`contracts/BENCHMARKS.md`](contracts/BENCHMARKS.md) §1 · [`NOTES.md`](NOTES.md) |
-> | Honest limitations (current) | [`README.md` §Honest limitations](README.md#honest-limitations) |
-> | Public signal order | [`test-vectors/public-signals.json`](test-vectors/public-signals.json) |
-> | SDK observability events | [`docs/observability.md`](docs/observability.md) |
+> | Topic                              | Source of truth                                                                     |
+> | ---------------------------------- | ----------------------------------------------------------------------------------- |
+> | CPU instruction measurements       | [`contracts/BENCHMARKS.md`](contracts/BENCHMARKS.md) (regen: `just bench-contract`) |
+> | Repository / package ownership     | [`docs/architecture.md`](docs/architecture.md)                                      |
+> | Curve choice & BN254 impossibility | [`contracts/BENCHMARKS.md`](contracts/BENCHMARKS.md) §1 · [`NOTES.md`](NOTES.md)    |
+> | Honest limitations (current)       | [`README.md` §Honest limitations](README.md#honest-limitations)                     |
+> | Public signal order                | [`test-vectors/public-signals.json`](test-vectors/public-signals.json)              |
+> | SDK observability events           | [`docs/observability.md`](docs/observability.md)                                    |
 >
 > Prefer editing the source of truth, then linking here — do not restate
 > measurements that will drift.
@@ -27,17 +27,21 @@ A complete, detailed account of what this project is, how every layer works, why
 4. [Live deployment (verified on-chain evidence)](#4-live-deployment-verified-on-chain-evidence)
 5. [System architecture](#5-system-architecture)
 6. [Deep dive: the ZK circuit](#6-deep-dive-the-zk-circuit)
-  - [What it proves](#what-it-proves)
-  - [Concrete numbers](#concrete-numbers)
-  - [The curve: BLS12-381, not BN254 — and why that's the single most important engineering decision in this project](#the-curve-bls12-381-not-bn254--and-why-thats-the-single-most-important-engineering-decision-in-this-project)
-  - [Poseidon over BLS12-381 — provenance](#poseidon-over-bls12-381--provenance)
-  - [Circuit interface (as implemented)](#circuit-interface-as-implemented)
+
+- [What it proves](#what-it-proves)
+- [Concrete numbers](#concrete-numbers)
+- [The curve: BLS12-381, not BN254 — and why that's the single most important engineering decision in this project](#the-curve-bls12-381-not-bn254--and-why-thats-the-single-most-important-engineering-decision-in-this-project)
+- [Poseidon over BLS12-381 — provenance](#poseidon-over-bls12-381--provenance)
+- [Circuit interface (as implemented)](#circuit-interface-as-implemented)
+
 7. [Deep dive: the smart contract](#7-deep-dive-the-smart-contract)
-  - [Storage](#storage)
-  - [Functions](#functions)
-  - [The real verifier](#the-real-verifier)
-  - [compute_external_nullifier — SHA-256, not Poseidon, and why that's fine](#compute_external_nullifier--sha-256-not-poseidon-and-why-thats-fine)
-  - [Error codes](#error-codes)
+
+- [Storage](#storage)
+- [Functions](#functions)
+- [The real verifier](#the-real-verifier)
+- [compute_external_nullifier — SHA-256, not Poseidon, and why that's fine](#compute_external_nullifier--sha-256-not-poseidon-and-why-thats-fine)
+- [Error codes](#error-codes)
+
 8. [Deep dive: the client SDK](#8-deep-dive-the-client-sdk)
 9. [Deep dive: the frontend](#9-deep-dive-the-frontend)
 10. [Cross-cutting invariants](#10-cross-cutting-invariants)
@@ -334,17 +338,17 @@ These must agree, byte-for-byte or value-for-value, across circuit, contract, an
 
 ## 13. Testing and verification matrix
 
-| Level                | Where                                                                                                                       | Result                                                                                                                                                                                                                                                          |
-| -------------------- | --------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Circuit unit tests   | `circuits/test/membership.test.js` (`circom_tester` + mocha + chai)                                                         | See the suite itself for the live case count — covers valid proof, wrong root, tampered path, nullifier determinism, path index checks, and four-signal pinning including `recipientHash`.                                                                    |
-| Contract unit tests  | `contracts/sharibo/src/test/` (`soroban-sdk` test env)                                                                      | See the suite itself for the live case count (far beyond the original happy-path handful) — real proof, underfunded, double-claim, stale round-tag, tampered public input, CPU budget, `require_auth`, fees, archival, etc.                                    |
-| Core unit tests      | `packages/core/`                                                                                                            | See the suite itself for the live case count — cryptography primitives, poseidon hashes, merkle tree logic.                                                                                                                                                     |
-| Client unit tests    | `packages/client/`                                                                                                          | See the suite itself for the live case count — identity generation, tree construction, proof generation, typed contract calls.                                                                                                                                  |
-| App unit tests       | `app/`                                                                                                                      | See the suite itself for the live case count — browser UI, identity state, funding flow, proof generation in-browser.                                                                                                                                           |
-| Scripts tests        | `scripts/`                                                                                                                  | See the suite itself for the live case count — maintenance checkers, config parsing.                                                                                                                                                                            |
-| On-chain integration | manual `stellar contract invoke` against deployed testnet contract                                                          | Real proof accepted (tx confirmed via Horizon); tampered proof rejected with `InvalidProof`                                                                                                                                                                     |
-| End-to-end           | `scripts/e2e.ts` against real testnet                                                                                       | Full round: create → 5× fund → real proof → claim to fresh recipient → balance/pot/round assertions → fund round 2 → nullifier replay → `AlreadyClaimed` assertion — all passing                                                                                |
-| Frontend             | `tsc --noEmit`, `vite build`, and a Node-side exploit of `fetch()` to exercise the exact browser proof-generation code path | Clean typecheck, clean build, real proof generated and verified via the same `fetch()`-based loading the browser uses. **Not** click-tested in an actual browser this session — see README limitations.                                                         |
+| Level                | Where                                                                                                                       | Result                                                                                                                                                                                                                      |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Circuit unit tests   | `circuits/test/membership.test.js` (`circom_tester` + mocha + chai)                                                         | See the suite itself for the live case count — covers valid proof, wrong root, tampered path, nullifier determinism, path index checks, and four-signal pinning including `recipientHash`.                                  |
+| Contract unit tests  | `contracts/sharibo/src/test/` (`soroban-sdk` test env)                                                                      | See the suite itself for the live case count (far beyond the original happy-path handful) — real proof, underfunded, double-claim, stale round-tag, tampered public input, CPU budget, `require_auth`, fees, archival, etc. |
+| Core unit tests      | `packages/core/`                                                                                                            | See the suite itself for the live case count — cryptography primitives, poseidon hashes, merkle tree logic.                                                                                                                 |
+| Client unit tests    | `packages/client/`                                                                                                          | See the suite itself for the live case count — identity generation, tree construction, proof generation, typed contract calls.                                                                                              |
+| App unit tests       | `app/`                                                                                                                      | See the suite itself for the live case count — browser UI, identity state, funding flow, proof generation in-browser.                                                                                                       |
+| Scripts tests        | `scripts/`                                                                                                                  | See the suite itself for the live case count — maintenance checkers, config parsing.                                                                                                                                        |
+| On-chain integration | manual `stellar contract invoke` against deployed testnet contract                                                          | Real proof accepted (tx confirmed via Horizon); tampered proof rejected with `InvalidProof`                                                                                                                                 |
+| End-to-end           | `scripts/e2e.ts` against real testnet                                                                                       | Full round: create → 5× fund → real proof → claim to fresh recipient → balance/pot/round assertions → fund round 2 → nullifier replay → `AlreadyClaimed` assertion — all passing                                            |
+| Frontend             | `tsc --noEmit`, `vite build`, and a Node-side exploit of `fetch()` to exercise the exact browser proof-generation code path | Clean typecheck, clean build, real proof generated and verified via the same `fetch()`-based loading the browser uses. **Not** click-tested in an actual browser this session — see README limitations.                     |
 
 ## 14. Key engineering decisions and deviations
 

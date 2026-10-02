@@ -10,7 +10,10 @@ describe("session persistence", () => {
 
   it("keeps marker-prefixed user strings", () => {
     saveSession({ value: "BIGINT::not-a-number" });
-    expect(loadSession()).toEqual({ ok: true, value: { value: "BIGINT::not-a-number", version: 1 } });
+    expect(loadSession()).toEqual({
+      ok: true,
+      value: { value: "BIGINT::not-a-number", version: 1 },
+    });
   });
 
   it("rejects corrupt JSON", () => {
@@ -26,7 +29,9 @@ describe("session persistence", () => {
 
   it("handles storage errors without throwing", () => {
     const original = sessionStorage.removeItem;
-    sessionStorage.removeItem = () => { throw new Error("blocked"); };
+    sessionStorage.removeItem = () => {
+      throw new Error("blocked");
+    };
     expect(clearSession()).toBe(false);
     sessionStorage.removeItem = original;
   });

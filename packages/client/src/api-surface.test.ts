@@ -57,7 +57,7 @@ test("API surface snapshot matches committed snapshot", () => {
     "errors.ts",
     "artifacts.ts",
     "brand.ts",
-    "sdk.ts"
+    "sdk.ts",
   ];
   const srcContent = srcFiles
     .map((f) => fs.readFileSync(path.join(__dirname, f), "utf8"))
@@ -99,4 +99,3 @@ test("API surface snapshot matches committed snapshot", () => {
     throw error;
   }
 });
-

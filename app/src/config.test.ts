@@ -39,8 +39,7 @@ const RPC = "VITE_STELLAR_RPC_URL";
 const PASSPHRASE = "VITE_STELLAR_NETWORK_PASSPHRASE";
 const TOKEN = "VITE_TEST_TOKEN_CONTRACT_ID";
 
-const CONTRACT_SHAPE_SUFFIX =
-  "expected a 56-character Stellar contract ID starting with 'C'";
+const CONTRACT_SHAPE_SUFFIX = "expected a 56-character Stellar contract ID starting with 'C'";
 
 describe("VITE_SHARIBO_CONTRACT_ID", () => {
   it("accepts a valid 56-char contract ID", () => {
@@ -96,7 +95,7 @@ describe("VITE_SHARIBO_CONTRACT_ID", () => {
     const { errors } = validate({ ...VALID, [CONTRACT]: "" });
     expect(errors).toEqual(["VITE_SHARIBO_CONTRACT_ID — missing or empty"]);
   });
-  
+
   it("reports empty when whitespace only", () => {
     const { errors } = validate({ ...VALID, [CONTRACT]: "   " });
     expect(errors).toEqual(["VITE_SHARIBO_CONTRACT_ID — missing or empty"]);
@@ -156,14 +155,17 @@ describe("VITE_STELLAR_NETWORK_PASSPHRASE", () => {
     const { errors } = validate({ ...VALID, [PASSPHRASE]: "" });
     expect(errors).toEqual(["VITE_STELLAR_NETWORK_PASSPHRASE — missing or empty"]);
   });
-  
+
   it("reports empty when whitespace only", () => {
     const { errors } = validate({ ...VALID, [PASSPHRASE]: "   \\t" });
     expect(errors).toEqual(["VITE_STELLAR_NETWORK_PASSPHRASE — missing or empty"]);
   });
 
   it("accepts any non-empty value (no shape check)", () => {
-    const { errors } = validate({ ...VALID, [PASSPHRASE]: "Public Global Stellar Network ; September 2015" });
+    const { errors } = validate({
+      ...VALID,
+      [PASSPHRASE]: "Public Global Stellar Network ; September 2015",
+    });
     expect(errors).toEqual([]);
   });
 });

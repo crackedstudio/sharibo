@@ -32,14 +32,49 @@ import {
   type NullifierHash,
 } from "@sharibo/client";
 import { config } from "../config.js";
-import { useI18n } from "../i18n.js";
 import {
-  FRIEND_BOT_RATE_LIMIT_MESSAGE,
+  friendbotFund,
+  friendbotFundMany,
   FriendbotRetryableError,
-  friendbotFund as fundWithFriendbot,
+  type FriendbotFundResult,
 } from "../lib/friendbot.js";
-import { checkNetworkMatch } from "../lib/wallet.freighter.js";
-import type { ClaimResult, ClaimStage, Member } from "../types.js";
+import type { Member, ClaimResult } from "../types.js";
+
+/** Where the circle view is in its on-chain load cycle, so the UI can show
+ *  skeletons instead of an empty ring while the first read is in flight. */
+export type CirclePhase = "idle" | "loading" | "ready" | "error";
+
+export interface SavedDemoState {
+  contributionXlm: number;
+  adminSecret: string;
+  members: Array<{
+    secret: string;
+    identity: {
+      identityNullifier: bigint;
+      identitySecret: bigint;
+      identityTrapdoor?: bigint;
+      commitment: bigint;
+    };
+    fundHash?: string;
+    ineligible?: boolean;
+  }>;
+  circleId: CircleId | bigint | string | number;
+  round: number;
+  claimantIndex: number;
+  proof: ContractProof | null;
+  nullifierHash: bigint | null;
+  claimResult: ClaimResult | null;
+  rejection: string | null;
+}
+
+export interface UseCircleFlowOptions {
+  onEvent?: OnEventFn;
+  claimStage?: ClaimStage | null;
+  setClaimStage?: (stage: ClaimStage) => void;
+  resetClaimStage?: () => void;
+  clearEvents?: () => void;
+  t?: (key: string, vars?: Record<string, string | number>) => string;
+}
 
 const BIGINT_MARKER = "BIGINT::";
 function replacer(_key: string, value: unknown): unknown {
@@ -524,8 +559,76 @@ export function useCircleFlow() {
         prev.map((mm, idx) => (idx === i ? { ...mm, fundHash: hash, freighterKey: pubKey } : mm)),
       );
     } catch (e) {
-      setMembers((prev) => prev.map((mm, idx) => (idx === i ? { ...mm, pending: false } : mm)));
-      setError(getErrorMessage(e));
+      if (stateRef.current.status !== "idle" && stateRef.current.status !== "failed") {
+        dispatch({ type: "fail", error: (e as Error).message });
+      }
+    }
+  }
+
+  // Fund all members via friendbot with partial success handling.
+  // Returns per-account results so the UI can show which succeeded/failed
+  // and offer a targeted retry for failed accounts.
+  async function fundAllMembers() {
+    if (!admin || circleId === null) return;
+    setError(null);
+    setBusy("Funding all members via friendbot…");
+    try {
+      const publicKeys = members.map((m) => m.keypair.publicKey());
+      const results = await friendbotFundMany(publicKeys, {
+        delayMs: 500,
+        onProgress: (result) => {
+          setFundingResults((prev) => {
+            const existing = prev.find((r) => r.publicKey === result.publicKey);
+            if (existing) {
+              return prev.map((r) => (r.publicKey === result.publicKey ? result : r));
+            }
+            return [...prev, result];
+          });
+        },
+      });
+      setFundingResults(results);
+
+      // For each successful friendbot funding, submit the on-chain fund transaction
+      for (const result of results) {
+        if (!result.success) continue;
+        const memberIndex = members.findIndex((m) => m.keypair.publicKey() === result.publicKey);
+        if (memberIndex === -1) continue;
+        const m = members[memberIndex];
+        try {
+          const memberClient = await connect(NETWORK, m.keypair);
+          const { hash } = await fund(memberClient, {
+            circleId,
+            from: m.keypair.publicKey(),
+          });
+          setMembers((prev) =>
+            prev.map((mm, idx) =>
+              idx === memberIndex ? { ...mm, funded: true, fundHash: hash } : mm,
+            ),
+          );
+        } catch (e) {
+          // On-chain fund failed — mark as not funded so it can be retried
+          setMembers((prev) =>
+            prev.map((mm, idx) => (idx === memberIndex ? { ...mm, funded: false } : mm)),
+          );
+          result.success = false;
+          result.error =
+            e instanceof FriendbotRetryableError ? e : new FriendbotRetryableError(String(e));
+        }
+      }
+
+      const adminClient = await connect(NETWORK, admin);
+      const circle = await getCircle(adminClient, circleId, POLL_RETRY_POLICY);
+      setPot(circle.pot);
+      setRound(circle.round);
+
+      const failedCount = results.filter((r) => !r.success).length;
+      if (failedCount > 0) {
+        setError(
+          `${failedCount} of ${results.length} accounts failed to fund. Use "Retry failed" to try again.`,
+        );
+      }
+    } catch (e) {
+      setError((e as Error).message);
     } finally {
       setBusy(null);
     }
@@ -549,11 +652,59 @@ export function useCircleFlow() {
         { computeExternalNullifier, generateProof, verifyProofLocally, connect, claim, hasClaimed },
       ] = await Promise.all([import("@stellar/stellar-sdk"), import("@sharibo/client")]);
 
-      if (signal.aborted) return;
-      const claimant = members[claimantIndex];
-      if (!claimant) return;
-      const merkleProof = tree.proof(claimantIndex);
-      const externalNullifier = await computeExternalNullifier(circleId, BigInt(round));
+      // For each newly successful funding, submit on-chain fund transaction
+      for (const result of results) {
+        if (!result.success) continue;
+        const memberIndex = members.findIndex((m) => m.keypair.publicKey() === result.publicKey);
+        if (memberIndex === -1) continue;
+        const m = members[memberIndex];
+        try {
+          const memberClient = await connect(NETWORK, m.keypair);
+          const { hash } = await fund(memberClient, {
+            circleId,
+            from: m.keypair.publicKey(),
+          });
+          setMembers((prev) =>
+            prev.map((mm, idx) =>
+              idx === memberIndex ? { ...mm, funded: true, fundHash: hash } : mm,
+            ),
+          );
+        } catch (e) {
+          setMembers((prev) =>
+            prev.map((mm, idx) => (idx === memberIndex ? { ...mm, funded: false } : mm)),
+          );
+          result.success = false;
+          result.error =
+            e instanceof FriendbotRetryableError ? e : new FriendbotRetryableError(String(e));
+        }
+      }
+
+      const adminClient = await connect(NETWORK, admin);
+      const circle = await getCircle(adminClient, circleId, POLL_RETRY_POLICY);
+      setPot(circle.pot);
+      setRound(circle.round);
+
+      const failedCount = results.filter((r) => !r.success).length;
+      if (failedCount > 0) {
+        setError(`${failedCount} of ${results.length} accounts still failed. You can retry again.`);
+      }
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function doClaim() {
+    if (state.status !== "readyToClaim" || !view.admin || !view.tree || view.circleId === null) return;
+    dispatch({
+      type: "beginProve",
+      busy: "Proving… (a real Groth16 proof is being generated in your browser)",
+    });
+    try {
+      const claimant = view.members[view.claimantIndex];
+      const merkleProof = view.tree.proof(view.claimantIndex);
+      const externalNullifier = await computeExternalNullifier(view.circleId, BigInt(view.round));
 
       if (signal.aborted) return;
       setClaimStage("artifacts");

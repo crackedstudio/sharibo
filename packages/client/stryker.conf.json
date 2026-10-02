@@ -8,16 +8,9 @@
   "vitest": {
     "configFile": "vitest.config.ts"
   },
-  "mutate": [
-    "../core/src/identity.ts",
-    "../core/src/tree.ts",
-    "src/prove.ts",
-    "src/validate.ts"
-  ],
+  "mutate": ["../core/src/identity.ts", "../core/src/tree.ts", "src/prove.ts", "src/validate.ts"],
   "mutator": {
-    "excludedMutations": [
-      "StringLiteral"
-    ]
+    "excludedMutations": ["StringLiteral"]
   },
   "coverageAnalysis": "perTest",
   "reporters": ["html", "clear-text", "progress", "json"],
@@ -38,10 +31,5 @@
   "disableBail": false,
   "tempDirName": ".stryker-tmp",
   "cleanTempDir": "always",
-  "ignorePatterns": [
-    "node_modules",
-    "dist",
-    "bench",
-    "*.bench.ts"
-  ]
+  "ignorePatterns": ["node_modules", "dist", "bench", "*.bench.ts"]
 }

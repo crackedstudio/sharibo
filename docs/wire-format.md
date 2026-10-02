@@ -22,11 +22,11 @@ proof. Sharibo has **3** public signals.
 
 **Order (index → signal):**
 
-| Index | Signal              | Origin                   | Role in `verify_groth16` |
-|------:|:--------------------|:-------------------------|:-------------------------|
-| 0     | `nullifierHash`     | Circuit **output**       | `public_inputs[0]`       |
-| 1     | `root`              | Circuit declared public  | `public_inputs[1]`       |
-| 2     | `externalNullifier` | Circuit declared public  | `public_inputs[2]`       |
+| Index | Signal              | Origin                  | Role in `verify_groth16` |
+| ----: | :------------------ | :---------------------- | :----------------------- |
+|     0 | `nullifierHash`     | Circuit **output**      | `public_inputs[0]`       |
+|     1 | `root`              | Circuit declared public | `public_inputs[1]`       |
+|     2 | `externalNullifier` | Circuit declared public | `public_inputs[2]`       |
 
 **Why this order:** circom/snarkjs emit all outputs of `component main`
 first (here, `nullifierHash`), then the explicitly declared public
@@ -55,7 +55,7 @@ of the source might suggest.
 
 **Adding a new public signal:** append it to the end of the
 `public_inputs` vector in `lib.rs`, add the corresponding `signal input`
-*after* the existing public inputs in the template, and regenerate
+_after_ the existing public inputs in the template, and regenerate
 `component main { public [...] }` via `scripts/gen-circuit.cjs`. The new
 signal gets the next index. Run `test-vectors/generate.mjs` to refresh
 the committed vectors, then re-run the full test suite (circuit tests,
@@ -92,7 +92,7 @@ Where:
 `sha256` host function but no native Poseidon. This derivation happens
 outside the SNARK constraint system, where Poseidon's constraint
 efficiency is irrelevant. Hand-porting Poseidon into pure Rust here
-would provide no benefit. Poseidon is used only *inside* the circuit
+would provide no benefit. Poseidon is used only _inside_ the circuit
 (commitment and nullifierHash), where it earns its keep.
 
 **Implementations must agree on byte order:** Both the Rust
@@ -218,14 +218,14 @@ Proof {
 
 ## 5. Field and curve parameters
 
-| Parameter | Value |
-|:----------|:------|
-| Curve | BLS12-381 |
-| Scalar field modulus `r` | `0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001` |
-| `r` (decimal) | `52435875175126190479447740508185965837690552500527637822603658699938581184513` |
-| `r` bit length | 255 |
-| Poseidon parameters | `poseidon-bls12381-circom` (circuit) / `poseidon-bls12381` (client), x^5 S-box, 8 full + 56 partial rounds, arity 2 |
-| Groth16 backend | snarkjs 0.7.6, compiled with `--prime bls12381` |
+| Parameter                | Value                                                                                                               |
+| :----------------------- | :------------------------------------------------------------------------------------------------------------------ |
+| Curve                    | BLS12-381                                                                                                           |
+| Scalar field modulus `r` | `0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001`                                                |
+| `r` (decimal)            | `52435875175126190479447740508185965837690552500527637822603658699938581184513`                                     |
+| `r` bit length           | 255                                                                                                                 |
+| Poseidon parameters      | `poseidon-bls12381-circom` (circuit) / `poseidon-bls12381` (client), x^5 S-box, 8 full + 56 partial rounds, arity 2 |
+| Groth16 backend          | snarkjs 0.7.6, compiled with `--prime bls12381`                                                                     |
 
 ---
 
@@ -235,26 +235,26 @@ If any of the following changes, **every file in this list must be
 updated atomically** — a disagreement is silent until the pairing check
 fails on-chain with `InvalidProof`.
 
-| File | What to update |
-|:-----|:---------------|
-| `docs/wire-format.md` | This document — update the specification first. |
-| `test-vectors/wire-format.json` | Regenerate fixtures to match the new format. |
-| `test-vectors/generate.mjs` | Update the generator if the derivation or encoding logic changed. |
-| `circuits/membership.template.circom` | Signal declarations, `component main { public [...] }` line (via `scripts/gen-circuit.cjs`). |
-| `circuits/scripts/gen-circuit.cjs` | The `component main` line generation logic. |
-| `contracts/sharibo/src/lib.rs` | `public_inputs` vector order in `claim`, `compute_external_nullifier`, `verify_groth16`, `VerificationKey`/`Proof`/`Fr`/`G1Affine`/`G2Affine` usage. |
-| `contracts/sharibo/src/test.rs` | Test fixtures (proof/vk coordinates, public signal order assertions). |
-| `packages/client/src/identity.ts` | `computeExternalNullifier` (byte order, modulus reduction). |
-| `packages/client/src/identity.test.ts` | Known-answer tests for `computeExternalNullifier`. |
-| `packages/client/src/prove.ts` | Proof/vk encoding logic (if the encoding changed). |
-| `packages/client/src/prove.test.ts` | Encoding tests. |
-| `packages/client/src/contract.ts` | `claim` argument order. |
-| `circuits/verification_key.json` | The committed verification key (regenerated by `npm run setup`). |
-| `circuits/test/membership.test.js` | Public signal order assertions, external nullifier tests. |
-| `packages/client/src/poseidon-vectors.test.ts` | Cross-implementation Poseidon fixtures. |
-| `full_product_breakdown.md` | §6 (circuit interface), §7 (contract verifier), §10 (cross-cutting invariants). |
-| `README.md` | Public signal order bullet in "Invariants held across circuit / contract / client". |
-| `NOTES.md` | Build log entry recording the change. |
+| File                                           | What to update                                                                                                                                       |
+| :--------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `docs/wire-format.md`                          | This document — update the specification first.                                                                                                      |
+| `test-vectors/wire-format.json`                | Regenerate fixtures to match the new format.                                                                                                         |
+| `test-vectors/generate.mjs`                    | Update the generator if the derivation or encoding logic changed.                                                                                    |
+| `circuits/membership.template.circom`          | Signal declarations, `component main { public [...] }` line (via `scripts/gen-circuit.cjs`).                                                         |
+| `circuits/scripts/gen-circuit.cjs`             | The `component main` line generation logic.                                                                                                          |
+| `contracts/sharibo/src/lib.rs`                 | `public_inputs` vector order in `claim`, `compute_external_nullifier`, `verify_groth16`, `VerificationKey`/`Proof`/`Fr`/`G1Affine`/`G2Affine` usage. |
+| `contracts/sharibo/src/test.rs`                | Test fixtures (proof/vk coordinates, public signal order assertions).                                                                                |
+| `packages/client/src/identity.ts`              | `computeExternalNullifier` (byte order, modulus reduction).                                                                                          |
+| `packages/client/src/identity.test.ts`         | Known-answer tests for `computeExternalNullifier`.                                                                                                   |
+| `packages/client/src/prove.ts`                 | Proof/vk encoding logic (if the encoding changed).                                                                                                   |
+| `packages/client/src/prove.test.ts`            | Encoding tests.                                                                                                                                      |
+| `packages/client/src/contract.ts`              | `claim` argument order.                                                                                                                              |
+| `circuits/verification_key.json`               | The committed verification key (regenerated by `npm run setup`).                                                                                     |
+| `circuits/test/membership.test.js`             | Public signal order assertions, external nullifier tests.                                                                                            |
+| `packages/client/src/poseidon-vectors.test.ts` | Cross-implementation Poseidon fixtures.                                                                                                              |
+| `full_product_breakdown.md`                    | §6 (circuit interface), §7 (contract verifier), §10 (cross-cutting invariants).                                                                      |
+| `README.md`                                    | Public signal order bullet in "Invariants held across circuit / contract / client".                                                                  |
+| `NOTES.md`                                     | Build log entry recording the change.                                                                                                                |
 
 **After any change:** run the full verification chain in order:
 
@@ -270,15 +270,16 @@ sync — fix the generator or the implementation, not the vectors.
 
 ## 7. Test vector files
 
-| File | What it covers |
-|:-----|:---------------|
-| `test-vectors/poseidon.json` | Cross-implementation Poseidon2 fixtures (circuit ↔ client). |
+| File                            | What it covers                                                                                                       |
+| :------------------------------ | :------------------------------------------------------------------------------------------------------------------- |
+| `test-vectors/poseidon.json`    | Cross-implementation Poseidon2 fixtures (circuit ↔ client).                                                          |
 | `test-vectors/wire-format.json` | External nullifier known-answer tests, G1/G2 encoding examples, public signal order fixtures, vk.ic length fixtures. |
-| `test-vectors/generate.mjs` | Regenerates `poseidon.json` from the client implementation. |
+| `test-vectors/generate.mjs`     | Regenerates `poseidon.json` from the client implementation.                                                          |
 
 The committed test vectors are **not** regenerated to make failing tests
 pass. If only one implementation fails after a dependency bump, the two
 implementations have diverged — fix the divergence, not the vectors.
+
 # Cross-layer wire format (circuit ↔ contract ↔ client)
 
 Authoritative reference for **public signal order** and **byte encodings** used by Groth16 verification on Soroban. Any change here must land in the same change set across all three layers (see [CONTRIBUTING.md](../CONTRIBUTING.md)).
@@ -291,12 +292,12 @@ After trusted setup for the current `membership` circuit (including `recipientHa
 [nullifierHash, root, externalNullifier, recipientHash]
 ```
 
-| Index | Name | Role |
-| ----- | ---- | ---- |
-| 0 | `nullifierHash` | Circuit **output**: `Poseidon(identityNullifier, externalNullifier)` |
-| 1 | `root` | Public input: circle Merkle root |
-| 2 | `externalNullifier` | Public input: round tag (must match contract-derived `SHA256(circle_id, round)` reduced into `Fr`) |
-| 3 | `recipientHash` | Public input: payout binding (squaring constraint in circuit; contract compares against `compute_recipient_hash(recipient)`) |
+| Index | Name                | Role                                                                                                                         |
+| ----- | ------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| 0     | `nullifierHash`     | Circuit **output**: `Poseidon(identityNullifier, externalNullifier)`                                                         |
+| 1     | `root`              | Public input: circle Merkle root                                                                                             |
+| 2     | `externalNullifier` | Public input: round tag (must match contract-derived `SHA256(circle_id, round)` reduced into `Fr`)                           |
+| 3     | `recipientHash`     | Public input: payout binding (squaring constraint in circuit; contract compares against `compute_recipient_hash(recipient)`) |
 
 **Why this order:** Circom/snarkjs place the main component's public **outputs** first, then public **inputs** in source declaration order (`root`, `externalNullifier`, `recipientHash` in `membership.template.circom`). The order is **not** `[root, externalNullifier, nullifierHash]`.
 
@@ -334,11 +335,11 @@ Client (current): SHA-256 over the **32-byte ed25519 public key** from StrKey de
 
 ## Groth16 proof (`Proof` struct)
 
-| Part | Soroban type | Size | Encoding |
-| ---- | ------------ | ---- | -------- |
-| `a` | `G1Affine` | 96 bytes | Uncompressed affine: `be(x) \|\| be(y)`, each 48-byte big-endian field element |
-| `b` | `G2Affine` | 192 bytes | Uncompressed affine over Fp²: `be(x₁) \|\| be(x₀) \|\| be(y₁) \|\| be(y₀)` (see snarkjs → contract mapping below) |
-| `c` | `G1Affine` | 96 bytes | Same as `a` |
+| Part | Soroban type | Size      | Encoding                                                                                                          |
+| ---- | ------------ | --------- | ----------------------------------------------------------------------------------------------------------------- |
+| `a`  | `G1Affine`   | 96 bytes  | Uncompressed affine: `be(x) \|\| be(y)`, each 48-byte big-endian field element                                    |
+| `b`  | `G2Affine`   | 192 bytes | Uncompressed affine over Fp²: `be(x₁) \|\| be(x₀) \|\| be(y₁) \|\| be(y₀)` (see snarkjs → contract mapping below) |
+| `c`  | `G1Affine`   | 96 bytes  | Same as `a`                                                                                                       |
 
 **Client encoders:** `encodeG1` / `encodeG2` in [`packages/client/src/prove.ts`](../packages/client/src/prove.ts).
 
@@ -356,11 +357,11 @@ Same G1/G2 rules as proof elements:
 
 ## Circuit artifacts (off-chain)
 
-| Artifact | Path | Role |
-| -------- | ---- | ---- |
-| R1CS / WASM | `circuits/build/membership.r1cs`, `membership_js/membership.wasm` | Witness generation |
-| Proving key | `circuits/build/membership_final.zkey` (local, not committed) | `snarkjs groth16 fullProve` |
-| Verification key | `circuits/verification_key.json` (committed) | On-chain vk at `create_circle` |
+| Artifact         | Path                                                              | Role                           |
+| ---------------- | ----------------------------------------------------------------- | ------------------------------ |
+| R1CS / WASM      | `circuits/build/membership.r1cs`, `membership_js/membership.wasm` | Witness generation             |
+| Proving key      | `circuits/build/membership_final.zkey` (local, not committed)     | `snarkjs groth16 fullProve`    |
+| Verification key | `circuits/verification_key.json` (committed)                      | On-chain vk at `create_circle` |
 
 ## Related docs
 

@@ -10,7 +10,7 @@ In Soroban, persistent storage entries are archived when their TTL lapses.
 Nullifiers used to live as standalone `DataKey::Nullifier` entries that were
 write-once and never re-extended. The `Circle` entry is continuously
 re-extended on every write, so a dormant nullifier could archive while the
-circle stayed live — failing *open* on the double-claim fence.
+circle stayed live — failing _open_ on the double-claim fence.
 
 ## Decision
 
@@ -22,12 +22,12 @@ inherit the Circle entry's continuously-extended TTL. The standalone
 
 Values live in `contracts/sharibo/src/lib.rs`. Wall-clock assumes ~5 s/ledger.
 
-| Constant | Value | Wall-clock | If network ceiling is lower | If the value is raised |
-|---|---|---|---|---|
-| `LEDGER_THRESHOLD` | 100 ledgers | ≈ 8 minutes | N/A (threshold, not a target) | Entries are refreshed less often near expiry; more risk of racing archival on quiet paths |
-| `LEDGER_EXTEND_TO` | 500,000 ledgers | ≈ 29 days | Every `extend_ttl` **silently clamps** to `max_entry_ttl`; the contract assumes a longer life than the network grants, with no error | Approaches / exceeds `max_entry_ttl` (currently documented **535,679**); clamp risk, and longer dormancy before archival |
-| `max_entry_ttl` (network) | **535,679** ledgers (testnet & mainnet, as of 2026-09 docs) | ≈ 31 days | Network-controlled — re-check before mainnet | N/A (network setting) |
-| `min_persistent_entry_ttl` (network) | **4,096** ledgers (typical) | ≈ 5.7 hours | New persistent writes get a shorter default floor | N/A (network setting) |
+| Constant                             | Value                                                       | Wall-clock  | If network ceiling is lower                                                                                                          | If the value is raised                                                                                                   |
+| ------------------------------------ | ----------------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
+| `LEDGER_THRESHOLD`                   | 100 ledgers                                                 | ≈ 8 minutes | N/A (threshold, not a target)                                                                                                        | Entries are refreshed less often near expiry; more risk of racing archival on quiet paths                                |
+| `LEDGER_EXTEND_TO`                   | 500,000 ledgers                                             | ≈ 29 days   | Every `extend_ttl` **silently clamps** to `max_entry_ttl`; the contract assumes a longer life than the network grants, with no error | Approaches / exceeds `max_entry_ttl` (currently documented **535,679**); clamp risk, and longer dormancy before archival |
+| `max_entry_ttl` (network)            | **535,679** ledgers (testnet & mainnet, as of 2026-09 docs) | ≈ 31 days   | Network-controlled — re-check before mainnet                                                                                         | N/A (network setting)                                                                                                    |
+| `min_persistent_entry_ttl` (network) | **4,096** ledgers (typical)                                 | ≈ 5.7 hours | New persistent writes get a shorter default floor                                                                                    | N/A (network setting)                                                                                                    |
 
 Re-check live network settings with Horizon / `stellar network settings`
 (mainnet: `https://horizon.stellar.org/`, testnet:

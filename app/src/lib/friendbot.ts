@@ -86,7 +86,8 @@ export async function friendbotFundMany(
       results.push(result);
       options?.onProgress?.(result);
     } catch (e) {
-      const error = e instanceof FriendbotRetryableError ? e : new FriendbotRetryableError(String(e));
+      const error =
+        e instanceof FriendbotRetryableError ? e : new FriendbotRetryableError(String(e));
       const result = { publicKey, success: false, error };
       results.push(result);
       options?.onProgress?.(result);

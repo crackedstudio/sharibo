@@ -9,15 +9,15 @@ here are covered by an existing `#[should_panic]` / happy-path test.
 
 ## Known gaps (triage follow-up)
 
-| Arm / path | Error | Why it matters | Suggested test |
-|---|---|---|---|
-| `expire_round` before deadline | `RoundNotExpired` (#12) | No SDK caller in client yet (#485); easy high-value panic | Advance ledger past / before deadline |
-| `expire_round` when pot is full | `RoundFull` (#6) | Distinguishes expire vs claim | Fund to target then call expire |
-| `expire_round` happy path | — | Refunds stuck contributors | Partial fund + expire after deadline |
-| `propose_admin` / `accept_admin` | `CircleNotFound`, `CircleCancelled` | Admin rotation has no SDK caller | Propose → accept; cancel mid-transfer |
-| `fund` after deadline | `RoundNotExpired` (#12) | Same code as expire guard | Set deadline, advance ledger, fund |
-| `Overflow` in `pot_target` / `fund` pot add | `Overflow` (#7) | Absurd contribution × size | Extreme size/contribution fixtures |
-| `apply_fee` with `fee_bps > MAX_FEE_BASIS_POINTS` | `InvalidFeeParams` (#9) | Internal guard (create already rejects); still worth a unit call | Direct `apply_fee` harness (proptest covers in-range) |
+| Arm / path                                        | Error                               | Why it matters                                                   | Suggested test                                        |
+| ------------------------------------------------- | ----------------------------------- | ---------------------------------------------------------------- | ----------------------------------------------------- |
+| `expire_round` before deadline                    | `RoundNotExpired` (#12)             | No SDK caller in client yet (#485); easy high-value panic        | Advance ledger past / before deadline                 |
+| `expire_round` when pot is full                   | `RoundFull` (#6)                    | Distinguishes expire vs claim                                    | Fund to target then call expire                       |
+| `expire_round` happy path                         | —                                   | Refunds stuck contributors                                       | Partial fund + expire after deadline                  |
+| `propose_admin` / `accept_admin`                  | `CircleNotFound`, `CircleCancelled` | Admin rotation has no SDK caller                                 | Propose → accept; cancel mid-transfer                 |
+| `fund` after deadline                             | `RoundNotExpired` (#12)             | Same code as expire guard                                        | Set deadline, advance ledger, fund                    |
+| `Overflow` in `pot_target` / `fund` pot add       | `Overflow` (#7)                     | Absurd contribution × size                                       | Extreme size/contribution fixtures                    |
+| `apply_fee` with `fee_bps > MAX_FEE_BASIS_POINTS` | `InvalidFeeParams` (#9)             | Internal guard (create already rejects); still worth a unit call | Direct `apply_fee` harness (proptest covers in-range) |
 
 ## Covered (do not regress)
 

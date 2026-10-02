@@ -40,11 +40,7 @@ const CONTRACT_ERROR_RE = /Error\s*\(\s*Contract\s*,\s*#(\d+)\s*\)/;
  * Codes are derived from the `#[contracterror]` enum in
  * `contracts/sharibo/src/lib.rs` — keep this in sync if the enum changes.
  */
-function createContractError(
-  code: number,
-  message: string,
-  cause: unknown,
-): ContractError {
+function createContractError(code: number, message: string, cause: unknown): ContractError {
   switch (code) {
     case 1:
       return new CircleNotFoundError(message, { cause });
@@ -115,22 +111,14 @@ export function decodeContractError(err: unknown): ContractError | RpcError {
     const match = CONTRACT_ERROR_RE.exec(text);
     if (match) {
       const code = parseInt(match[1], 10);
-      return createContractError(
-        code,
-        `Contract error #${code}: ${text}`,
-        err,
-      );
+      return createContractError(code, `Contract error #${code}: ${text}`, err);
     }
   }
 
   // Not a contract error — wrap in RpcError so callers always get a
   // ShariboError subclass.
   const message =
-    err instanceof Error
-      ? err.message
-      : typeof err === "string"
-        ? err
-        : "Unknown RPC error";
+    err instanceof Error ? err.message : typeof err === "string" ? err : "Unknown RPC error";
 
   return new RpcError(message, { cause: err });
 }

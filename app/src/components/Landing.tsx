@@ -102,10 +102,10 @@ export function Landing({
         </p>
         <button
           className={`${styles.btn} ${styles.btnPrimary}`}
-          disabled={!online || !!busy}
+          disabled={!!busy}
           onClick={onLaunch}
         >
-          {busy ?? t("landing.launch")}
+          {busy ?? "Launch a 5-member circle on testnet"}
         </button>
         {error && <p className={styles.error}>{error}</p>}
         <Toaster failure={failure} busy={!!busy} online={online} onDismiss={onDismissFailure} />

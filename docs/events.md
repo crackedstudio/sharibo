@@ -4,15 +4,15 @@ This document describes the event schema emitted by the Sharibo contract. Each e
 
 ## Event Types
 
-| Event Struct | Topic(s) | Data Fields |
-|---|---|---|
-| `CircleCreated` | `circle`, `created` | `circle_id: u64`, `admin: Address`, `token: Address`, `contrib: i128`, `size: u32` |
-| `CircleFunded` | `circle`, `funded` | `circle_id: u64`, `from: Address`, `pot: i128`, `target: i128` |
-| `CircleClaimed` | `circle`, `claimed` | `circle_id: u64`, `cround: u32`, `payout: i128`, `recipient: Address` |
-| `AdminProposed` | `prop_adm` | `circle_id: u64`, `old_admin: Address`, `new_admin: Address` |
-| `AdminAccepted` | `acc_adm` | `circle_id: u64`, `old_admin: Address`, `new_admin: Address` |
-| `RoundExpired` | `rnd_exp` | `circle_id: u64`, `eround: u32` |
-| `CircleCancelled` | `circle`, `cancelled` | `circle_id: u64`, `rcount: u32`, `rtotal: i128` |
+| Event Struct      | Topic(s)              | Data Fields                                                                        |
+| ----------------- | --------------------- | ---------------------------------------------------------------------------------- |
+| `CircleCreated`   | `circle`, `created`   | `circle_id: u64`, `admin: Address`, `token: Address`, `contrib: i128`, `size: u32` |
+| `CircleFunded`    | `circle`, `funded`    | `circle_id: u64`, `from: Address`, `pot: i128`, `target: i128`                     |
+| `CircleClaimed`   | `circle`, `claimed`   | `circle_id: u64`, `cround: u32`, `payout: i128`, `recipient: Address`              |
+| `AdminProposed`   | `prop_adm`            | `circle_id: u64`, `old_admin: Address`, `new_admin: Address`                       |
+| `AdminAccepted`   | `acc_adm`             | `circle_id: u64`, `old_admin: Address`, `new_admin: Address`                       |
+| `RoundExpired`    | `rnd_exp`             | `circle_id: u64`, `eround: u32`                                                    |
+| `CircleCancelled` | `circle`, `cancelled` | `circle_id: u64`, `rcount: u32`, `rtotal: i128`                                    |
 
 ## Topic Format
 

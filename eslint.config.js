@@ -1,6 +1,7 @@
 import tseslint from "typescript-eslint";
 import reactHooks from "eslint-plugin-react-hooks";
 import globals from "globals";
+import eslintConfigPrettier from "eslint-config-prettier";
 
 // Deep-import patterns into packages/client/src/. app/ and scripts/ must only
 // consume @sharibo/client via its published entry point — never internal paths.
@@ -31,7 +32,7 @@ export default tseslint.config(
       "no-unused-vars": "off",
       "@typescript-eslint/no-unused-vars": "warn",
       "no-redeclare": "off",
-      "@typescript-eslint/no-redeclare": ["error", { "ignoreDeclarationMerge": false }]
+      "@typescript-eslint/no-redeclare": ["error", { ignoreDeclarationMerge: false }],
     },
   },
 
@@ -52,13 +53,11 @@ export default tseslint.config(
             deepCoreImportPattern,
             {
               group: ["*/app/*", "**/app/*"],
-              message:
-                "packages/client must not import from app/. See docs/architecture.md.",
+              message: "packages/client must not import from app/. See docs/architecture.md.",
             },
             {
               group: ["*/scripts/*", "**/scripts/*"],
-              message:
-                "packages/client must not import from scripts/. See docs/architecture.md.",
+              message: "packages/client must not import from scripts/. See docs/architecture.md.",
             },
           ],
         },
@@ -84,15 +83,17 @@ export default tseslint.config(
             },
             {
               group: ["*/packages/client/*", "**/packages/client/*", "@sharibo/client*"],
-              message: "packages/core must not import from packages/client/. See docs/architecture.md.",
-            }
+              message:
+                "packages/core must not import from packages/client/. See docs/architecture.md.",
+            },
           ],
           paths: [
             {
               name: "@stellar/stellar-sdk",
-              message: "packages/core is pure crypto and must not import the chain SDK. See docs/architecture.md."
-            }
-          ]
+              message:
+                "packages/core is pure crypto and must not import the chain SDK. See docs/architecture.md.",
+            },
+          ],
         },
       ],
     },
@@ -106,7 +107,10 @@ export default tseslint.config(
     rules: {
       ...reactHooks.configs.recommended.rules,
       // app/ must only consume the SDK via its package entry point.
-      "no-restricted-imports": ["error", { patterns: [deepClientImportPattern, deepCoreImportPattern] }],
+      "no-restricted-imports": [
+        "error",
+        { patterns: [deepClientImportPattern, deepCoreImportPattern] },
+      ],
     },
     languageOptions: {
       globals: globals.browser,
@@ -117,7 +121,10 @@ export default tseslint.config(
   {
     files: ["scripts/**/*.ts"],
     rules: {
-      "no-restricted-imports": ["error", { patterns: [deepClientImportPattern, deepCoreImportPattern] }],
+      "no-restricted-imports": [
+        "error",
+        { patterns: [deepClientImportPattern, deepCoreImportPattern] },
+      ],
     },
   },
 
@@ -136,4 +143,7 @@ export default tseslint.config(
       globals: globals.node,
     },
   },
+
+  // Turn off formatting rules that conflict with Prettier
+  eslintConfigPrettier,
 );

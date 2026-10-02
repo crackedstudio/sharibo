@@ -11,20 +11,20 @@ The TypeScript source of truth is the exported `SdkEvent` discriminated union in
 
 ## Event taxonomy
 
-| `type` | Payload | When it fires |
-| --- | --- | --- |
-| `rpc:attempt` | — | Before each simulation/preparation attempt inside `withRetry`. |
-| `rpc:retry` | `attempt`, `delay` (ms), `error` | A transient RPC failure (429/5xx/timeout/…) will be retried after `delay`. |
-| `rpc:success` | `duration` (ms) | Simulation/preparation succeeded (includes prior retries). |
-| `rpc:failure` | `attempt`, `error` | Retries exhausted or a non-transient error — about to throw. |
-| `tx:submitted` | `hash` | After `signAndSend` returns a submission hash. |
-| `tx:confirmed` | `hash` | When the SDK sees a confirmation response for that submission. |
-| `proof:started` | — | Immediately before snarkjs `fullProve` / witness work begins. |
-| `proof:finished` | — | After proof generation completes successfully. |
-| `artifact:started` | — | Circuit artifact download (wasm/zkey) begins. |
-| `artifact:progress` | `loaded`, `total`, `fraction` | Bytes downloaded during prefetch (optional; may be coalesced by UIs). |
-| `artifact:ready` | `loaded`, `total` | Both artifacts are in memory. |
-| `artifact:error` | `message` | Prefetch failed (not an intentional abort). |
+| `type`              | Payload                          | When it fires                                                              |
+| ------------------- | -------------------------------- | -------------------------------------------------------------------------- |
+| `rpc:attempt`       | —                                | Before each simulation/preparation attempt inside `withRetry`.             |
+| `rpc:retry`         | `attempt`, `delay` (ms), `error` | A transient RPC failure (429/5xx/timeout/…) will be retried after `delay`. |
+| `rpc:success`       | `duration` (ms)                  | Simulation/preparation succeeded (includes prior retries).                 |
+| `rpc:failure`       | `attempt`, `error`               | Retries exhausted or a non-transient error — about to throw.               |
+| `tx:submitted`      | `hash`                           | After `signAndSend` returns a submission hash.                             |
+| `tx:confirmed`      | `hash`                           | When the SDK sees a confirmation response for that submission.             |
+| `proof:started`     | —                                | Immediately before snarkjs `fullProve` / witness work begins.              |
+| `proof:finished`    | —                                | After proof generation completes successfully.                             |
+| `artifact:started`  | —                                | Circuit artifact download (wasm/zkey) begins.                              |
+| `artifact:progress` | `loaded`, `total`, `fraction`    | Bytes downloaded during prefetch (optional; may be coalesced by UIs).      |
+| `artifact:ready`    | `loaded`, `total`                | Both artifacts are in memory.                                              |
+| `artifact:error`    | `message`                        | Prefetch failed (not an intentional abort).                                |
 
 Artifact events are produced by the prefetch pipeline
 ([`artifacts.ts`](../packages/client/src/artifacts.ts)). The demo app bridges them

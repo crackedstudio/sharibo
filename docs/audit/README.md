@@ -6,13 +6,13 @@ This folder collects material an engagement team would need to reproduce claims,
 
 ## Pinned toolchain (reproduce the build)
 
-| Tool | Version / source |
-| ---- | ---------------- |
-| Rust | `rustc 1.92.0` (see root README); target `wasm32v1-none` for Soroban |
-| `stellar` CLI | `23.4.1` (README) |
-| Node.js | `v24.11.1` (README); workspaces root + `circuits/` + `packages/client/` |
-| circom | `2.2.3` (pinned in `circuits/config.json`, asserted by `compile.sh`; prebuilt Linux x64 binary) |
-| snarkjs | `0.7.6` (`circuits/package.json`, via `npx`) |
+| Tool          | Version / source                                                                                |
+| ------------- | ----------------------------------------------------------------------------------------------- |
+| Rust          | `rustc 1.92.0` (see root README); target `wasm32v1-none` for Soroban                            |
+| `stellar` CLI | `23.4.1` (README)                                                                               |
+| Node.js       | `v24.11.1` (README); workspaces root + `circuits/` + `packages/client/`                         |
+| circom        | `2.2.3` (pinned in `circuits/config.json`, asserted by `compile.sh`; prebuilt Linux x64 binary) |
+| snarkjs       | `0.7.6` (`circuits/package.json`, via `npx`)                                                    |
 
 Everything above is also available as one reproducible image: `Dockerfile.circuits`
 pins circom, Node and Rust. Build it with `docker build -t sharibo-circuits .` and

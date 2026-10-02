@@ -10,7 +10,7 @@
   fail for every circle that was created before the upgrade, with no clean `CircleNotFound` fallback.
 
   `docs/adr/001-upgradeability.md` covers why the contract binary is immutable (no upgrade key).
-  It does not cover what to do when the *data format* changes.
+  It does not cover what to do when the _data format_ changes.
 
 ## Problem
 
@@ -76,7 +76,7 @@ When an issue requires a new `Circle` field:
 
 1. **Decide on the default.** What value should existing circles get? (e.g. `fee_bps = 0`,
    `deadline_ledger = u32::MAX` meaning "no deadline").
-2. **Write the migration entrypoint.**  A permissioned function (admin-only or one-time-use) that
+2. **Write the migration entrypoint.** A permissioned function (admin-only or one-time-use) that
    iterates over circle ids (using `get_circle_count`), reads each raw entry, converts it, and
    writes the new layout back.
 3. **Bump `schema_version`** (e.g. `1` → `2`).
@@ -84,7 +84,7 @@ When an issue requires a new `Circle` field:
 5. **Deploy in two phases if circles are live on mainnet:**
    a. Deploy the new WASM (immutable contract = new contract address per ADR 001).
    b. Run the migration entrypoint on the new contract for any existing circles, or coordinate
-      an off-chain recreation.
+   an off-chain recreation.
 6. **Remove the migration entrypoint** in the following release.
 
 ## Testnet-reset shortcut

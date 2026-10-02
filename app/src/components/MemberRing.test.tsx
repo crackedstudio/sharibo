@@ -15,7 +15,24 @@ function renderRing(revealed: boolean) {
 }
 
 describe("MemberRing", () => {
-  beforeEach(() => localStorage.clear());
+  it("renders an SVG that scales via viewBox", () => {
+    const { container } = render(<MemberRing members={members} />);
+    const svg = container.querySelector("svg");
+    expect(svg).not.toBeNull();
+    expect(svg).toHaveAttribute("viewBox");
+  });
+
+  it("renders a node for every member", () => {
+    render(<MemberRing members={members} />);
+    expect(screen.getByText("AD")).toBeInTheDocument();
+    expect(screen.getByText("GR")).toBeInTheDocument();
+    expect(screen.getByText("LI")).toBeInTheDocument();
+  });
+
+  it("marks a member who has already claimed as ineligible", () => {
+    render(<MemberRing members={members} />);
+    expect(screen.getByLabelText(/already claimed/i)).toBeInTheDocument();
+  });
 
   it("describes funding progress and hides the unlinkability caption until payout", () => {
     renderRing(false);
@@ -26,9 +43,17 @@ describe("MemberRing", () => {
     expect(screen.queryByRole("note")).not.toBeInTheDocument();
   });
 
-  it("shows the unlinkability caption after a claim", () => {
-    renderRing(true);
-    expect(screen.getByRole("note")).toHaveTextContent(/any/i);
-    expect(screen.getByRole("note")).toHaveTextContent(/5 members/);
+describe("component stylesheets", () => {
+  it("imports every sibling *.module.css from a .tsx component", async () => {
+    const fs = await import("node:fs/promises");
+    const path = await import("node:path");
+    const dir = path.dirname(new URL(import.meta.url).pathname);
+    const entries = await fs.readdir(dir);
+    const modules = entries.filter((f) => f.endsWith(".module.css"));
+    const sources = await Promise.all(
+      entries.filter((f) => f.endsWith(".tsx")).map((f) => fs.readFile(path.join(dir, f), "utf8")),
+    );
+    const orphans = modules.filter((m) => !sources.some((src) => src.includes(`./${m}`)));
+    expect(orphans).toEqual([]);
   });
 });

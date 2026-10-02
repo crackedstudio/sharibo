@@ -129,19 +129,19 @@ const fullCircuitExample = {
   circleId: circleId.toString(),
   round: round.toString(),
   memberIndex,
-    expectedPublicSignals: {
-      nullifierHash: circuitNullifierHash.toString(),
-      root: root.toString(),
-      externalNullifier: externalNullifier.toString(),
-      recipientHash: recipientHash.toString(),
-    },
-    publicSignalsVector: [
-      circuitNullifierHash.toString(),
-      root.toString(),
-      externalNullifier.toString(),
-      recipientHash.toString(),
-    ],
-  };
+  expectedPublicSignals: {
+    nullifierHash: circuitNullifierHash.toString(),
+    root: root.toString(),
+    externalNullifier: externalNullifier.toString(),
+    recipientHash: recipientHash.toString(),
+  },
+  publicSignalsVector: [
+    circuitNullifierHash.toString(),
+    root.toString(),
+    externalNullifier.toString(),
+    recipientHash.toString(),
+  ],
+};
 
 // ── 4. G1/G2 Encoding Example ───────────────────────────────────────────────
 function bytesToHex(bytes) {

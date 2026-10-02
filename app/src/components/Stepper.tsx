@@ -5,30 +5,20 @@ export function Stepper({ step }: { step: 0 | 1 | 2 | 3 }) {
   const { t } = useI18n();
   const labels = [t("step.create"), t("step.fund"), t("step.proveClaim"), t("step.unlinked")];
   return (
-    // nav + ol give screen readers "step N of 4" list semantics without
-    // changing any visual output — CSS targets .stepper and .step as before.
-    <nav aria-label={t("circle.stepperAria")}>
-      <ol className={styles.stepper} style={{ listStyle: "none", margin: 0, padding: 0 }}>
-        {labels.map((label, i) => {
-          const state = i < step ? styles.done : i === step ? styles.active : "";
-          return (
-            <li
-              key={label}
-              className={`${styles.step} ${state}`}
-              // aria-current="step" marks the single active step; completed
-              // and upcoming steps get no aria-current attribute at all.
-              {...(i === step ? { "aria-current": "step" as const } : {})}
-            >
-              {/* The dot (✓ / number) is decorative — the li text already
-                  conveys position, so hide the dot from the AT tree. */}
-              <span className={styles.stepDot} aria-hidden="true">
-                {i < step ? "✓" : i + 1}
-              </span>
-              {label}
-            </li>
-          );
-        })}
-      </ol>
-    </nav>
+    <div className={styles.stepper} role="list" aria-label={t("step.label")}>
+      {labels.map((label, i) => (
+        <div
+          key={label}
+          role="listitem"
+          aria-current={i === step ? "step" : undefined}
+          className={`${styles.step} ${i < step ? styles.done : i === step ? styles.active : ""}`}
+        >
+          <span className={styles.stepDot} aria-hidden="true">
+            {i < step ? "✓" : i + 1}
+          </span>
+          {label}
+        </div>
+      ))}
+    </div>
   );
 }

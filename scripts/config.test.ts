@@ -116,7 +116,7 @@ describe("config loader", () => {
     const { errors } = validate({ ...validEnvRecord, TEST_TOKEN_CONTRACT_ID: "" });
     assert.match(errors[0], /TEST_TOKEN_CONTRACT_ID.*missing or empty/);
   });
-  
+
   it("fails when TEST_TOKEN_CONTRACT_ID is whitespace only", () => {
     const { errors } = validate({ ...validEnvRecord, TEST_TOKEN_CONTRACT_ID: "   " });
     assert.match(errors[0], /TEST_TOKEN_CONTRACT_ID.*missing or empty/);
@@ -127,12 +127,18 @@ describe("config loader", () => {
       ...validEnvRecord,
       TEST_TOKEN_CONTRACT_ID: "SAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABGVV",
     });
-    assert.match(errors[0], /TEST_TOKEN_CONTRACT_ID.*not a valid Stellar contract ID.*should start with 'C'/);
+    assert.match(
+      errors[0],
+      /TEST_TOKEN_CONTRACT_ID.*not a valid Stellar contract ID.*should start with 'C'/,
+    );
   });
 
   it("fails when TEST_TOKEN_CONTRACT_ID is malformed (wrong length)", () => {
     const { errors } = validate({ ...validEnvRecord, TEST_TOKEN_CONTRACT_ID: "C123" });
-    assert.match(errors[0], /TEST_TOKEN_CONTRACT_ID.*not a valid Stellar contract ID.*56 characters/);
+    assert.match(
+      errors[0],
+      /TEST_TOKEN_CONTRACT_ID.*not a valid Stellar contract ID.*56 characters/,
+    );
   });
 
   it("fails when SHARIBO_CONTRACT_ID is missing", () => {
@@ -150,7 +156,10 @@ describe("config loader", () => {
       ...validEnvRecord,
       SHARIBO_CONTRACT_ID: "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABGVV",
     });
-    assert.match(errors[0], /SHARIBO_CONTRACT_ID.*not a valid Stellar contract ID.*should start with 'C'/);
+    assert.match(
+      errors[0],
+      /SHARIBO_CONTRACT_ID.*not a valid Stellar contract ID.*should start with 'C'/,
+    );
   });
 
   it("fails when SHARIBO_CONTRACT_ID is malformed (wrong length)", () => {
@@ -173,7 +182,10 @@ describe("config loader", () => {
       ...validEnvRecord,
       ADMIN_SECRET_KEY: "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABGVV",
     });
-    assert.match(errors[0], /ADMIN_SECRET_KEY.*not a valid Stellar secret key.*should start with 'S'/);
+    assert.match(
+      errors[0],
+      /ADMIN_SECRET_KEY.*not a valid Stellar secret key.*should start with 'S'/,
+    );
   });
 
   it("validates ADMIN_SECRET_KEY is 56 characters long", () => {

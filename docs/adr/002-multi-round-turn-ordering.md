@@ -21,8 +21,8 @@ is bound on-chain to `(circle_id, round)` via
 successful claim, the same identity produces a **different** `nullifierHash`
 each round. The contract's replay guard —
 `DataKey::Nullifier(circle_id, nullifier_hash)` — is keyed on that
-per-round-varying hash, so it only ever blocks *resubmitting the same
-round's proof twice* (`second_claim_with_same_nullifier_reverts` already
+per-round-varying hash, so it only ever blocks _resubmitting the same
+round's proof twice_ (`second_claim_with_same_nullifier_reverts` already
 covers that). It does not — and structurally cannot, as currently bound —
 block one identity from claiming every round of a cycle.
 
@@ -61,7 +61,7 @@ again and the identity becomes eligible for the new cycle.
 ### Option B — dual nullifier (round-scoped + cycle-scoped)
 
 Keep today's round-scoped `externalNullifier`/`nullifierHash` for anti-replay
-*within* a round, and have the circuit emit a **second** public output,
+_within_ a round, and have the circuit emit a **second** public output,
 `cycleNullifierHash = Poseidon(identityNullifier, cycleTag)`, checked against
 a second, cycle-keyed storage map.
 
@@ -86,7 +86,7 @@ The property to preserve: **claiming doesn't reveal which member claimed.**
   `nullifierHash` for that cycle is now on-chain permanently (as it already
   is per-round today) and blocks a second claim. `nullifierHash` is a
   Poseidon hash of a private `identityNullifier` — observing it reveals
-  nothing about *which* leaf in the Merkle tree it came from. This is the
+  nothing about _which_ leaf in the Merkle tree it came from. This is the
   same leak profile as today, just widened from a 1-round window to an
   N-round (cycle) window: an observer learns "some member has already
   claimed this cycle," never who.
@@ -96,7 +96,7 @@ The property to preserve: **claiming doesn't reveal which member claimed.**
   have today. Option A does not weaken cross-epoch unlinkability.
 - **Timing side channel (both options, out of scope for this ADR):** if
   members coordinate turn order off-chain (e.g. "I'll claim round 2"), the
-  *timing* of a claim transaction could correlate with that off-chain
+  _timing_ of a claim transaction could correlate with that off-chain
   schedule for an observer who already has side information. That's a
   social-layer concern the contract cannot fix by construction — same as
   today — and is unaffected by choosing A or B.
@@ -110,7 +110,7 @@ cycle-level replay protection to be independently tunable.
 
 ### Storage Bounding
 
-Under Option A, the `circle.nullifiers` set only needs to store one cycle's worth of nullifiers to prevent double-claiming within the cycle. When the cycle advances, all members receive fresh `externalNullifier`s anyway, making the old nullifier hashes irrelevant. 
+Under Option A, the `circle.nullifiers` set only needs to store one cycle's worth of nullifiers to prevent double-claiming within the cycle. When the cycle advances, all members receive fresh `externalNullifier`s anyway, making the old nullifier hashes irrelevant.
 
 Therefore, we can safely clear the `circle.nullifiers` vector at cycle boundaries (e.g., when `round % size == 0`). This strictly bounds the maximum size of the `nullifiers` vector inside the `Circle` storage entry to exactly `size` elements, permanently resolving the unbounded growth issue (Issue #480).
 

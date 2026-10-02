@@ -35,8 +35,12 @@ vi.mock("@stellar/stellar-sdk", async (importOriginal) => {
 vi.mock("@stellar/freighter-api", () => ({
   isConnected: vi.fn().mockResolvedValue({ isConnected: true }),
   isAllowed: vi.fn().mockResolvedValue({ isAllowed: true }),
-  requestAccess: vi.fn().mockResolvedValue({ address: "GFREIGHTER0000000000000000000000000000000000000000000" }),
-  getAddress: vi.fn().mockResolvedValue({ address: "GFREIGHTER0000000000000000000000000000000000000000000" }),
+  requestAccess: vi
+    .fn()
+    .mockResolvedValue({ address: "GFREIGHTER0000000000000000000000000000000000000000000" }),
+  getAddress: vi
+    .fn()
+    .mockResolvedValue({ address: "GFREIGHTER0000000000000000000000000000000000000000000" }),
   getNetworkDetails: vi.fn().mockResolvedValue({
     network: "TESTNET",
     networkPassphrase: "Test SDF Network ; September 2015",
@@ -155,7 +159,9 @@ describe("useCircleFlow hook", () => {
     });
 
     expect(result.current.members[1].funded).toBe(true);
-    expect(result.current.members[1].freighterKey).toBe("GFREIGHTER0000000000000000000000000000000000000000000");
+    expect(result.current.members[1].freighterKey).toBe(
+      "GFREIGHTER0000000000000000000000000000000000000000000",
+    );
     expect(result.current.members[1].fundHash).toBe("mockFundHash");
   });
 
