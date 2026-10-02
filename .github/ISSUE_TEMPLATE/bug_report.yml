@@ -36,6 +36,39 @@ body:
         - docs
     validations:
       required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area (topic label)
+      description: >
+        Pick the area(s) this issue belongs to. An automation
+        (`.github/workflows/auto-label.yml`) applies the matching topic
+        label(s) from CONTRIBUTING.md. If none fits, leave all unchecked and
+        a maintainer will triage.
+      multiple: true
+      options:
+        - frontend (app/)
+        - sdk (packages/client)
+        - core (packages/core)
+        - contracts
+        - circuits
+        - scripts/e2e
+        - docs
+        - tooling/dx
+        - testing
+        - security
+        - performance
+    validations:
+      required: false
+  - type: checkboxes
+    id: newcomer
+    attributes:
+      label: Newcomer suitability
+      description: >
+        Tick this if the fix looks small and well-scoped - maintainers use it
+        to apply the `good first issue` label (see CONTRIBUTING.md "Picking an Issue").
+      options:
+        - label: This looks like a good first issue
   - type: textarea
     id: environment
     attributes:
@@ -48,9 +81,9 @@ body:
     attributes:
       label: Debug bundle
       description: >
-        If the failure happened in the browser app, click the **"📋 Copy debug bundle"** button
+        If the failure happened in the browser app, click the **"?? Copy debug bundle"** button
         in the bottom of the circle card (or next to the error message) and paste here.
-        The bundle contains network config, circle state, step timings, and the last error —
+        The bundle contains network config, circle state, step timings, and the last error -
         no secret keys are ever included.
       placeholder: |
         ### Sharibo debug bundle

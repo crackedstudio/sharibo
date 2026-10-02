@@ -33,6 +33,12 @@ const LEVELS = Number(process.env.LEVELS || CIRCUITS_CONFIG.levels);
 const CONSTRAINTS_PATH = path.join(__dirname, "..", "constraints.json");
 const COMMITTED_CONSTRAINTS = JSON.parse(fs.readFileSync(CONSTRAINTS_PATH, "utf8"));
 
+// The depths circuits/scripts/check-constraints.cjs recompiles on every CI run
+// (issue #536). This suite only ever builds ONE depth — the configured one — so
+// without pinning the rest here a deleted entry would shrink the guard's remit
+// silently. Asserted in both directions so the two files cannot drift apart.
+const { GUARDED_DEPTHS } = require("../scripts/check-constraints.cjs");
+
 const VECTORS = JSON.parse(
   fs.readFileSync(path.join(__dirname, "..", "..", "test-vectors", "poseidon.json"), "utf8"),
 );
@@ -61,6 +67,35 @@ describe("Sharibo membership circuit (BLS12-381)", function () {
       LEVELS,
       identities.map((id) => id.commitment),
     );
+  });
+
+  // The compile-based assertion below only ever sees ONE depth — whichever one
+  // this run is configured for. The remaining guarded depths (8, 16, 20 — the
+  // ones anyone weighing a larger circle cares about) are checked by
+  // circuits/scripts/check-constraints.cjs in CI. This test is what stops the
+  // two from drifting: a depth dropped from either file fails here instead of
+  // quietly becoming unguarded. The assertion itself is JSON bookkeeping, so it
+  // costs nothing beyond the compile the suite already does.
+  it("circuits/constraints.json records a count for exactly every guarded depth", () => {
+    const committedKeys = Object.keys(COMMITTED_CONSTRAINTS).sort();
+    const expectedKeys = GUARDED_DEPTHS.map(String).sort();
+
+    expect(
+      committedKeys,
+      `circuits/constraints.json records depths [${committedKeys.join(", ")}] but ` +
+        `circuits/scripts/check-constraints.cjs guards [${expectedKeys.join(", ")}]. ` +
+        `Every guarded depth needs a committed count (so the guard has something to ` +
+        `compare against), and every committed count needs to be guarded (so it stays ` +
+        `honest). Update the two files together.`,
+    ).to.deep.equal(expectedKeys);
+
+    for (const key of expectedKeys) {
+      expect(
+        Number.isInteger(COMMITTED_CONSTRAINTS[key]),
+        `circuits/constraints.json entry "${key}" must be an integer constraint count, ` +
+          `got ${JSON.stringify(COMMITTED_CONSTRAINTS[key])}.`,
+      ).to.equal(true);
+    }
   });
 
   // The constraint count drives browser proving time, .zkey size, and
@@ -191,6 +226,52 @@ describe("Sharibo membership circuit (BLS12-381)", function () {
     await expectThrows(() => circuit.calculateWitness(input, true));
   });
 
+  // --- out-of-range pathElements (issue #269) ---
+  // pathElements[i] is fed straight into Poseidon255 in MerkleTreeChecker
+  // with NO explicit range constraint (unlike pathIndices, whose
+  // booleanity is constrained). Empirically the wasm witness generator
+  // REDUCES every input mod FR_MODULUS on assignment, so a non-canonical
+  // value is an alias for its canonical residue:
+  //   * an alias of the TRUE sibling (`sibling + k*FR_MODULUS`) wraps to
+  //     that sibling and yields a VALID proof — the circuit cannot and does
+  //     not reject it (this is what the SDK gate below exists for);
+  //   * a non-canonical value whose residue is NOT the true sibling (e.g.
+  //     FR_MODULUS itself ≡ 0) fails the Merkle root check exactly like any
+  //     other wrong sibling.
+  // The tests below pin this behavior so it is a fact, not an assumption.
+  // The SDK-side range gate that prevents non-canonical encodings from ever
+  // reaching the prover is exercised in packages/client/src/prove.test.ts.
+
+  it("rejects a pathElement of exactly FR_MODULUS (wraps to 0, fails root check)", async () => {
+    const input = await buildInput(2, 1, 0);
+    // FR_MODULUS ≡ 0 (mod FR_MODULUS) — the canonical-zero sibling, which
+    // is never the real sibling, so the root check must fail.
+    input.pathElements[0] = FR_MODULUS.toString();
+    await expectThrows(() => circuit.calculateWitness(input, true));
+  });
+
+  it("rejects a pathElement of FR_MODULUS - 1 when it is not the real sibling", async () => {
+    const input = await buildInput(2, 1, 0);
+    // Upper boundary of the field range: a valid canonical element but the
+    // wrong sibling for the genuine member — fails the Merkle root check
+    // exactly like any other non-sibling value.
+    input.pathElements[0] = (FR_MODULUS - 1n).toString();
+    await expectThrows(() => circuit.calculateWitness(input, true));
+  });
+
+  it("accepts a non-canonical alias of the true sibling (wraps to the same value)", async () => {
+    // The dangerous-looking case the issue flagged: `sibling + FR_MODULUS`
+    // reduces to the true sibling, so the witness generator accepts it and
+    // the root check PASSES. This is NOT a forgery vector (it is the same
+    // witness), but it does mean the circuit has no range check of its own —
+    // which is exactly why packages/client rejects x >= FR_MODULUS before
+    // proving (see prove.test.ts).
+    const input = await buildInput(2, 1, 0);
+    input.pathElements[0] = (BigInt(input.pathElements[0]) + FR_MODULUS).toString();
+    const witness = await circuit.calculateWitness(input, true);
+    await circuit.checkConstraints(witness);
+  });
+
   // --- recipientHash binding tests (issue #266) ---
 
   it("accepts a genuine member with a valid recipientHash", async () => {
@@ -257,7 +338,7 @@ describe("Sharibo membership circuit (BLS12-381)", function () {
   });
 
   // Public signal order is the trickiest invariant in the repo: snarkjs
-  // emits [nullifierHash, root, externalNullifier] - circuit output first,
+  // emits [nullifierHash, root, externalNullifier, recipientHash] — output first,
   // then the public inputs in the order they're declared in the template
   // (see prove.ts). This pins both the VALUE and the POSITION: swapping the
   // `signal input root` / `signal input externalNullifier` declarations in

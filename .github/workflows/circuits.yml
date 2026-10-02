@@ -1,0 +1,61 @@
+name: Circuits
+
+on:
+  push:
+    paths:
+      - "circuits/**"
+      - "packages/client/src/**"
+      - "test-vectors/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/circuits.yml"
+  pull_request:
+    paths:
+      - "circuits/**"
+      - "packages/client/src/**"
+      - "test-vectors/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/circuits.yml"
+
+jobs:
+  circuits:
+    name: circom compile + constraint guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      # Pinned, not floating: the committed constraint counts in
+      # circuits/constraints.json are what a *specific* circom version emits
+      # (the depth-4 total moved 3756 -> 3757 between 2.1.6 and 2.2.3, purely
+      # from a compiler-side change). Letting CI resolve "latest circom" would
+      # let an unrelated compiler release turn this job red with a diff nobody
+      # authored, so the version is explicit and the bump is a deliberate edit
+      # to this file plus a regeneration of the counts.
+      - name: Install circom 2.2.3
+        run: |
+          curl -sSL -o /usr/local/bin/circom \
+            https://github.com/iden3/circom/releases/download/v2.2.3/circom-linux-amd64
+          chmod +x /usr/local/bin/circom
+          circom --version
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      # The guard from #272: compiles the circuit at the configured depth and
+      # fails if the count drifts from circuits/constraints.json.
+      - name: Circuit test suite
+        working-directory: circuits
+        run: npm test
+
+      # The guard from #536: recompiles at EVERY guarded depth (4, 8, 16, 20)
+      # and fails if any depth has no committed count, an unexpected extra key,
+      # or a drifted value. Runs in about a second — no --wasm, no trusted
+      # setup — and is the reason a depth can never be silently unguarded.
+      - name: Constraint-count guard (all guarded depths)
+        working-directory: circuits
+        run: npm run check-constraints

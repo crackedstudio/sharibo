@@ -8,11 +8,11 @@ This is the detailed version of the [Repository structure](../README.md#reposito
 | --------- | -------------- | --------- | ----- | ----------- |
 | [**`app/`**](../app/README.md) | Browser demo: generates a real proof client-side and drives `create`/`fund`/`claim` against testnet | TypeScript, React 19, Vite, Vitest | `npm test` | `frontend` |
 | [**`packages/client/`**](../packages/client/README.md) | Isomorphic TS SDK shared by `app/` and `scripts/` | TypeScript, snarkjs, `@stellar/stellar-sdk` | `npm test -w packages/client` | `sdk` |
+| [**`packages/core/`**](../packages/core/README.md) | Pure crypto — Poseidon hashing, Merkle trees, identity/nullifier derivation, field arithmetic, no I/O | TypeScript | `npm test -w packages/core` | `core` |
 | [**`contracts/`**](../contracts/README.md) | Soroban contract that verifies Groth16 proofs on-chain | Rust, soroban-sdk 23, `wasm32v1-none` | `cd contracts && cargo test` | `contracts` |
 | [**`circuits/`**](../circuits/README.md) | Zero-knowledge membership circuit + trusted-setup pipeline | Circom 2.2.3, snarkjs, bash | `cd circuits && npm test` | `circuits` |
 | [**`scripts/`**](../scripts/package.json) | Node/TS helpers: e2e round runner, smoke health check | TypeScript, tsx | `npm test -w scripts` | `e2e` / `dx` |
-| [**`docs/`**](index.md) | Long-form documentation (this file included) | Markdown | — | `documentation` |
-| [**`judges/`**](../judges/VERIFY.md) | Judge-facing proof-of-real verification guide | Markdown | — | `documentation` |
+| [**`docs/`**](index.md) | Long-form documentation (this file included); `docs/hackathon/` is a point-in-time archive | Markdown | — | `documentation` |
 | [**`test-vectors/`**](../test-vectors/generate.mjs) | Cross-implementation Poseidon fixture vectors | JSON, Node | exercised by client/circuit suites | `testing` |
 
 ## End-to-end data flow
@@ -32,7 +32,7 @@ app/ (browser)  ──prove──▶  packages/client/  ◀──prove──  sc
 ```
 
 1. **`app/`** loads the compiled artifacts that [`circuits/`](../circuits/README.md) produces (`membership.wasm`, `membership_final.zkey`, `verification_key.json`), copied by `npm run sync-circuit` into `app/public/circuits/`.
-2. **`packages/client/`** owns the encoding math: Poseidon commitments and the Merkle tree (`tree.ts`), Groth16 proof generation via snarkjs (`prove.ts`), and the contract invocation wrappers (`contract.ts`), all on the BLS12-381 scalar field.
+2. **`packages/client/`** wraps **`packages/core/`** (which owns the pure crypto encoding: Poseidon commitments and the Merkle tree) and adds Groth16 proof generation via snarkjs, plus contract invocation wrappers, all on the BLS12-381 scalar field.
 3. **`contracts/sharibo`** validates each `claim`: pot fully funded → round tag matches → nullifier unused → real pairing check passes against the stored verification key.
 4. **`scripts/e2e.ts`** reproduces the same round from the CLI against live testnet; **`scripts/smoke.ts`** is a cheap read-only health probe.
 
@@ -40,11 +40,11 @@ app/ (browser)  ──prove──▶  packages/client/  ◀──prove──  sc
 
 These are non-negotiable across all the directories touched by a change — see [README invariants](../README.md#invariants-held-across-circuit--contract--client):
 
-- **BLS12-381 everywhere.** Soroban only accelerates BLS12-381 pairing operations; a pure-Rust BN254 check exceeds the 100M instruction budget. Every layer must agree.
+- **BLS12-381 everywhere.** Soroban only accelerates BLS12-381 pairing operations; a pure-Rust BN254 check exceeds the 100M instruction budget ([ADR 005](adr/005-bls12-381-curve-choice.md)). Every layer must agree.
 - **Commitment:** `leaf = Poseidon(identityNullifier, identitySecret)`.
 - **Nullifier:** `nullifierHash = Poseidon(identityNullifier, externalNullifier)`.
 - **Round tag:** `externalNullifier = SHA256(circle_id, round) mod r`, computed outside the circuit.
-- **Public signal order:** `[nullifierHash, root, externalNullifier]` — circuit, contract, and client must all agree.
+- **Public signal order:** `[nullifierHash, root, externalNullifier, recipientHash]` — circuit, contract, and client must all agree ([wire-format.md](wire-format.md); manifest: [`test-vectors/public-signals.json`](../test-vectors/public-signals.json)).
 
 ## Where to dig deeper
 
@@ -65,8 +65,15 @@ These are non-negotiable across all the directories touched by a change — see 
                     │ (@sharibo/client — never a deep src/ path)
 ┌───────────────────▼─────────────────────────┐
 │  packages/client/   (TypeScript SDK)        │
-│  May import: circuit *artifacts* (JSON)     │
+│  May import: @sharibo/core, circuit artifacts│
 │  Must NOT import: app/, scripts/            │
+└───────────────────┬─────────────────────────┘
+                    │ imports via package entry point only
+                    │ (@sharibo/core — never a deep src/ path)
+┌───────────────────▼─────────────────────────┐
+│  packages/core/     (Pure TS crypto)        │
+│  Must NOT import: @stellar/stellar-sdk,     │
+│  app/, scripts/, packages/client, DOM/Node  │
 └─────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────┐
@@ -80,9 +87,10 @@ These are non-negotiable across all the directories touched by a change — see 
 
 | Consumer | May import | Must NOT import |
 |---|---|---|
-| `app/` | `@sharibo/client` (entry point) | `packages/client/src/**` (deep paths) |
-| `scripts/` | `@sharibo/client` (entry point) | `packages/client/src/**` (deep paths) |
-| `packages/client` | circuit artifacts (`circuits/**/*.json`) | `app/`, `scripts/` |
+| `app/` | `@sharibo/client`, `@sharibo/core` | `packages/client/src/**`, `packages/core/src/**` (deep paths) |
+| `scripts/` | `@sharibo/client`, `@sharibo/core` | `packages/client/src/**`, `packages/core/src/**` (deep paths) |
+| `packages/client` | `@sharibo/core`, circuit artifacts | `app/`, `scripts/` |
+| `packages/core` | nothing in this repo | `@stellar/stellar-sdk`, `app/`, `scripts/`, `packages/client/` |
 | `contracts/` | nothing in this repo | — |
 | `circuits/` | nothing in this repo | — |
 

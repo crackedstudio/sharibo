@@ -92,7 +92,7 @@ export function generateIdentity(): Identity {
 // (commitment + nullifierHash); Soroban has no native Poseidon host
 // function, so nothing is gained by porting Poseidon into the contract for
 // this check, and SHA-256 is equally sound for binding a proof to a round.
-// See NOTES.md.
+// See docs/wire-format.md (round-tag bytes).
 export async function computeExternalNullifier(circleId: bigint, round: bigint): Promise<bigint> {
   // Bounds must match the contract's field types exactly (see
   // contracts/sharibo/src/lib.rs: `circle_id: u64`, `round: u32`).

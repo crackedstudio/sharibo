@@ -1,0 +1,60 @@
+name: CI
+
+# Plumbing only — every check is defined in the justfile (`just ci` and its
+# slice recipes). Do not inline command lists here; they drift from local.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  js:
+    name: just ci (js slices)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: extractions/setup-just@v4
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: ".nvmrc"
+          cache: npm
+      - run: npm ci
+      - run: just sdk-build
+      - run: just typecheck
+      - run: just lint
+      - run: just lint-dead
+      - run: just scripts-test
+      - run: just repo-structure-test
+      - run: just client
+      - run: just app-test
+      - run: just circuits-test
+
+  rust:
+    name: just ci (rust slices)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: extractions/setup-just@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+          targets: wasm32v1-none
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: contracts
+      - name: Install stellar CLI
+        run: |
+          curl -L https://github.com/stellar/stellar-cli/releases/latest/download/stellar-cli-x86_64-unknown-linux-gnu.tar.gz \
+            | tar -xz
+          sudo mv stellar /usr/local/bin/stellar
+          stellar version
+      - run: just cargo-fmt
+      - run: just cargo-clippy
+      - run: just cargo-test
+      - run: just stellar-build

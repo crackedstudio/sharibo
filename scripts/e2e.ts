@@ -8,7 +8,7 @@
 // Flags (node:util parseArgs, no new deps):
 //   --skip-replay         Stop after the successful claim (skip round 2 funding + replay check)
 //   --reuse-circle <id>   Skip circle creation; run against an existing circle
-//   --verbose             Echo each RPC/curl interaction
+//   --verbose             Echo each RPC/HTTP interaction
 //
 // Requires: circuits/build/{membership_js/membership.wasm,membership_final.zkey}
 // (run circuits/scripts/{compile,setup}.sh first) and a populated .env.
@@ -25,10 +25,8 @@
 import { readFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
-import { execFile } from "node:child_process";
-import { promisify, parseArgs } from "node:util";
-
-const execFileAsync = promisify(execFile);
+import { parseArgs } from "node:util";
+import { httpGet } from "./http.js";
 import { Keypair } from "@stellar/stellar-sdk";
 import {
   ShariboSDK,
@@ -91,10 +89,9 @@ async function timed<T>(label: string, fn: () => Promise<T>): Promise<T> {
   return result;
 }
 
-// Node's own fetch()/undici hung indefinitely against these two endpoints in
-// this environment even with AbortSignal.timeout set, while plain `curl`
-// consistently worked in seconds (see NOTES.md) — so these two HTTP calls
-// specifically shell out to curl rather than use fetch.
+// Historical: fetch hung when the script was backgrounded by certain tooling
+// (see docs/canary.md and NOTES.md Phase 4). These calls use curl today;
+// run e2e in the foreground per docs/canary.md when debugging hangs.
 async function curlGet(url: string): Promise<string> {
   verbose("curl GET", url);
   const { stdout } = await execFileAsync("curl", ["-s", "--max-time", "15", url]);
@@ -107,7 +104,7 @@ async function friendbotFund(publicKey: string): Promise<void> {
   for (let attempt = 1; attempt <= attempts; attempt++) {
     try {
       verbose(`friendbot attempt ${attempt}/${attempts} for ${publicKey}`);
-      await curlGet(`https://friendbot.stellar.org?addr=${publicKey}`);
+      await get(`https://friendbot.stellar.org?addr=${publicKey}`);
       return;
     } catch (err) {
       if (attempt === attempts) throw err;
@@ -120,7 +117,7 @@ async function friendbotFund(publicKey: string): Promise<void> {
 
 async function nativeBalance(publicKey: string): Promise<bigint> {
   verbose("fetching balance for", publicKey);
-  const body = await curlGet(`https://horizon-testnet.stellar.org/accounts/${publicKey}`);
+  const body = await get(`https://horizon-testnet.stellar.org/accounts/${publicKey}`);
   const account = JSON.parse(body);
   const native = account.balances.find((b: { asset_type: string }) => b.asset_type === "native");
   // Horizon reports balances as decimal XLM strings; convert to stroops.
@@ -303,7 +300,7 @@ async function main() {
     return { tree, vk: verificationKeyToContractFormat(vkJson) };
   });
 
-  let circleId: bigint;
+  let circleId: CircleId;
   if (REUSE_CIRCLE != null) {
     circleId = makeCircleId(REUSE_CIRCLE);
     console.log(`\n2. Reusing existing circle ${circleId} (--reuse-circle)...`);
@@ -319,6 +316,10 @@ async function main() {
         contribution: CONTRIBUTION,
         size: CIRCLE_SIZE,
         vk,
+        // No protocol fee for the e2e circle: it keeps the payout assertion
+        // below exact (recipient delta === pot) rather than pot-minus-fee.
+        feeBps: 0,
+        feeRecipient: admin.publicKey(),
       }),
       30_000,
       "createCircle",
@@ -356,16 +357,12 @@ async function main() {
 
   console.log("\n4. Generating a real ZK proof for member", CLAIMANT_INDEX, "...");
   const externalNullifier = await computeExternalNullifier(circleId, 0n);
-  const claimant = members[CLAIMANT_INDEX];
-  const merkleProof = tree.proof(CLAIMANT_INDEX);
   const circuitsBuildDir = path.join(
     path.dirname(fileURLToPath(import.meta.url)),
     "..",
     "circuits",
     "build",
   );
-  const claimant = members[CLAIMANT_INDEX];
-  const merkleProof = tree.proofOf(claimant.identity.commitment);
   verbose("generating proof with wasm + zkey from", circuitsBuildDir);
   const { proof, nullifierHash, root: proofRoot, externalNullifier: proofExternalNullifier } =
     await timed("proof generation", () =>
@@ -399,6 +396,15 @@ async function main() {
 
   console.log("\n6. Claiming the pot to the fresh recipient...");
   const balanceBefore = await nativeBalance(recipient.publicKey());
+  // Simulate first so we can report the fee; the estimate is advisory, so a
+  // simulation failure must not abort the run before the claim is attempted.
+  const feeEstimate = await estimateClaimFee(adminSdk, {
+    circleId,
+    recipient: recipient.publicKey(),
+    nullifierHash,
+    externalNullifier,
+    proof,
+  });
   verbose("submitting claim transaction...");
   const claimResult = await withTimeout(
     adminSdk.claim({
@@ -428,9 +434,12 @@ async function main() {
   console.log("   payout confirmed: pot -> 0, round -> 1");
   
   // Log fee estimate vs actual charged delta if available
-  if (feeCharged) {
-    const feeChargedNum = typeof feeCharged === "string" ? BigInt(feeCharged) : feeCharged;
-    console.log("   claim fee charged:", feeChargedNum.toString(), "stroops");
+  if (claimResult.feeCharged) {
+    console.log(
+      "   claim fee charged:",
+      claimResult.feeCharged.toString(),
+      "stroops",
+    );
   }
 
   if (SKIP_REPLAY) {
@@ -478,7 +487,8 @@ async function main() {
       const message = (err as Error).message;
       secondClaimRejected = true;
       assert(
-        message.includes("Error(Contract, #4)"),
+        message.includes("Error(Contract, #4)",
+      ),
         `expected AlreadyClaimed (#4), got: ${message.split("\n")[0]}`,
       );
       console.log("   rejected as expected (AlreadyClaimed):", message.split("\n")[0]);

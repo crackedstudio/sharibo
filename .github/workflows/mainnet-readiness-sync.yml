@@ -1,0 +1,33 @@
+name: Mainnet Readiness Sync
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Check closed issues
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Extract issues between "## 1. Cryptographic" and "## Done"
+          ISSUES=$(sed -n '/^## 1\. Cryptographic/,/^## Done/p' docs/mainnet-readiness.md | grep -o '#[0-9]\+' | tr -d '#' | sort -u)
+          
+          for ISSUE in $ISSUES; do
+            STATE=$(gh issue view "$ISSUE" --json state -q .state 2>/dev/null || echo "NOT_FOUND")
+            if [ "$STATE" = "CLOSED" ]; then
+              TITLE="Stale checklist item: Issue #$ISSUE is closed"
+              EXISTING=$(gh issue list --search "in:title \"$TITLE\"" --state open --json number -q '.[0].number' 2>/dev/null)
+              
+              if [ -z "$EXISTING" ] || [ "$EXISTING" = "null" ]; then
+                gh issue create \
+                  --title "$TITLE" \
+                  --body "Issue #$ISSUE is referenced as an open item in \`docs/mainnet-readiness.md\`, but the issue is closed. Please update the checklist."
+              fi
+            fi
+          done

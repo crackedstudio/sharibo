@@ -123,15 +123,15 @@ cd ..
 If the `vercel` CLI isn't linked to the project yet on this machine, run `vercel link` first and
 select the existing project rather than creating a new one — the live demo URL must stay the same.
 
-## 8. Update the README's on-chain evidence
+## 8. Update the deployments table
 
-The following claims in `README.md`'s "On-chain evidence" table are now stale and must be
+The evidence in the **[Deployments Table](../docs/deployments.md)** is now stale and must be
 re-verified against the new deployment, using the ids/hashes from steps 2, 3, and 6:
 
 - `Sharibo contract` — new contract id.
 - `Test token (native XLM SAC)` — new token id.
 - `create_circle (circle 0)` tx hash — from the `npm run e2e` output in step 6.
-- `Real Groth16 proof accepted on-chain` tx hash + ledger — from the same `npm run e2e` run.
+- `Real Groth16 proof accepted on-chain` tx hash — from the same `npm run e2e` run.
 - The "Tampered proof rejected" / "Nullifier replay rejected" rows don't need new hashes (they cite
   error codes, not specific transactions), but re-confirm they still reproduce — `npm run e2e`
   exercising the replay-rejection path in step 6 is that confirmation.

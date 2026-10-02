@@ -1,4 +1,5 @@
 import { rpc as StellarRpc, Address, xdr } from "@stellar/stellar-sdk";
+import { httpGetJson } from "./http.js";
 
 export interface TestnetResetCheckResult {
   ok: boolean;
@@ -19,7 +20,11 @@ export async function checkContractDeployed(
   const server = new StellarRpc.Server(rpcUrl);
 
   try {
-    await server.getHealth();
+    // The health probe is a plain GET, so it goes through the shared helper
+    // like every other HTTP call in this workspace (one deadline policy, one
+    // error format). getLedgerEntries below stays on the SDK's Server because
+    // it needs an XDR-encoded POST, which httpGet deliberately does not do.
+    await httpGetJson(`${rpcUrl}/health`, { timeoutMs: 10_000 });
   } catch {
     // RPC itself is unreachable/unhealthy — a different problem than a
     // testnet reset; let the caller's own network calls surface that.

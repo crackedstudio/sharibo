@@ -29,6 +29,7 @@ import {
   type CircleId,
   type ContractProof,
   type Identity,
+  type NullifierHash,
 } from "@sharibo/client";
 import { config } from "../config.js";
 import { useI18n } from "../i18n.js";
@@ -159,7 +160,7 @@ export function useCircleFlow() {
   const [cancelled, setCancelled] = useState(false);
   const [claimantIndex, setClaimantIndex] = useState(0);
   const [proof, setProof] = useState<ContractProof | null>(null);
-  const [nullifierHash, setNullifierHash] = useState<bigint | null>(null);
+  const [nullifierHash, setNullifierHash] = useState<NullifierHash | null>(null);
   const [claimResult, setClaimResult] = useState<ClaimResult | null>(null);
   const [isProving, setIsProving] = useState(false);
   const [, setProvingElapsedMs] = useState<number | null>(null);
@@ -197,6 +198,7 @@ export function useCircleFlow() {
 
   const fundedCount = members.filter((m) => m.funded).length;
   const fullyFunded = pot === contribution * BigInt(CIRCLE_SIZE);
+  const step: 0 | 1 | 2 | 3 = claimResult ? 3 : fullyFunded ? 2 : 1;
 
   const syncFundingState = useCallback(async () => {
     if (!admin || circleId === null) return;
@@ -246,22 +248,24 @@ export function useCircleFlow() {
       try {
         setBusy("Checking member eligibility…");
         const client = await import("@sharibo/client");
-        const { computeExternalNullifier, computeNullifierHash, connect, hasClaimed } = client;
+        const { computeExternalNullifier, computeNullifierHash, connect, hasClaimed, makeNullifierHash } = client;
         const external = await computeExternalNullifier(circleId, BigInt(round));
         const adminClient = await connect(NETWORK, admin);
         const results = await Promise.all(
           members.map(async (m) => {
             const nullifier = computeNullifierHash(m.identity.identityNullifier, external);
-            return await hasClaimed(adminClient, circleId, nullifier);
+            return await hasClaimed(adminClient, circleId, makeNullifierHash(nullifier));
           }),
         );
         if (!mounted) return;
         setMembers((prev) =>
-          prev.map((m, i) => ({
-            ...m,
-            ineligible: results[i],
-            ineligibleReason: results[i] ? "Already claimed in this circle" : undefined,
-          })),
+          prev.map((m, i) => {
+            const claimed = results[i] === true;
+            const next: Member = { ...m, ineligible: claimed };
+            if (claimed) next.ineligibleReason = "Already claimed in this circle";
+            else delete next.ineligibleReason;
+            return next;
+          }),
         );
       } catch (e) {
         setError(toUiError(e, t));
@@ -313,7 +317,7 @@ export function useCircleFlow() {
     setScreen("landing");
   }
 
-  function discardResume() {
+  function dismissResumePrompt() {
     sessionStorage.removeItem("sharibo_demo_state");
     setResumePrompt(null);
   }
@@ -323,11 +327,11 @@ export function useCircleFlow() {
     setContributionXlm(parsed.contributionXlm);
     setAdmin(Keypair.fromSecret(parsed.adminSecret));
 
-    const loadedMembers = parsed.members.map((m) => ({
+    const loadedMembers: Member[] = parsed.members.map((m) => ({
       keypair: Keypair.fromSecret(m.secret),
       identity: m.identity,
       funded: false,
-      fundHash: m.fundHash,
+      ...(m.fundHash !== undefined ? { fundHash: m.fundHash } : {}),
       ineligible: m.ineligible ?? false,
       pending: false,
     }));
@@ -339,7 +343,7 @@ export function useCircleFlow() {
     );
     setTree(newTree);
 
-    setCircleId(parsed.circleId);
+    setCircleId(makeCircleId(parsed.circleId));
     setRound(parsed.round);
     setPot(0n);
     setClaimantIndex(parsed.claimantIndex);
@@ -429,6 +433,7 @@ export function useCircleFlow() {
         import("@sharibo/client"),
       ]);
       const m = members[i];
+      if (!m) return;
       await fundWithFriendbot(m.keypair.publicKey());
 
       setMembers((prev) => prev.map((mm, idx) => (idx === i ? { ...mm, pending: true } : mm)));
@@ -546,6 +551,7 @@ export function useCircleFlow() {
 
       if (signal.aborted) return;
       const claimant = members[claimantIndex];
+      if (!claimant) return;
       const merkleProof = tree.proof(claimantIndex);
       const externalNullifier = await computeExternalNullifier(circleId, BigInt(round));
 
@@ -709,10 +715,13 @@ export function useCircleFlow() {
     busy,
     error,
     contributionXlm,
+    admin,
     members,
     circleId,
     round,
     pot,
+    proof,
+    nullifierHash,
     feeBps,
     feeRecipient,
     onChainContributors,
@@ -733,8 +742,9 @@ export function useCircleFlow() {
     resumePrompt,
     fundedCount,
     fullyFunded,
+    step,
     circleSize: CIRCLE_SIZE,
-    discardResume,
+    dismissResumePrompt,
     loadState,
     resetToLanding,
     startCircle,
@@ -757,11 +767,11 @@ interface ResumeState {
   contributionXlm: number;
   adminSecret: string;
   members: ResumeMember[];
-  circleId: CircleId;
+  circleId: bigint;
   round: number;
   claimantIndex: number;
   proof: ContractProof | null;
-  nullifierHash: bigint | null;
+  nullifierHash: NullifierHash | null;
   claimResult: ClaimResult | null;
   rejection: string | null;
 }

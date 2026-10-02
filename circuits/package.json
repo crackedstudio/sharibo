@@ -19,12 +19,14 @@
   ],
   "scripts": {
     "check-constants": "node scripts/check-poseidon-constants.mjs",
+    "check-constraints": "node scripts/check-constraints.cjs",
     "compile": "npm run check-constants && bash scripts/compile.sh",
     "setup": "bash scripts/setup.sh",
     "verify-setup": "bash scripts/verify-setup.sh",
     "verify-artifacts": "node scripts/verify-artifacts.mjs",
     "prove": "bash scripts/prove.sh",
-    "test": "mocha --require tsx/cjs test/**/*.test.js --timeout 120000"
+    "test": "mocha --require tsx/cjs 'test/**/*.test.js' --timeout 120000",
+    "test:checkers": "mocha --require tsx/cjs test/checkers.test.js --timeout 30000"
   },
   "dependencies": {
     "poseidon-bls12381": "1.0.2",
@@ -33,8 +35,8 @@
   "devDependencies": {
     "chai": "6.2.2",
     "circom_tester": "0.0.24",
-    "mocha": "11.7.6",
+    "mocha": "12.0.2",
     "snarkjs": "0.7.6",
-    "tsx": "4.22.4"
+    "tsx": "4.23.15"
   }
 }

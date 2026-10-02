@@ -3,18 +3,12 @@ import { config, configError } from "./config";
 import { useI18n } from "./i18n";
 import { usePoliteLiveRegion } from "./usePoliteLiveRegion";
 import { ArtifactProgress } from "./components/ArtifactProgress.js";
-import {
-  ClaimSection,
-  FundingList,
-  FundingListSkeleton,
-  Landing,
-  LocaleSelect,
-  MemberRing,
-  MemberRingSkeleton,
-  NetworkBanner,
-  ResultCard,
-  Stepper,
-} from "./components/index.js";
+import { ClaimSection } from "./components/ClaimSection.js";
+import { FundingList, FundingListSkeleton } from "./components/FundingList.js";
+import { Landing, LocaleSelect, NetworkBanner } from "./components/Landing.js";
+import { MemberRing, MemberRingSkeleton } from "./components/MemberRing.js";
+import { ResultCard } from "./components/ResultCard.js";
+import { Stepper } from "./components/Stepper.js";
 import { explorerContract } from "./lib/explorer";
 import { ConnectionStatus } from "./components/ConnectionStatus";
 import { useOnlineStatus } from "./hooks/useOnlineStatus";
@@ -214,7 +208,7 @@ export default function App() {
             <button className="btn btn-primary" onClick={() => flow.loadState(flow.resumePrompt!)}>
               Resume Circle
             </button>
-            <button className="btn btn-danger" onClick={flow.discardResume}>
+            <button className="btn btn-danger" onClick={flow.dismissResumePrompt}>
               {t("resume.discardButton")}
             </button>
           </div>
@@ -237,8 +231,6 @@ export default function App() {
       />
     );
   }
-
-  const step: 0 | 1 | 2 | 3 = flow.claimResult ? 3 : flow.fullyFunded ? 2 : 1;
 
   return (
     <div className="page">
@@ -272,7 +264,7 @@ export default function App() {
           </div>
         </div>
 
-        <Stepper step={step} />
+        <Stepper step={flow.step} />
 
         {flow.circlePhase === "loading" ? (
           <>

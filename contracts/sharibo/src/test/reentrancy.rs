@@ -114,7 +114,17 @@ fn reentrancy_same_nullifier_reverts_already_claimed() {
 
     let root = real_root(&env);
     let vk = real_verification_key(&env);
-    let circle_id = client.create_circle(&admin, &token, &root, &100i128, &1u32, &0u32, &vk);
+    let circle_id = client.create_circle(
+        &admin,
+        &token,
+        &root,
+        &100i128,
+        &1u32,
+        &0u32,
+        &vk,
+        &0u32,
+        &Address::generate(&env),
+    );
 
     // fund the single-member circle
     let funder = Address::generate(&env);
@@ -164,7 +174,17 @@ fn reentrancy_different_nullifier_same_round_reverts() {
 
     let root = real_root(&env);
     let vk = real_verification_key(&env);
-    let circle_id = client.create_circle(&admin, &token, &root, &100i128, &1u32, &0u32, &vk);
+    let circle_id = client.create_circle(
+        &admin,
+        &token,
+        &root,
+        &100i128,
+        &1u32,
+        &0u32,
+        &vk,
+        &0u32,
+        &Address::generate(&env),
+    );
 
     // fund
     let funder = Address::generate(&env);
@@ -215,7 +235,17 @@ fn reentrancy_during_cancel_refunds() {
 
     let root = real_root(&env);
     let vk = real_verification_key(&env);
-    let circle_id = client.create_circle(&admin, &token, &root, &100i128, &2u32, &0u32, &vk);
+    let circle_id = client.create_circle(
+        &admin,
+        &token,
+        &root,
+        &100i128,
+        &2u32,
+        &0u32,
+        &vk,
+        &0u32,
+        &Address::generate(&env),
+    );
 
     // two funders
     let f1 = Address::generate(&env);

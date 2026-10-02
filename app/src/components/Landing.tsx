@@ -1,4 +1,5 @@
 import { networkOf } from "@sharibo/client";
+import type { CircleId } from "@sharibo/client";
 import { config } from "../config.js";
 import { explorerContract } from "../lib/explorer.js";
 import { useI18n } from "../i18n.js";
@@ -69,7 +70,7 @@ export function Landing({
   busy: string | null;
   error: string | null;
   online: boolean;
-  previousCircleId: bigint | null;
+  previousCircleId: CircleId | null;
   prevCircle: { id: string; explorerUrl: string } | null;
   failure: Failure | null;
   onDismissFailure: () => void;

@@ -2,6 +2,8 @@
 
 This document details the CPU instruction consumption and budget analysis for the **Sharibo** Soroban smart contract operations on Stellar.
 
+For off-chain proving wall-clock benchmarks on the client, see [packages/client/BENCHMARKS.md](../packages/client/BENCHMARKS.md).
+
 ---
 
 ## 1. Overview & Constraints
@@ -29,7 +31,10 @@ The smart contract includes automated instruction-budget tests in [`contracts/sh
 | :--- | :--- | :--- | :--- | :--- |
 | **`create_circle`** | Admin auth, SAC token address, Merkle root, contribution, size, BLS12-381 VK | **89,425** (~89K) | 100,000,000 | <0.1% |
 | **`fund`** | Member auth, single SAC token transfer, vector push, pot update | **300,506** (~301K) | 100,000,000 | ~0.3% |
-| **`claim` (Standard)** | Real Groth16 proof, 4 public inputs (`nullifier_hash`, `root`, `external_nullifier`, `recipient_hash`), SAC transfer | **51,507,065** (~51.5M) | 100,000,000 | ~51.5% |
+| **`claim` (0 nullifiers)** | Real Groth16 proof, 4 public inputs, SAC transfer, empty nullifier set | **51,499,776** (~51.5M) | 100,000,000 | ~51.5% |
+| **`claim` (10 nullifiers)** | 10 prior claims in cycle, vector search and push | **51,506,559** (~51.5M) | 100,000,000 | ~51.5% |
+| **`claim` (50 nullifiers)** | 50 prior claims in cycle, vector search and push | **51,515,250** (~51.5M) | 100,000,000 | ~51.5% |
+| **`claim` (200 nullifiers)** | 200 prior claims in cycle, vector search and push | **51,540,842** (~51.5M) | 100,000,000 | ~51.5% |
 | **`verify_groth16` (Synthetic Large IC)** | 5 public inputs (`ic.len() == 6`), 5 scalar multiplications | **54,589,179** (~54.6M) | 100,000,000 | ~54.6% |
 
 ---
@@ -81,7 +86,7 @@ This table is refreshed by the benchmark test:
 just bench-contract
 ```
 
-The committed values are generated from the current Soroban SDK and should be
+The committed values are generated from the current Soroban SDK on **rustc 1.94.1**, and should be
 reviewed whenever contract logic or dependencies change.
 
 | Entrypoint | CPU instructions | Budget headroom |

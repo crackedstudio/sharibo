@@ -2,7 +2,6 @@ import { NETWORKS } from "@sharibo/client";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
-import { NETWORKS } from "@sharibo/client";
 
 /**
  * Exported typed configuration loaded from the repo-root .env file.
@@ -26,8 +25,21 @@ const repoRoot = path.resolve(
   "..",
 );
 
+/**
+ * Which env file to read. Defaults to the repo-root `.env`.
+ *
+ * `SHARIBO_ENV_FILE` exists so the test suite can point at a throwaway fixture
+ * instead of mutating (and racing on) the developer's real `.env` — two test
+ * files writing the same path concurrently is exactly the kind of shared
+ * mutable state that makes a suite non-hermetic and unrunnable in parallel.
+ * Unset in normal use, so behaviour is unchanged.
+ */
+function envFilePath(): string {
+  return process.env.SHARIBO_ENV_FILE || path.join(repoRoot, ".env");
+}
+
 function loadEnv(): Record<string, string | undefined> {
-  const envPath = path.join(repoRoot, ".env");
+  const envPath = envFilePath();
   // process.loadEnvFile is available in Node 21.7+ / 22+.
   // For broader compat we load the file manually.
   try {
@@ -89,14 +101,24 @@ const rules: ValidationRule[] = [
     key: "STELLAR_RPC_URL",
     label: "STELLAR_RPC_URL",
     validate: (v) => {
-      if (v && !isValidUrl(v)) return `"${v}" is not a valid HTTP(S) URL`;
+      // A missing/blank RPC URL must fail loudly rather than silently
+      // falling through to the `NETWORKS.testnet.rpcUrl` default below —
+      // running a whole e2e round against the wrong network because someone
+      // left the variable blank is exactly the class of bug this validator
+      // exists to prevent.
+      if (!isNonEmpty(v)) return "is missing or empty";
+      if (!isValidUrl(v)) return `"${v}" is not a valid HTTP(S) URL`;
       return null;
     },
   },
   {
     key: "STELLAR_NETWORK_PASSPHRASE",
     label: "STELLAR_NETWORK_PASSPHRASE",
-    validate: (v) => null,
+    // Any non-empty value is accepted (no shape check): the passphrase is
+    // network-specific and can legitimately change, so only presence is
+    // validated. As with STELLAR_RPC_URL, blank must not silently fall back
+    // to the testnet default.
+    validate: (v) => (isNonEmpty(v) ? null : "is missing or empty"),
   },
   {
     key: "TEST_TOKEN_CONTRACT_ID",
@@ -132,18 +154,37 @@ const rules: ValidationRule[] = [
 
 // ---- Load & validate ----
 
-function loadConfig(): ScriptConfig {
-  loadEnv();
-
+export function validate(env: Record<string, string | undefined>) {
   const errors: string[] = [];
 
   for (const rule of rules) {
-    const value = process.env[rule.key];
+    const value = env[rule.key];
     const err = rule.validate(value);
     if (err !== null) {
       errors.push(`  - ${rule.label}: ${err}`);
     }
   }
+
+  if (errors.length > 0) {
+    return { config: null, errors };
+  }
+
+  return {
+    config: {
+      stellarRpcUrl: env.STELLAR_RPC_URL || NETWORKS.testnet.rpcUrl,
+      stellarNetworkPassphrase: env.STELLAR_NETWORK_PASSPHRASE || NETWORKS.testnet.passphrase,
+      testTokenContractId: env.TEST_TOKEN_CONTRACT_ID!,
+      shariboContractId: env.SHARIBO_CONTRACT_ID!,
+      adminSecretKey: env.ADMIN_SECRET_KEY!,
+    } as ScriptConfig,
+    errors: [],
+  };
+}
+
+function loadConfig(): ScriptConfig {
+  loadEnv();
+
+  const { config, errors } = validate(process.env);
 
   if (errors.length > 0) {
     const aggregated = [
@@ -156,13 +197,7 @@ function loadConfig(): ScriptConfig {
     throw new Error(aggregated);
   }
 
-  return {
-    stellarRpcUrl: process.env.STELLAR_RPC_URL || NETWORKS.testnet.rpcUrl,
-    stellarNetworkPassphrase: process.env.STELLAR_NETWORK_PASSPHRASE || NETWORKS.testnet.passphrase,
-    testTokenContractId: process.env.TEST_TOKEN_CONTRACT_ID!,
-    shariboContractId: process.env.SHARIBO_CONTRACT_ID!,
-    adminSecretKey: process.env.ADMIN_SECRET_KEY!,
-  };
+  return config!;
 }
 
 // Singleton — loaded once on first import, validated eagerly.

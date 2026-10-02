@@ -1,5 +1,16 @@
+# Issue chooser behaviour.
+#
+# Decision (issue #543): blank issues stay ENABLED so low-friction reports are
+# still possible, but every structured template carries a required/optional
+# Area dropdown plus an auto-label workflow
+# (.github/workflows/auto-label.yml) that maps the dropdown value to the
+# CONTRIBUTING.md topic taxonomy. Unlabelled blank issues are triaged by hand.
 blank_issues_enabled: true
 
-# Issue templates (bug_report.yml, feature_request.yml, refactor.yml) are
-# auto-discovered from this directory and listed in the issue chooser;
-# config.yml only controls the chooser behaviour above.
+# Security reports must NOT be filed as public issues (see SECURITY.md).
+# GitHub private vulnerability reporting is the channel; surface it here
+# because the chooser is the highest-traffic place to say it.
+contact_links:
+  - name: Report a security vulnerability (private)
+    url: https://github.com/crackedstudio/sharibo/security/advisories/new
+    about: Do not file soundness bugs publicly - use private vulnerability reporting per SECURITY.md

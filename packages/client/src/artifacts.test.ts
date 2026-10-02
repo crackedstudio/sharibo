@@ -1,11 +1,6 @@
 import { test, afterAll as after } from "vitest";
 import assert from "node:assert";
-import {
-  prefetchMembershipArtifacts,
-  subscribeToArtifactPrefetch,
-  getArtifactPrefetchProgress,
-  __resetForTesting,
-} from "./artifacts.js";
+import { createArtifactLoader } from "./artifacts.js";
 
 // Utility to create a controllable ReadableStream
 function createControllableStream() {
@@ -25,7 +20,7 @@ after(() => {
 });
 
 test("fraction is null when content-length is missing", async () => {
-  __resetForTesting();
+  const loader = createArtifactLoader();
 
   const { stream: wasmStream, controller: wasmController } = createControllableStream();
   const { stream: zkeyStream, controller: zkeyController } = createControllableStream();
@@ -38,19 +33,19 @@ test("fraction is null when content-length is missing", async () => {
     return new Response(zkeyStream, { headers: new Headers() });
   };
 
-  const promise = prefetchMembershipArtifacts();
+  const promise = loader.prefetch();
 
   // Give promise a tick to start fetching
   await new Promise((resolve) => setTimeout(resolve, 0));
 
-  let progress = getArtifactPrefetchProgress();
+  let progress = loader.getProgress();
   assert.strictEqual(progress.status, "loading");
   assert.strictEqual(progress.fraction, null);
 
   wasmController.enqueue(new Uint8Array([1, 2, 3]));
   await new Promise((resolve) => setTimeout(resolve, 0));
 
-  progress = getArtifactPrefetchProgress();
+  progress = loader.getProgress();
   assert.strictEqual(progress.fraction, null);
   assert.strictEqual(progress.loaded, 3);
 
@@ -58,13 +53,13 @@ test("fraction is null when content-length is missing", async () => {
   zkeyController.close();
   await promise;
 
-  progress = getArtifactPrefetchProgress();
+  progress = loader.getProgress();
   assert.strictEqual(progress.status, "ready");
   assert.strictEqual(progress.fraction, 1);
 });
 
 test("fraction is monotonically increasing when content-length is present", async () => {
-  __resetForTesting();
+  const loader = createArtifactLoader();
 
   const { stream: wasmStream, controller: wasmController } = createControllableStream();
   const { stream: zkeyStream, controller: zkeyController } = createControllableStream();
@@ -77,13 +72,13 @@ test("fraction is monotonically increasing when content-length is present", asyn
     return new Response(zkeyStream, { headers: new Headers({ "content-length": "20" }) });
   };
 
-  const promise = prefetchMembershipArtifacts();
+  const promise = loader.prefetch();
   await new Promise((resolve) => setTimeout(resolve, 0));
 
   wasmController.enqueue(new Uint8Array(5));
   await new Promise((resolve) => setTimeout(resolve, 0));
 
-  let progress = getArtifactPrefetchProgress();
+  let progress = loader.getProgress();
   assert.strictEqual(progress.loaded, 5);
   assert.strictEqual(progress.total, 30);
   assert.strictEqual(progress.fraction, 5 / 30);
@@ -91,7 +86,7 @@ test("fraction is monotonically increasing when content-length is present", asyn
   zkeyController.enqueue(new Uint8Array(10));
   await new Promise((resolve) => setTimeout(resolve, 0));
 
-  progress = getArtifactPrefetchProgress();
+  progress = loader.getProgress();
   assert.strictEqual(progress.loaded, 15);
   assert.strictEqual(progress.fraction, 15 / 30);
 
@@ -99,13 +94,13 @@ test("fraction is monotonically increasing when content-length is present", asyn
   zkeyController.close();
   await promise;
 
-  progress = getArtifactPrefetchProgress();
+  progress = loader.getProgress();
   assert.strictEqual(progress.status, "ready");
   assert.strictEqual(progress.fraction, 1);
 });
 
-test("concurrent prefetchMembershipArtifacts calls share one download", async () => {
-  __resetForTesting();
+test("concurrent prefetch calls share one download", async () => {
+  const loader = createArtifactLoader();
   let fetchCount = 0;
 
   const { stream: wasmStream, controller: wasmController } = createControllableStream();
@@ -120,8 +115,8 @@ test("concurrent prefetchMembershipArtifacts calls share one download", async ()
     return new Response(zkeyStream, { headers: new Headers() });
   };
 
-  const p1 = prefetchMembershipArtifacts();
-  const p2 = prefetchMembershipArtifacts();
+  const p1 = loader.prefetch();
+  const p2 = loader.prefetch();
 
   assert.strictEqual(p1, p2);
 
@@ -134,35 +129,35 @@ test("concurrent prefetchMembershipArtifacts calls share one download", async ()
 });
 
 test("failed download publishes status: 'error' and rejects", async () => {
-  __resetForTesting();
+  const loader = createArtifactLoader();
 
   globalThis.fetch = async () => {
     throw new Error("Network offline");
   };
 
-  await assert.rejects(prefetchMembershipArtifacts(), /Network offline/);
+  await assert.rejects(loader.prefetch(), /Network offline/);
 
-  const progress = getArtifactPrefetchProgress();
+  const progress = loader.getProgress();
   assert.strictEqual(progress.status, "error");
   assert.strictEqual(progress.error?.message, "Network offline");
 });
 
 test("failed response publishes status: 'error' and rejects", async () => {
-  __resetForTesting();
+  const loader = createArtifactLoader();
 
   globalThis.fetch = async () => {
     return new Response(null, { status: 404 });
   };
 
-  await assert.rejects(prefetchMembershipArtifacts(), /Unable to download circuit artifact/);
+  await assert.rejects(loader.prefetch(), /Unable to download circuit artifact/);
 
-  const progress = getArtifactPrefetchProgress();
+  const progress = loader.getProgress();
   assert.strictEqual(progress.status, "error");
   assert.ok(progress.error?.message.includes("Unable to download"));
 });
 
-test("subscribeToArtifactPrefetch immediately calls back with current progress and unsubscribing stops delivery", async () => {
-  __resetForTesting();
+test("subscribe immediately calls back with current progress and unsubscribing stops delivery", async () => {
+  const loader = createArtifactLoader();
 
   const { stream: wasmStream, controller: wasmController } = createControllableStream();
   const { stream: zkeyStream, controller: zkeyController } = createControllableStream();
@@ -176,14 +171,14 @@ test("subscribeToArtifactPrefetch immediately calls back with current progress a
   };
 
   const states: string[] = [];
-  const unsubscribe = subscribeToArtifactPrefetch((p) => {
+  const unsubscribe = loader.subscribe((p) => {
     states.push(p.status);
   });
 
   // Should immediately receive the current 'idle' state
   assert.deepStrictEqual(states, ["idle"]);
 
-  const p = prefetchMembershipArtifacts();
+  const p = loader.prefetch();
   await new Promise((resolve) => setTimeout(resolve, 0));
 
   // Should now have 'loading' states
@@ -201,4 +196,50 @@ test("subscribeToArtifactPrefetch immediately calls back with current progress a
   wasmController.close();
   zkeyController.close();
   await p;
+});
+
+test("an AbortSignal cancels an in-flight prefetch", async () => {
+  const loader = createArtifactLoader();
+
+  const { stream: wasmStream, controller: wasmController } = createControllableStream();
+  const { stream: zkeyStream, controller: zkeyController } = createControllableStream();
+
+  globalThis.fetch = async (url: string | URL | globalThis.Request, init?: RequestInit) => {
+    const urlStr = url.toString();
+    const signal = init?.signal;
+    const stream = urlStr.includes("wasm") ? wasmStream : zkeyStream;
+    if (signal) {
+      signal.addEventListener("abort", () => {
+        try {
+          stream.cancel();
+        } catch {
+          // ignore
+        }
+      });
+    }
+    return new Response(stream, { headers: new Headers() });
+  };
+
+  const controller = new AbortController();
+  const promise = loader.prefetch({ signal: controller.signal });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  controller.abort();
+
+  await assert.rejects(promise);
+
+  const progress = loader.getProgress();
+  assert.strictEqual(progress.status, "error");
+
+  // Clean up streams
+  try {
+    wasmController.close();
+  } catch {
+    // ignore
+  }
+  try {
+    zkeyController.close();
+  } catch {
+    // ignore
+  }
 });

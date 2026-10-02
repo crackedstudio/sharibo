@@ -1,0 +1,11 @@
+pragma circom 2.1.6;
+function CONSTANTS(t) {
+    if (t == 3) {
+        return [0x01, 0x02, 0x99];
+    }
+}
+function MATRIX(t) {
+    if (t == 3) {
+        return [0x11, 0x12, 0x13, 0x21, 0x22, 0x23, 0x31, 0x32, 0x33];
+    }
+}

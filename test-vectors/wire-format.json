@@ -1,0 +1,123 @@
+{
+  "_comment": "Cross-implementation wire-format test vectors. Validates the encoding rules in docs/wire-format.md. All three implementations (circuit, contract, client) must agree with these fixtures. Regenerate via: node test-vectors/gen-wire-format.mjs",
+  "frModulus": "52435875175126190479447740508185965837690552500527637822603658699938581184513",
+  "publicSignalOrder": {
+    "_comment": "snarkjs emits circuit outputs first, then declared public inputs in source-order. The generated component main line is: component main { public [root, externalNullifier] } = Sharibo(4). So nullifierHash (output) is index 0, root (first declared public input) is index 1, externalNullifier (second) is index 2.",
+    "order": [
+      "nullifierHash",
+      "root",
+      "externalNullifier"
+    ],
+    "indices": {
+      "nullifierHash": 0,
+      "root": 1,
+      "externalNullifier": 2
+    },
+    "contractVector": {
+      "_comment": "From the fullCircuitExample in poseidon.json — the public_inputs vector the contract must build as [nullifierHash, root, externalNullifier].",
+      "circleId": "1",
+      "round": "0",
+      "publicInputs": [
+        "48059343990192610646459609261495992060469795976999050508299902288035919293419",
+        "27229448404887127986721419334008530833780200287639716463067336202268364311337",
+        "16562361372536717534118891681920966025734266982967870934512004608593732944167"
+      ]
+    }
+  },
+  "externalNullifier": {
+    "_comment": "SHA-256 over big-endian u64(circle_id) || u32(round), reduced mod r. Both Rust (lib.rs) and TypeScript (identity.ts) must agree on byte order and modulus reduction. See docs/wire-format.md §2.",
+    "algorithm": "SHA-256( big_endian_u64(circle_id) || big_endian_u32(round) ) mod r",
+    "preimageBytes": 12,
+    "preimageLayout": "circle_id: bytes 0..7 (big-endian u64), round: bytes 8..11 (big-endian u32)",
+    "vectors": [
+      {
+        "circleId": 0,
+        "round": 0,
+        "preimageHex": "000000000000000000000000",
+        "sha256Hex": "15ec7bf0b50732b49f8228e07d24365338f9e3ab994b00af08e5a3bffe55fd8b",
+        "sha256Decimal": "9916401131788634118796694467337109503795060207059715207260235684299224251787",
+        "result": "9916401131788634118796694467337109503795060207059715207260235684299224251787"
+      },
+      {
+        "circleId": 1,
+        "round": 0,
+        "preimageHex": "000000000000000100000000",
+        "sha256Hex": "249df6debaad7a2916207fb7f0563ec678fb776144049f157259afadda1dc127",
+        "sha256Decimal": "16562361372536717534118891681920966025734266982967870934512004608593732944167",
+        "result": "16562361372536717534118891681920966025734266982967870934512004608593732944167"
+      },
+      {
+        "circleId": 0,
+        "round": 1,
+        "preimageHex": "000000000000000000000001",
+        "sha256Hex": "3423cfe2ed780f5d09ddaf78a84acaa6d9597f593e102ec1566e7d723cb1ef9b",
+        "sha256Decimal": "23583542553047231019947591640268525591840428596446762471569763781886203785115",
+        "result": "23583542553047231019947591640268525591840428596446762471569763781886203785115"
+      },
+      {
+        "circleId": 1,
+        "round": 1,
+        "preimageHex": "000000000000000100000001",
+        "sha256Hex": "f98a2421cbc9e9977cd79ee80bbfc129d965aa1ac295db3cd8660ee4dd64caac",
+        "sha256Decimal": "112869973566180929398897969224962294575607326909425200877735190544847200373420",
+        "result": "7998223215928548440002488208590362900226221908369925232527873144970038004394",
+        "_note": "sha256Decimal > r; result is the reduced value"
+      }
+    ]
+  },
+  "g1Encoding": {
+    "_comment": "Uncompressed G1Affine: 48-byte big-endian X || 48-byte big-endian Y = 96 bytes total. No compression flag, no point-at-infinity sentinel. See docs/wire-format.md §3.",
+    "format": "be_bytes(X) || be_bytes(Y)",
+    "byteLength": 96,
+    "examples": [
+      {
+        "_comment": "vk_alpha_1 from verification_key.json",
+        "label": "vk.alpha",
+        "decimalCoordinates": {
+          "x": "1151103813686702670269560426972537615253723909179986658696264230739792718498157532050816457434960302183816446643642",
+          "y": "2264278419421030329175907976054147167790018368373903507517289863181729348732997145562393982010652254896115276313615"
+        },
+        "hex": "077a97618b90437efc10cdae8362bc70eed97960e14b1bc9838bc4bb6d2ab9a43e387f7915b977fcb205d66c076c8dba0eb618a85bb27a23a7e29777ab9cfc911220076766add2d0b5d1faa5744c7bdfcef6b672bc5e4f6655abdf35d89bf40f"
+      },
+      {
+        "_comment": "IC[0] from verification_key.json",
+        "label": "vk.ic[0]",
+        "decimalCoordinates": {
+          "x": "2221368706166660739597546727074260123281775003540941966931835158612081330822382179488852200096434901680516793712392",
+          "y": "2404014037212414881167456460714355715416704233282862833716099779331158640973633758980226197491483021600744297772191"
+        },
+        "hex": "0e6eb9dfc31b765f030b3cb3106625c4e837f344557b38c399bd8a7630aa4a9298515b7f5a6178ffb111042e43e93f080f9e8385c44e2cd3f1135859166d927566446884cd94fd226b7899a791e646447a608b5414a93614cc6ecd44b64cb49f"
+      }
+    ]
+  },
+  "g2Encoding": {
+    "_comment": "Uncompressed G2Affine: 48-byte be(X.c1) || 48-byte be(X.c0) || 48-byte be(Y.c1) || 48-byte be(Y.c0) = 192 bytes. Each Fq2 element has c1 first, c0 second. See docs/wire-format.md §3.",
+    "format": "be_bytes(X.c1) || be_bytes(X.c0) || be_bytes(Y.c1) || be_bytes(Y.c0)",
+    "byteLength": 192,
+    "fq2Layout": "X = c0 + c1*u, encoded as [c1, c0] (c1 first)",
+    "examples": [
+      {
+        "_comment": "vk_beta_2 from verification_key.json",
+        "label": "vk.beta",
+        "decimalCoordinates": {
+          "x": {
+            "c0": "234715770815633506086876921775332881288881052225543236297905676400069922158500877154699132474175457598380425222782",
+            "c1": "3305393283011938985382092861733522723974543802747257178218608747718267902286556196852282734837644244360170541159935"
+          },
+          "y": {
+            "c0": "218541127215008476487596590292634126552582077478272530353193596224995381682430953762052403998127371323829472216931",
+            "c1": "3472177617825914068429071422901138564916107942636399548688833555975205972364256420268690345427377488835425312495997"
+          }
+        },
+        "hex": "1579bf2f79a290f2dd5de7661646721d88a24388a153a5237ad35e1bc865c5ab1507c9e1989eb7493b739199f10c15ff0186650858248ed64a0dc18d177cd7926c8eeb8edc0fd69ef656162049937dc678408113716028d19bd083bc10a61a7e168f2749107c28c81feef885ae3a6f91ff1679480c50f178308fc3c69cbd6c50cc3a57da5040a706e9edb4e0d784d97d016b7def2ec11086186f990a0c378774b4a456483ec4d6df55e3d6e48e6e9d774f749ea577d07a2909b5d56039b04763"
+      }
+    ]
+  },
+  "vkIcLengthRule": {
+    "_comment": "vk.ic.len() must equal number_of_public_signals + 1. The current circuit has 3 public signals, so ic must have exactly 4 elements. verify_groth16 in lib.rs enforces this: if public_inputs.len() + 1 != vk.ic.len(), it returns false.",
+    "numberOfPublicSignals": 3,
+    "requiredIcLength": 4,
+    "formula": "ic.len() == public_inputs.len() + 1",
+    "verificationKeyFilePath": "circuits/verification_key.json"
+  }
+}

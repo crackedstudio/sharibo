@@ -1,0 +1,9 @@
+{
+  "order": [
+    "nullifierHash",
+    "root",
+    "externalNullifier",
+    "recipientHash"
+  ],
+  "notes": "Canonical public-signal order for the membership circuit (circom/snarkjs emit circuit outputs first, then declared public inputs in source order). Contract PUBLIC_INPUT_COUNT and ADR 006 must agree."
+}

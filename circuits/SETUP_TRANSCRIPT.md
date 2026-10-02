@@ -1,5 +1,7 @@
 # Sharibo Trusted-Setup Transcript
 
+> **Current status:** single-contributor / demo setup only (`circuits/scripts/setup.sh`, entropy from `/dev/urandom`). A multi-party phase-2 ceremony has **not** been executed. When it runs, follow [docs/ceremony.md](../docs/ceremony.md) (#546) and append attestations here.
+
 Each entry below records one ceremony run. The **verification key hash** is
 the authoritative fingerprint: it must match `shasum -a 256 verification_key.json`
 (or `sha256sum verification_key.json` on Linux) for any set of local artifacts
@@ -18,6 +20,7 @@ to be considered canonical.
 | Field                               | Value                                                              |
 | ----------------------------------- | ------------------------------------------------------------------ |
 | Date (UTC)                          | `2025-07-01T00:00:00Z`                                             |
+| circom version                      | `2.2.3` (see `circuits/config.json` `circomVersion`)                |
 | snarkjs version                     | `0.7.6`                                                            |
 | Curve                               | `bls12381`                                                         |
 | Powers-of-Tau power                 | `12`                                                               |
@@ -52,7 +55,8 @@ to be considered canonical.
 | Field              | Value |
 |--------------------|-------|
 | Date (UTC)         | `2026-09-04T21:41:32Z` |
-| snarkjs version    | `0.7.6` |
+| circom version     | `2.2.3`                |
+| snarkjs version    | `0.7.6`                |
 | Curve              | `bls12381` |
 | Powers-of-Tau power | 12 |
 | `verification_key.json` SHA-256 | `2e439890c63dcb186d2a8a3220c980eb989e705ea4b2c75600a33a8a9bf8f53c` |

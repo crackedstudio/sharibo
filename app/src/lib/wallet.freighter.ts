@@ -1,4 +1,5 @@
 import { Networks } from "@stellar/stellar-sdk";
+import type { Signer } from "./wallet";
 
 /**
  * Maps a Freighter network string (e.g., "TESTNET", "PUBLIC") to the corresponding
@@ -85,4 +86,78 @@ export function buildNetworkMismatchMessage(
     `but this app is configured for ${mismatchError.appNetwork}. ` +
     `${switchInstructions}`
   );
+}
+
+const DEFAULT_ADDRESS_ERROR = "Could not get address from Freighter.";
+
+function mismatchError(freighterNetwork: string, appNetworkPassphrase: string): Error | null {
+  const mismatch = checkNetworkMatch(freighterNetwork, appNetworkPassphrase);
+  if (!mismatch) return null;
+  return new Error(
+    buildNetworkMismatchMessage(
+      mismatch,
+      `Please open Freighter, click the network selector in the upper right, and switch to ${mismatch.appNetwork}.`,
+    ),
+  );
+}
+
+/** True when the Freighter extension responds. False when it is missing or errors. */
+export async function isFreighterAvailable(): Promise<boolean> {
+  try {
+    const { isConnected } = await import("@stellar/freighter-api");
+    const res = await isConnected();
+    return Boolean(res.isConnected);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Freighter-backed {@link Signer}. Requests permission, checks the wallet
+ * network against the app, and re-checks that network on every signature.
+ */
+export async function createFreighterSigner(
+  appNetworkPassphrase: string,
+  addressError: string = DEFAULT_ADDRESS_ERROR,
+): Promise<Signer> {
+  const { getAddress, getNetworkDetails, isAllowed, requestAccess, signTransaction } =
+    await import("@stellar/freighter-api");
+
+  const allowed = await isAllowed();
+  if (!allowed.isAllowed) {
+    await requestAccess();
+  }
+
+  async function requireNetwork() {
+    const networkRes = await getNetworkDetails();
+    const mismatch = mismatchError(networkRes.network, appNetworkPassphrase);
+    if (mismatch) throw mismatch;
+    return networkRes;
+  }
+
+  const networkRes = await requireNetwork();
+  const addressRes = await getAddress();
+  const pubKey = addressRes.address;
+  if (!pubKey) {
+    throw new Error(addressError);
+  }
+
+  return {
+    async publicKey() {
+      return pubKey;
+    },
+    async networkPassphrase() {
+      return networkRes.networkPassphrase;
+    },
+    async signTransaction(xdr: string) {
+      const current = await requireNetwork();
+      const signedRes = await signTransaction(xdr, {
+        networkPassphrase: current.networkPassphrase,
+      });
+      if (signedRes.error) {
+        throw new Error(signedRes.error.toString());
+      }
+      return signedRes.signedTxXdr;
+    },
+  };
 }

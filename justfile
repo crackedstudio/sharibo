@@ -3,47 +3,91 @@
 # Prerequisites: everything listed in README.md §0 (Rust, stellar CLI,
 # Node.js 20+, circom).
 #
-# Run `just --list` to see available recipes.  Any recipe can be run
-# manually with the raw commands in README.md — `just` is optional.
+# Gate definitions (do not invent a third):
+#   just ci      = the complete, authoritative gate (what CI runs)
+#   just verify  = fast pre-commit subset (typecheck + lint + unit tests)
 #
+# Keep genuinely-slow-or-networked work outside `ci`: e2e, circuits (trusted
+# setup), mutation, bench-contract, bench-prove.
+#
+# Run `just --list` to see available recipes.
 # Requires just >= 1.33.0 for set working-directory setting.
 set working-directory := '.'
 
 # ── Doctor ───────────────────────────────────────────────────────────────────
 
 # Run the toolchain doctor script (checks Rust, stellar CLI, Node, circom, just)
-doctor:
-    npm run doctor --workspace=scripts
+doctor *ARGS:
+    npm run doctor --workspace=scripts -- {{ARGS}}
+
+# ── Audit ────────────────────────────────────────────────────────────────────
+
+# Dependency audit gate: npm advisories across every workspace plus cargo
+# advisories / licences / duplicate crates for the contracts crate.
+#
+# Findings are accepted only through the allowlist files below — never by
+# appending `|| true` to a command:
+#
+#   * npm  — `audit-allowlist.json` (root): entries of the form
+#            { "id": "GHSA-…", "reason": "…", "expires": "YYYY-MM-DD" }
+#   * cargo — `contracts/deny.toml` `[advisories] ignore = [...]` entries,
+#            each with a comment giving the reason and an expiry date.
+#
+# An allowlist entry past its expiry is a failure: re-triage the advisory
+# instead of bumping the date.
+audit:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    echo "== npm audit (all workspaces, --audit-level=high) =="
+    npm audit --audit-level=high
+
+    echo ""
+    echo "== cargo audit (contracts/) =="
+    cd contracts && cargo audit
+
+    echo ""
+    echo "== cargo deny check (advisories, licences, bans, sources) =="
+    cd contracts && cargo deny check
+
+    echo ""
+    echo "audit: no unaccepted findings."
 
 # ── Circuits ──────────────────────────────────────────────────────────────────
 
 # Compile circuit, run trusted setup (with zkey verification), verify the
-# exported vk against the committed one, and run circuit tests
+# exported vk against the committed one, and run circuit tests.
+# NOT part of `just ci` — trusted setup is slow/stateful. Run on demand or
+# via a scheduled/on-demand workflow.
 circuits:
     cd circuits && npm run compile
     cd circuits && npm run setup
     cd circuits && npm run verify-setup
     cd circuits && npm test
 
+# Circuit unit + checker failure-path tests only (no trusted setup).
+# Safe for CI once dependencies are installed.
+circuits-test:
+    npm test --workspace=circuits
+
 # ── Contract ──────────────────────────────────────────────────────────────────
 
 # Run contract unit tests and build wasm binary
 contract:
+    cd contracts && cargo fmt --check
+    cd contracts && cargo clippy --all-targets -- -D warnings
     cd contracts && cargo test
     cd contracts && stellar contract build
 
 # Generate (or regenerate) the XDR golden files for Circle / VerificationKey /
-# Proof.  Run this whenever you intentionally change the wire format, then
-# commit the updated .b64 files alongside the struct change.
-#
-# After running this, also update packages/client/src/contract.test.ts if
-# any expected field values or struct shapes changed, and bump SCHEMA_VERSION
-# in contracts/sharibo/src/test.rs.
+# Proof. Full workflow (schema bump, client tests, commit steps) lives in
+# contracts/sharibo/test_snapshots/xdr_goldens/README.md — start there.
 xdr-goldens:
     cd contracts && UPDATE_GOLDEN=1 cargo test -p sharibo xdr_golden
     @echo ""
     @echo "Goldens written to contracts/sharibo/test_snapshots/xdr_goldens/"
-    @echo "Review with: git diff --stat contracts/sharibo/test_snapshots/xdr_goldens/"
+    @echo "See contracts/sharibo/test_snapshots/xdr_goldens/README.md for follow-up steps."
+    @echo "Review with: git diff --stat contracts/sharibo/test_snapshots/xdr_goldens/ test-vectors/xdr/"
 # ── Dead-code check ───────────────────────────────────────────────────────────
 
 # Check for unused files, exports, and dependencies across all TS workspaces.
@@ -58,6 +102,15 @@ xdr-goldens:
 lint-dead:
     npm run lint:dead
 
+# ── Lint / typecheck slices (invoked by ci + verify) ─────────────────────────
+
+lint:
+    npm run lint
+
+typecheck:
+    npm run typecheck --workspace=packages/client
+    @if [ -f app/tsconfig.json ]; then cd app && npx --no-install tsc --noEmit; fi
+
 # ── Client ────────────────────────────────────────────────────────────────────
 
 # TypeScript typecheck AND unit/property tests for the client SDK
@@ -67,9 +120,14 @@ client:
 
 # ── Scripts ───────────────────────────────────────────────────────────────────
 
-# Run the scripts workspace unit tests (node --test)
+# Run the scripts workspace unit tests (node --test).
+# Hermetic: passes with networking disabled.
 scripts-test:
     npm test --workspace=scripts
+
+# Repo-structure / justfile hygiene (no duplicate recipe names, etc.)
+repo-structure-test:
+    node --import tsx/esm --test scripts/justfile-recipes.test.ts
 
 # ── App ───────────────────────────────────────────────────────────────────────
 
@@ -103,8 +161,9 @@ verify:
     echo "\n== 3) Dead-code check (ts-prune; best-effort) =="; \
     npx -y ts-prune --summary || s_deadcode=1; \
 
-    echo "\n== 4) Unit tests (app + packages/client + circuits if present) =="; \
+    echo "\n== 4) Unit tests (app + packages/core + packages/client + circuits if present) =="; \
     npm run -s test --workspace=app || s_tests=1; \
+    npm run -s test --workspace=packages/core || s_tests=1; \
     npm run -s test --workspace=packages/client || s_tests=1; \
     if [ -f circuits/package.json ]; then (cd circuits && npm test --if-present) || true; fi; \
 
@@ -126,26 +185,60 @@ verify:
         exit 2; \
     fi
 
-# Mutation testing for the crypto modules (identity.ts + tree.ts).
-# Runs on demand — not part of the default test run.
-# Requires: npm install --workspace=packages/client (installs Stryker).
-# Expected runtime: ~3–8 minutes depending on CPU.
-# HTML report written to packages/client/reports/mutation/mutation.html.
-# Baseline mutation score (recorded 2026-08-31): see packages/client/MUTATION_SCORE.md.
-mutation:
-    npm run mutate --workspace=packages/client
+cargo-fmt:
+    cd contracts && cargo fmt --check
 
-# ── End-to-end ────────────────────────────────────────────────────────────────
+cargo-clippy:
+    cd contracts && cargo clippy --all-targets -- -D warnings
 
-# Full e2e round against live testnet (spends friendbot quota / testnet funds)
-e2e:
-    npm run e2e
+cargo-test:
+    cd contracts && cargo test
+
+stellar-build:
+    cd contracts && stellar contract build
+
+# Build the TypeScript SDK package.
+sdk-build:
+    npm run build --workspace=packages/client --if-present
+
+# ── CI (authoritative gate) ───────────────────────────────────────────────────
+# Complete gate shared by local contributors and GitHub Actions.
+# The workflow must call `just ci` (or the named slice recipes below) — never
+# an inlined command list that can drift from this definition.
+ci: sdk-build typecheck lint lint-dead scripts-test repo-structure-test client app-test circuits-test cargo-fmt cargo-clippy cargo-test stellar-build
+    @echo "just ci: all gate checks passed."
+
+# Fast pre-commit subset. Alias kept for muscle memory; NOT the full gate.
+# Use `just ci` before opening a PR.
+verify: typecheck lint client app-test
+    @echo "just verify: fast subset passed. Run \`just ci\` before opening a PR."
+
+# Browser end-to-end test of the whole demo flow (open page → create circle →
+# fund 5 members → prove → claim) in headless Chromium, against a local Vite
+# dev server. Soroban RPC and Friendbot are MOCKED, so this spends nothing; the
+# Groth16 proving is still real (real wasm + zkey, in the browser).
+#
+# Needs the circuit artifacts (`just circuits`) — see docs/troubleshooting.md.
+# Not part of `just test` / `npm test`. Failure traces: app/e2e/test-results/.
+e2e-browser:
+    npm run build --workspace=packages/client
+    npm run sync-circuit --workspace=app
+    cd app && npx playwright install chromium
+    npm run test:e2e --workspace=app
+
+# The same browser flow against LIVE testnet: SPENDS testnet funds and
+# friendbot quota (like `just e2e`). Opt-in only; refuses to start unless
+# app/.env (or the environment) has real testnet contract IDs.
+e2e-browser-live:
+    npm run build --workspace=packages/client
+    npm run sync-circuit --workspace=app
+    cd app && npx playwright install chromium
+    E2E_LIVE=1 npm run test:e2e --workspace=app
 
 # ── Test (all suites, no e2e) ─────────────────────────────────────────────────
 
-# Run every test suite in the repo.
-# Fails as soon as any suite fails; the summary at the end lists all results.
-# e2e is excluded — it requires live testnet funds and friendbot quota.
+# Run every test suite in the repo (still excludes e2e / trusted setup).
+# Prefer `just ci` for the merge gate — this recipe is the test-only slice.
 test:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -168,6 +261,7 @@ test:
 
     run_suite "dead-code check"   npm run lint:dead
     run_suite "client typecheck"  npm run typecheck --workspace=packages/client
+    run_suite "core tests"        npm test          --workspace=packages/core
     run_suite "client tests"      npm test          --workspace=packages/client
     run_suite "app tests"         npm test          --workspace=app
     run_suite "scripts tests"     npm test          --workspace=scripts
@@ -188,38 +282,61 @@ test:
     fi
     echo "  All ${#pass[@]} suites passed."
 
-# ── All (build + test, except e2e) ────────────────────────────────────────────
+# ── Slow / networked (outside ci) ─────────────────────────────────────────────
+
+# Mutation testing for the crypto modules (identity.ts + tree.ts).
+mutation:
+    npm run mutate --workspace=packages/client
+
+# Full e2e round against live testnet (spends friendbot quota / testnet funds)
+e2e:
+    npm run e2e
 
 # Build all artefacts and run every test suite (excluding e2e).
-# Equivalent to running circuits, contract, client, and test in sequence.
 all: circuits contract test
     @echo 'All recipes completed (e2e skipped — uses testnet funds/friendbot quota)'
 
-# Verify: run lint and client checks
-verify: client
-    npm run lint
-
 # Run coverage for all workspaces and print a short per-workspace summary.
-# This is a local instrument (not a merge gate). It runs each workspace's
-# test command with coverage enabled and emits the report locations.
+# Contracts coverage is a hard floor: cargo-llvm-cov --fail-under-lines reads
+# coverage-thresholds.json (see contracts/README.md). Missing llvm-cov fails
+# the recipe — do not swallow it with `|| true`.
 coverage:
-    @echo 'Collecting coverage for: app, packages/client, scripts, contracts'
-    # App (vitest will write to coverage/app)
-    cd app && npm test || true
-    # Client (vitest will write to coverage/packages-client)
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo 'Collecting coverage for: app, packages/client, scripts, contracts'
+    # App / client / scripts stay best-effort (JS thresholds are separate).
+    (cd app && npm test) || true
     npm run test --workspace=packages/client || true
-    # Scripts (node --test may be used by the scripts workspace)
     npm run test --workspace=scripts || true
-    # Contracts (cargo-llvm-cov must be installed; see contracts/README.md)
-    cd contracts && cargo llvm-cov --workspace --tests --lcov --output-path coverage || true
-    @echo
-    @echo 'Summary:'
-    @printf '%-25s %-12s %s\n' "Workspace" "Report" "Notes"
-    @printf '%-25s %-12s %s\n' "app" "coverage/app" "vitest + v8"
-    @printf '%-25s %-12s %s\n' "packages/client" "coverage/packages-client" "vitest + v8"
-    @printf '%-25s %-12s %s\n' "scripts" "(scripts test may output coverage)" "node --test"
-    @printf '%-25s %-12s %s\n' "contracts" "contracts/coverage" "cargo llvm-cov (HTML/lcov)"
+    # Contracts: require cargo-llvm-cov and enforce the ratchet floor.
+    if ! command -v cargo-llvm-cov >/dev/null 2>&1 && ! cargo llvm-cov --version >/dev/null 2>&1; then
+      echo 'error: cargo-llvm-cov is not installed. Run: cargo install cargo-llvm-cov' >&2
+      echo '       (or `just doctor` — the check is optional but recommended)' >&2
+      exit 1
+    fi
+    THRESHOLD="$(python3 -c 'import json; print(json.load(open("coverage-thresholds.json"))["contracts"]["lines"])')"
+    echo "Contracts line-coverage floor: ${THRESHOLD}%"
+    mkdir -p contracts/coverage
+    (cd contracts && cargo llvm-cov --workspace --tests \
+      --ignore-filename-regex='(/tests?/|test\.rs$)' \
+      --lcov --output-path coverage/lcov.info)
+    # Threshold check is on `report` — the test invocation does not always
+    # propagate --fail-under-lines when tests themselves succeed.
+    (cd contracts && cargo llvm-cov report \
+      --ignore-filename-regex='(/tests?/|test\.rs$)' \
+      --fail-under-lines "${THRESHOLD}")
+    echo
+    echo 'Summary:'
+    printf '%-25s %-28s %s\n' "Workspace" "Report" "Notes"
+    printf '%-25s %-28s %s\n' "app" "coverage/app" "vitest + v8"
+    printf '%-25s %-28s %s\n' "packages/client" "coverage/packages-client" "vitest + v8"
+    printf '%-25s %-28s %s\n' "scripts" "(scripts workspace)" "node --test"
+    printf '%-25s %-28s %s\n' "contracts" "contracts/coverage/lcov.info" "cargo llvm-cov (floor ${THRESHOLD}%)"
 
 # Refresh the committed contract CPU benchmark table
 bench-contract:
     WRITE_BENCHMARKS=1 cargo test -p sharibo cpu_instruction_benchmarks -- --nocapture
+
+# Refresh the committed client proving benchmark table
+bench-prove:
+    WRITE_BENCHMARKS=1 npm run bench:prove --workspace=packages/client

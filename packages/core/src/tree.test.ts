@@ -31,12 +31,12 @@ describe("MerkleTree.proofOf", () => {
     const leaves = identities.map((id) => id.commitment);
     const tree = MerkleTree.create(LEVELS, leaves);
 
-    const proof = tree.proofOf(leaves[2]);
+    const proof = tree.proofOf(leaves[2]!);
     expect(proof.root).toBe(tree.root);
     expect(proof.pathElements).toHaveLength(LEVELS);
     expect(proof.pathIndices).toHaveLength(LEVELS);
 
-    const expected = tree.proof(tree.indexOf(leaves[2]));
+    const expected = tree.proof(tree.indexOf(leaves[2]!));
     expect(proof.pathElements).toEqual(expected.pathElements);
     expect(proof.pathIndices).toEqual(expected.pathIndices);
     expect(proof.root).toBe(expected.root);
@@ -47,7 +47,7 @@ describe("MerkleTree.proofOf", () => {
     const leaves = identities.map((id) => id.commitment);
     const tree = MerkleTree.create(LEVELS, leaves);
 
-    for (const leaf of [leaves[0], leaves[identities.length - 1]]) {
+    for (const leaf of [leaves[0]!, leaves[identities.length - 1]!]) {
       const proof = tree.proofOf(leaf);
       expect(proof.root).toBe(tree.root);
       expect(proof.pathElements).toHaveLength(LEVELS);
@@ -293,7 +293,7 @@ describe("MerkleTree differential — production vs naive reference", () => {
         fc.property(arbTreeInput, ({ levels, leaves }) => {
           for (let i = 0; i < leaves.length; i++) {
             const proof = referenceProof(levels, leaves, i);
-            expect(referenceVerify(leaves[i], proof)).toBe(true);
+            expect(referenceVerify(leaves[i]!, proof)).toBe(true);
           }
         }),
         { numRuns: 200, seed: 0xdeadbeef, verbose: true },
@@ -317,7 +317,7 @@ describe("MerkleTree differential — production vs naive reference", () => {
 
           for (let i = 0; i < leaves.length; i++) {
             const proof = prodTree.proof(i);
-            expect(referenceVerify(leaves[i], proof)).toBe(true);
+            expect(referenceVerify(leaves[i]!, proof)).toBe(true);
           }
         }),
         { numRuns: 200, seed: 0xdeadbeef, verbose: true },
@@ -353,7 +353,7 @@ describe("MerkleTree differential — production vs naive reference", () => {
               ),
             };
 
-            expect(referenceVerify(leaves[i], tampered)).toBe(false);
+            expect(referenceVerify(leaves[i]!, tampered)).toBe(false);
           },
         ),
         { numRuns: 100, seed: 0xdeadbeef },
@@ -425,7 +425,7 @@ describe("MerkleTree differential — pinned depth coverage", () => {
         expect(prod.root).toBe(ref.root);
         expect(prod.pathElements).toEqual(ref.pathElements);
         expect(prod.pathIndices).toEqual(ref.pathIndices);
-        expect(referenceVerify(leaves[i], prod)).toBe(true);
+        expect(referenceVerify(leaves[i]!, prod)).toBe(true);
       }
     });
   }

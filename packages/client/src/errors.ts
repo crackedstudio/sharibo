@@ -131,6 +131,20 @@ export class CircleCancelledError extends ContractError {
   }
 }
 
+/**
+ * #10 – create_circle rejected size / contribution / vk.ic shape.
+ *
+ * The on-chain discriminant collapses four causes into one code; callers
+ * should prefer client-side `validateContributionAmount` so the UI can name
+ * the specific cause *before* a fee is paid. When this still surfaces from
+ * RPC, treat it as a params rejection and ask the user to fix inputs.
+ */
+export class InvalidCircleParamsError extends ContractError {
+  constructor(message: string, options?: { cause?: unknown }) {
+    super(message, 10, options);
+  }
+}
+
 
 // ── Contract-rejection prose (issue #53) ─────────────────────────────────────
 
@@ -176,6 +190,13 @@ const CONTRACT_ERROR_DESCRIPTIONS: Record<number, ContractErrorDescription> = {
     name: "InvalidProof",
     message: "The zero-knowledge proof failed on-chain verification.",
     hint: "Regenerate the proof with the current circuit artifacts and verification key.",
+  },
+  10: {
+    code: 10,
+    name: "InvalidCircleParams",
+    message:
+      "Circle parameters were rejected (size, contribution, or verification-key shape).",
+    hint: "Use a positive contribution with at most 7 decimals, a size between 1 and the Merkle capacity, and the committed verification key.",
   },
 };
 

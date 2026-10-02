@@ -1,5 +1,7 @@
 # Poseidon-over-BLS12-381 Constants Provenance
 
+**Authoritative home** for Poseidon BLS12-381 constant provenance in Sharibo (supersedes the Phase 3 Poseidon narrative in [NOTES.md](../NOTES.md)).
+
 This document consolidates the provenance, verification status, risk model, and mitigation strategy for the Poseidon hash function constants and parameters used over the BLS12-381 scalar field ($F_r$) in Sharibo.
 
 ---

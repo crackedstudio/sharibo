@@ -1,8 +1,8 @@
 /// <reference types="vitest" />
-import { defineConfig } from "vitest/config";
-import react from "@vitejs/plugin-react";
+import { defineConfig, mergeConfig } from "vitest/config";
 import fs from "fs";
 import path from "path";
+import viteConfig from "./vite.config.js";
 
 // Shares the same plugin-react config as vite.config.ts so JSX transform and
 // Fast Refresh are applied identically in tests and in the dev server.
@@ -16,11 +16,7 @@ try {
   // Missing thresholds file is non-fatal; continue with permissive defaults
 }
 
-export default defineConfig({
-  plugins: [react()],
-  define: {
-    global: "globalThis",
-  },
+export default mergeConfig(viteConfig, defineConfig({
   test: {
     // jsdom provides a browser-like DOM environment without a real browser.
     environment: "jsdom",
@@ -28,6 +24,10 @@ export default defineConfig({
     // globally before every test file.
     setupFiles: ["./src/setupTests.ts"],
     globals: true,
+    // Playwright specs live in e2e/ and run via `npm run test:e2e` (mock by
+    // default, live only with E2E_LIVE=1). They must never be collected here,
+    // so `npm test` stays fast and cannot touch a browser or the network.
+    exclude: [...configDefaults.exclude, "e2e/**"],
     // Config.ts validates VITE_* env vars at module load and the app renders
     // a blocking "setup required" screen when they're missing. Supply valid
     // values here so component tests exercise the real landing screen.
@@ -51,4 +51,4 @@ export default defineConfig({
       },
     },
   },
-});
+}));

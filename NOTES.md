@@ -1,5 +1,29 @@
 # Build notes / decision log
 
+> **HISTORICAL — append-only build log.** This file records what was discovered during the original hackathon build. It is **not** the authoritative reference for current invariants. For still-in-force decisions, use:
+>
+> | Topic | Authoritative doc |
+> | ----- | ----------------- |
+> | BLS12-381 vs BN254 | [docs/adr/005-bls12-381-curve-choice.md](docs/adr/005-bls12-381-curve-choice.md) |
+> | Public signal order & byte encodings | [docs/wire-format.md](docs/wire-format.md) |
+> | Poseidon BLS12-381 constants | [docs/poseidon-provenance.md](docs/poseidon-provenance.md) |
+> | E2E foreground / canary scheduling | [docs/canary.md](docs/canary.md) |
+> | Trusted setup (future multi-party) | [docs/ceremony.md](docs/ceremony.md) |
+> | Audit prep (no report here) | [docs/audit/README.md](docs/audit/README.md) |
+
+## Chronology (approximate)
+
+| Phase | When (approx.) | What landed |
+| ----- | -------------- | ----------- |
+| Phase 0 | 2025-06 | Testnet identities, hello-world contract, bn128 smoke test |
+| Phase 1 | 2025-06 | `membership` circuit, circuit tests, single-party setup, committed vk |
+| Phase 2 | 2025-06 | Soroban circle logic + unit tests (stub verifier) |
+| Phase 3 | 2025-07 | BLS12-381 pivot, real verifier, testnet claim with real proof |
+| Phase 4 | 2025-07 | `@sharibo/client`, `scripts/e2e.ts` full round |
+| Phase 5 | 2025-07 | Browser demo (`app/`), isomorphic SDK |
+| Phase 6 | 2025-07 | README rewrite, secrets audit, demo checklist |
+| Live deployment | 2025-07 | Vercel static app (testnet) |
+
 Running log of decisions, deviations from the build spec, and `// DEMO MOCK:` items. Updated as phases land.
 
 ## Environment
@@ -9,7 +33,9 @@ Running log of decisions, deviations from the build spec, and `// DEMO MOCK:` it
 
 ## Deviations from spec
 
-- **Public signal order (§7) is `[nullifierHash, root, externalNullifier]`, not `[root, externalNullifier, nullifierHash]`.**
+> **Superseded note:** Authoritative order lives in [docs/wire-format.md](docs/wire-format.md). The discovery narrative below records how the order was found; the live invariant is four signals including `recipientHash`.
+
+- **Public signal order (§7) is `[nullifierHash, root, externalNullifier, recipientHash]`, not `[root, externalNullifier, nullifierHash]`.**
   Verified empirically: `circuits/build/public.json` after `scripts/prove.sh` puts the circuit's public _output_ (`nullifierHash`) first, then the public _inputs_ in the order listed in `component main {public [root, externalNullifier]}`. This is standard circom/snarkjs behavior — all outputs of the main component are implicitly public and are emitted before the explicitly-annotated public inputs, regardless of declaration order in the source. The spec's assumed order was aspirational, not real. **This is the order that must be used everywhere** (contract's `claim` verification, client proof formatting) per the same cross-cutting-invariant principle in §7 — I'm treating "byte-for-byte agreement across circuit/contract/client" as the actual invariant and `[root, externalNullifier, nullifierHash]` as the part that was wrong.
 - No reference `membership.circom` / `ronda_contract.rs` files were present anywhere in the environment (searched home directory) despite the spec's phrasing ("a complete reference implementation... is provided"). Implemented `MerkleTreeChecker` from the well-known Tornado Cash / Semaphore pattern instead of copying a provided file.
 
@@ -30,6 +56,8 @@ Running log of decisions, deviations from the build spec, and `// DEMO MOCK:` it
 
 ## Phase 2 results
 
+> **Superseded (pre-fee `claim`):** Protocol fees and post-fee payout semantics are documented in [docs/adr/003-protocol-fees.md](docs/adr/003-protocol-fees.md) (#252). The Phase 2 narrative below describes the original fee-free claim path.
+
 - `contracts/sharibo/src/lib.rs`: `Circle` storage (`admin, token, root, contribution, size, round, pot, vk`), `create_circle`/`fund`/`claim`/`get_circle`, nullifier double-spend map keyed by `(circle_id, nullifier_hash)` exactly as spec'd. Check order in `claim` matches §10 exactly: pot-funded -> round-tag -> nullifier-unused -> proof-valid -> effects.
 - Two `// DEMO MOCK:` stubs, both under a single clearly-marked `PHASE 2 STUBS` block with `TODO(phase-3)`:
   - `verify_groth16` — always returns `true` (the real one).
@@ -39,6 +67,8 @@ Running log of decisions, deviations from the build spec, and `// DEMO MOCK:` it
 - Token balances tested via `env.register_stellar_asset_contract_v2` + `token::Client` / `token::StellarAssetClient` (current soroban-sdk 23.5.3 testutils API — note `TokenInterface::transfer`'s `to` param is `MuxedAddress`, not `Address`, in this SDK version; `Address` converts via `.into()`/`From` impl, client-facing calls with a plain `&Address` still work through the generated client's argument coercion).
 
 ## Phase 3 results — the curve pivot (most consequential deviation in the project)
+
+> **Superseded (curve + Poseidon):** See [docs/adr/005-bls12-381-curve-choice.md](docs/adr/005-bls12-381-curve-choice.md) and [docs/poseidon-provenance.md](docs/poseidon-provenance.md). Raw narrative below is kept for archaeology.
 
 **Finding:** Soroban's host crypto module (`soroban_sdk::crypto::bls12_381`, confirmed by reading the installed SDK source) only exposes accelerated pairing/EC operations for **BLS12-381**. There is no BN254/bn128 host support at all, despite §7's assumption that they'd match. Measured the alternative (pure-Rust BN254 pairing via `ark-bn254`, following Stellar's own `stellar/soroban-examples/import_ark_bn254` reference) at **~560M CPU instructions for a single pairing**, against a 100M standard budget — Groth16 needs several pairings' worth of work, so pure-Rust BN254 verification is not just expensive but flatly over the protocol's per-tx instruction ceiling. Confirmed the fix by reading Stellar's own `groth16_verifier` reference example (linked in the build spec itself): it verifies over **BLS12-381** using `env.crypto().bls12_381().pairing_check(...)`, not BN254. So the whole circuit pipeline was switched to BLS12-381, deviating from §7's stated "BN254 throughout."
 
@@ -64,10 +94,13 @@ Running log of decisions, deviations from the build spec, and `// DEMO MOCK:` it
 
 ## Phase 4 results
 
+> **Superseded (fetch vs curl / foreground):** E2E scheduling and foreground guidance live in [docs/canary.md](docs/canary.md). Historical hang investigation below.
+
 - `packages/client/src/prove.ts`: wraps `snarkjs.groth16.fullProve`, encodes the resulting proof/vk into the contract's exact wire format (BLS12-381 `G1Affine`/`G2Affine` = raw big-endian bytes per `contracts/sharibo/src/lib.rs`'s doc comments — no compression flags to set manually, since canonical field elements already have their reserved flag bits at 0). `verificationKeyToContractFormat` converts `circuits/verification_key.json` once at circle-creation time.
 - `packages/client/src/contract.ts`: thin wrappers over `@stellar/stellar-sdk`'s `contract.Client` (which pulls the contract's method spec live from chain — `stellar contract invoke ... --help` and the SDK's `Spec.funcArgsToScVals` source were read to confirm exact argument shapes: `BytesN`/`Bytes` as `Buffer`, `Fr`/`U256` as plain `bigint`, struct fields keyed by their exact Rust snake_case names). `basicNodeSigner` handles Node-side signing from a raw `Keypair` (no wallet needed for this server-side SDK).
 - `scripts/e2e.ts`: full round — 5 fresh members funded via friendbot, circle created, funded, a real proof generated for one member, claimed to a **fresh, never-before-seen** recipient, payout + round-advance asserted, then round 1 is funded and the *same* nullifier is replayed and asserted to revert with `Error(Contract, #4)` (`AlreadyClaimed`) specifically (not just "pot not funded" — funding round 1 first makes this a real demonstration of nullifier-reuse rejection, not just accounting).
 - **Environment-specific debugging note (RESOLVED):** Node's own `fetch()` calls to `friendbot.stellar.org` / Horizon originally hung indefinitely in the build session — even with `AbortSignal.timeout()` — while `curl` (same URLs) was reliable, so the script shelled out to `curl`. **Re-investigated (#94):** tested on Node 20/22/24 with 5 consecutive clean runs each against both friendbot and Horizon — the hang no longer reproduces. Root cause was likely an undici keep-alive interaction with friendbot's connection handling that has since been fixed upstream in Node's undici. **Migrated to native `fetch()` with `AbortSignal.timeout(15_000)` as a safety net, and removed the `curl`/`child_process` dependency entirely.** The background-process hang noted below was specific to the original tooling session, not the script itself.
+- **Migration landed (#511):** the fix described above was investigated in #94 but the change itself never landed — `e2e.ts` kept shelling out to `curl` and `scripts/fetch-migration.test.ts` (written to prove the migration) stayed red. As of #511: `httpGet`/`httpGetJson` live in `scripts/http.ts`, shared by `e2e.ts`, `smoke.ts` and `testnet-health.ts`; `curlGet` and the `node:child_process` import are gone from `e2e.ts`. The safety net is an explicit `AbortController` (not a bare `AbortSignal.timeout`, which cannot be combined with a caller's signal) plus `keepalive: false`, so a half-open pooled socket to a dead testnet endpoint cannot present as an indefinite hang. `fetch-migration.test.ts` is now hermetic (stubbed `fetch`); the live reachability check moved to `fetch-migration.live.test.ts` behind `npm run test:live`. `docs/canary.md` no longer requires the nightly canary to run in the foreground, because there is no longer a subprocess to hang.
 - All Phase 4 DoD assertions pass against testnet in one clean run: pot == 5×contribution, fresh recipient balance increases by exactly the pot, pot resets to 0, round increments, and nullifier reuse reverts with the specific `AlreadyClaimed` error.
 
 ## Phase 5 results

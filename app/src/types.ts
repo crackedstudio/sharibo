@@ -17,12 +17,12 @@ export interface Member {
 export interface ClaimResult {
   recipient: string;
   hash: string;
+  proofDurationMs: number;
+  verifyTimeMs: number;
   /** Actual fee charged for the claim transaction, in stroops. */
   feeCharged?: string;
   /** Pre-flight fee estimate shown before signing. */
   feeEstimate?: FeeEstimate;
-  proofDurationMs?: number;
-  verifyTimeMs?: number;
 }
 
 /** The visible stages of a claim, in the order they actually occur. */

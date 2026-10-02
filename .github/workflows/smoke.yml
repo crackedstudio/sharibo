@@ -1,0 +1,42 @@
+name: Smoke Test & Evidence Freshness
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # Daily at midnight
+  workflow_dispatch:
+
+jobs:
+  smoke-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '20'
+
+      - name: Create .env
+        run: |
+          echo "SHARIBO_CONTRACT_ID=CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC" > .env
+          echo "STELLAR_RPC_URL=https://soroban-testnet.stellar.org" >> .env
+          echo "STELLAR_HORIZON_URL=https://horizon-testnet.stellar.org" >> .env
+          echo "STELLAR_NETWORK_PASSPHRASE=\"Test SDF Network ; September 2015\"" >> .env
+
+      - name: Run Smoke Test
+        id: smoke
+        run: npx tsx scripts/smoke.ts
+        continue-on-error: true
+
+      - name: Create Issue on Failure
+        if: steps.smoke.outcome == 'failure'
+        uses: actions/github-script@v9
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: "🚨 Testnet Reset Detected (Evidence Stale)",
+              body: "The scheduled smoke test failed, which usually indicates that the Stellar testnet has reset. Please follow the [Testnet Reset Runbook](https://github.com/${{ github.repository }}/blob/main/docs/runbook-testnet-reset.md) to update the deployed contract IDs and evidence hashes.",
+              labels: ["bug", "testnet-reset"]
+            })

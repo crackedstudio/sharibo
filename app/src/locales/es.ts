@@ -2,6 +2,13 @@ const es = {
   "lang.label": "Idioma",
   "lang.en": "Ingl\u00e9s",
   "lang.es": "Espa\u00f1ol",
+  "lang.ar": "\u00c1rabe",
+  "lang.fr": "Franc\u00e9s",
+  "lang.hi": "Hindi",
+  "lang.pt": "Portugu\u00e9s",
+  "lang.tl": "Tagalo",
+  "lang.yo": "Yoruba",
+  "lang.zh": "Chino",
 
   "banner.testnet": "Stellar testnet: sin fondos reales",
   "banner.limitations": "limitaciones honestas ↗",
@@ -31,6 +38,7 @@ const es = {
   "landing.sub.em2": "qui\u00e9n",
   "landing.sub.after": "reclam\u00f3.",
   "landing.launch": "Lanzar una tanda de 5 miembros en testnet",
+  "landing.contributionLabel": "Aporte por miembro (XLM)",
   "landing.previousCirclePrefix": "Tu tanda anterior sigue activa en",
   "landing.previousCircleLink": "tanda #{id} ↗",
   "landing.testnetFineprint":
@@ -92,7 +100,7 @@ const es = {
   "claim.stage.funding": "Financiando un destinatario nuevo, no vinculado\u2026",
   "claim.stage.submitting": "Enviando la reclamaci\u00f3n\u2026",
   "claim.techline":
-    "Groth16 \u00b7 BLS12-381 \u00b7 1,452 restricciones \u00b7 probando localmente en tu navegador; no se env\u00eda nada hasta que la prueba est\u00e9 lista",
+    "Groth16 \u00b7 BLS12-381 \u00b7 3,757 restricciones \u00b7 probando localmente en tu navegador; no se env\u00eda nada hasta que la prueba est\u00e9 lista",
   "claim.techlineProving": "· probando… {seconds}s",
   "claim.elapsed": "{seconds}s transcurridos",
 
@@ -137,7 +145,7 @@ const es = {
   "copy.title": "Copiar {label}",
 
   "busy.generating":
-    "Generando un administrador nuevo y 5 identidades de miembro y financiando con friendbot\u2026",
+    "Generando un administrador nuevo y {count} identidades de miembro y financiando con friendbot\u2026",
   "busy.creating": "Creando la tanda en testnet\u2026",
   "busy.claiming": "Reclamando\u2026",
   "busy.refunding":
@@ -173,6 +181,14 @@ const es = {
   "errorBoundary.reload": "Empezar de nuevo",
   "errorBoundary.fineprint": "Si esto sigue ocurriendo,",
   "errorBoundary.issueLink": "abre un issue en GitHub ↗",
+  "error.invalidCircleParams": "Se rechazaron los parámetros del círculo. Revisa el aporte, el tamaño y la clave de verificación.",
+  "error.contribution.empty": "Introduce un monto de aporte.",
+  "error.contribution.not_a_number": "El aporte debe ser un número decimal (p. ej. 10 o 0.5).",
+  "error.contribution.not_positive": "El aporte debe ser mayor que cero.",
+  "error.contribution.too_many_decimals": "El aporte admite como máximo 7 decimales (1 stroop).",
+  "error.contribution.out_of_range": "El aporte está fuera del rango admitido.",
+  "error.contribution.pot_overflow": "Aporte × tamaño del círculo desborda el pot on-chain.",
+  "error.contribution.unaffordable": "Friendbot solo fondea ~10000 XLM por cuenta; elige un aporte menor para que todos puedan aportar.",
 } as const;
 
 export default es;

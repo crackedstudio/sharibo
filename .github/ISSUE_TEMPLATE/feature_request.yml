@@ -29,3 +29,35 @@ body:
         - docs
     validations:
       required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area (topic label)
+      description: >
+        Pick the area(s) this belongs to. An automation
+        (`.github/workflows/auto-label.yml`) applies the matching topic
+        label(s) from CONTRIBUTING.md.
+      multiple: true
+      options:
+        - frontend (app/)
+        - sdk (packages/client)
+        - core (packages/core)
+        - contracts
+        - circuits
+        - scripts/e2e
+        - docs
+        - tooling/dx
+        - testing
+        - security
+        - performance
+    validations:
+      required: false
+  - type: checkboxes
+    id: newcomer
+    attributes:
+      label: Newcomer suitability
+      description: >
+        Tick this if the work looks small and well-scoped - maintainers use it
+        to apply the `good first issue` label (see CONTRIBUTING.md "Picking an Issue").
+      options:
+        - label: This looks like a good first issue

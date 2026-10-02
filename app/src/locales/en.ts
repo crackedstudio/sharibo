@@ -2,6 +2,13 @@ const en = {
   "lang.label": "Language",
   "lang.en": "English",
   "lang.es": "Spanish",
+  "lang.ar": "Arabic",
+  "lang.fr": "French",
+  "lang.hi": "Hindi",
+  "lang.pt": "Portuguese",
+  "lang.tl": "Tagalog",
+  "lang.yo": "Yoruba",
+  "lang.zh": "Chinese",
 
   "banner.testnet": "Stellar testnet — no real funds",
   "banner.limitations": "honest limitations ↗",
@@ -31,6 +38,7 @@ const en = {
   "landing.sub.em2": "who",
   "landing.sub.after": "claimed.",
   "landing.launch": "Launch a 5-member circle on testnet",
+  "landing.contributionLabel": "Contribution per member (XLM)",
   "landing.previousCirclePrefix": "Your previous circle lives on at",
   "landing.previousCircleLink": "circle #{id} ↗",
   "landing.testnetFineprint":
@@ -92,7 +100,7 @@ const en = {
   "claim.stage.funding": "Funding a fresh, unlinked recipient…",
   "claim.stage.submitting": "Submitting the claim…",
   "claim.techline":
-    "Groth16 · BLS12-381 · 1,452 constraints · proving locally in your browser, nothing sent anywhere until the proof is done",
+    "Groth16 · BLS12-381 · 3,757 constraints · proving locally in your browser, nothing sent anywhere until the proof is done",
   "claim.techlineProving": "· proving… {seconds}s",
   "claim.elapsed": "{seconds}s elapsed",
 
@@ -137,7 +145,7 @@ const en = {
   "copy.title": "Copy {label}",
 
   "busy.generating":
-    "Generating a fresh admin + 5 member identities and funding via friendbot…",
+    "Generating a fresh admin + {count} member identities and funding via friendbot…",
   "busy.creating": "Creating the circle on testnet…",
   "busy.claiming": "Claiming…",
   "busy.refunding": "Refunding a new round, then replaying the same proof's nullifier…",
@@ -147,6 +155,18 @@ const en = {
     "Unexpected: the replayed claim was accepted (this should never happen).",
 
   "error.generic": "Something went wrong. Please retry.",
+  "error.invalidCircleParams":
+    "Circle parameters were rejected. Check the contribution amount, circle size, and verification key.",
+  "error.contribution.empty": "Enter a contribution amount.",
+  "error.contribution.not_a_number": "Contribution must be a decimal number (e.g. 10 or 0.5).",
+  "error.contribution.not_positive": "Contribution must be greater than zero.",
+  "error.contribution.too_many_decimals":
+    "Contribution supports at most 7 decimal places (1 stroop).",
+  "error.contribution.out_of_range": "Contribution is outside the supported range.",
+  "error.contribution.pot_overflow":
+    "Contribution × circle size overflows the on-chain pot target.",
+  "error.contribution.unaffordable":
+    "Friendbot funds only ~10000 XLM per account; choose a smaller contribution so every member can fund.",
   "error.freighterNotTestnet":
     "Freighter is not set to Testnet. Please switch your network in Freighter.",
   "error.getAddress": "Could not get address from Freighter.",

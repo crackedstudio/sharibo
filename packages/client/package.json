@@ -13,6 +13,18 @@
       "browser": "./dist/index.browser.js",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
+    },
+    "./prove": {
+      "types": "./dist/prove.d.ts",
+      "browser": "./dist/prove.js",
+      "import": "./dist/prove.js",
+      "default": "./dist/prove.js"
+    },
+    "./internal": {
+      "types": "./dist/internal.d.ts",
+      "browser": "./dist/internal.js",
+      "import": "./dist/internal.js",
+      "default": "./dist/internal.js"
     }
   },
   "description": "Client SDK for interacting with Sharibo ROSCA on Stellar Soroban",
@@ -36,21 +48,21 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "bench:prove": "tsx bench/prove.bench.ts",
-    "mutate": "stryker run stryker.conf.json"
+    "mutate": "stryker run stryker.conf.json && node scripts/generate-mutation-score.js"
   },
   "dependencies": {
-    "@stellar/stellar-sdk": "^16.2.0",
+    "@stellar/stellar-sdk": "^17.2.0",
     "poseidon-bls12381": "1.0.2",
     "snarkjs": "0.7.6"
   },
   "devDependencies": {
-    "@stryker-mutator/core": "8.7.1",
-    "@stryker-mutator/vitest-runner": "8.7.1",
-    "@types/node": "24.13.3",
+    "@stryker-mutator/core": "10.0.0",
+    "@stryker-mutator/vitest-runner": "10.0.0",
+    "@types/node": "26.6.3",
     "@types/snarkjs": "0.7.9",
-    "fast-check": "3.22.0",
-    "tsx": "4.22.4",
-    "typescript": "6.0.3",
-    "vitest": "^2.1.8"
+    "fast-check": "4.10.2",
+    "tsx": "4.23.15",
+    "typescript": "7.0.2",
+    "vitest": "^5.0.2"
   }
 }

@@ -11,7 +11,7 @@ export function ResultCard({
   busy,
   nullifierClaimed,
   circleId,
-  online,
+  online = true,
   onClaimAgain,
   onReset,
   headingRef,
@@ -21,7 +21,7 @@ export function ResultCard({
   busy: string | null;
   nullifierClaimed: boolean;
   circleId: bigint | null;
-  online: boolean;
+  online?: boolean;
   onClaimAgain: () => void;
   onReset: () => void;
   headingRef?: Ref<HTMLHeadingElement>;

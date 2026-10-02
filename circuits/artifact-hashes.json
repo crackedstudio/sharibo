@@ -1,0 +1,6 @@
+{
+  "_comment": "SHA-256 of the artifacts `npm run compile` produces with the pinned circom version in circuits/config.json. Deterministic: given the same circom, membership.template.circom, config.json and poseidon-bls12381-circom, these three files reproduce byte-for-byte. Regenerate with `cd circuits && npm run compile && node scripts/compute-artifact-hashes.mjs` and commit both this file and the .sha256 files together. The zkey is deliberately absent — it is non-deterministic (fresh /dev/urandom ceremony entropy), so it is verified by setup.sh/verify-setup.sh against the committed verification_key.json instead.",
+  "r1cs": "c58e4a33c22a9231266b7e6d93ae031b372ec9e7740dc1e323f0c135b79666d0",
+  "wasm": "37070e9965ab499d5ff51b1d183573fbaa20bd6fb19c86a6b9b5efba9420030e",
+  "sym": "6226453316f6bb0b964260f7005458b55858fcfe188d9db6419034ccb8969188"
+}

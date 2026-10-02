@@ -2,6 +2,7 @@ import { rpc as StellarRpc, Address, xdr } from "@stellar/stellar-sdk";
 
 export interface TestnetResetCheckResult {
   ok: boolean;
+  rpcReachable: boolean;
   message?: string;
 }
 
@@ -31,7 +32,7 @@ export async function checkContractDeployed(
   } catch {
     // RPC itself is unreachable/unhealthy — a different problem than a reset;
     // let the caller's own network calls surface that.
-    return { ok: true };
+    return { ok: true, rpcReachable: false };
   }
 
   try {
@@ -44,11 +45,11 @@ export async function checkContractDeployed(
     );
     const { entries } = await server.getLedgerEntries(key);
     if (entries && entries.length > 0) {
-      return { ok: true };
+      return { ok: true, rpcReachable: true };
     }
-    return { ok: false, message: TESTNET_RESET_MESSAGE(contractId) };
+    return { ok: false, rpcReachable: true, message: TESTNET_RESET_MESSAGE(contractId) };
   } catch {
     // If the probe itself errors, don't mask the original failure.
-    return { ok: true };
+    return { ok: true, rpcReachable: true };
   }
 }

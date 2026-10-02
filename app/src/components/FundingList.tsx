@@ -1,6 +1,7 @@
 import { explorerTx, short } from "../lib/explorer.js";
 import { useI18n } from "../i18n.js";
 import type { Member } from "../types.js";
+import { CIRCLE_SIZE } from "../config.js";
 import { CopyButton } from "./CopyButton.js";
 import styles from "./FundingList.module.css";
 
@@ -56,7 +57,7 @@ export function FundingList({
                   {t("fund.fundedLink")}
                 </a>
                 {showRefundInfo && (
-                  <span className="refund-indicator" style={{ marginLeft: "0.5rem", color: "var(--color-warning-text)" }}>
+                  <span className="refund-indicator" style={{ marginInlineStart: "0.5rem", color: "var(--color-warning-text)" }}>
                     {t("cancel.willBeRefunded")}
                   </span>
                 )}
@@ -93,7 +94,7 @@ export function FundingListSkeleton() {
     <div aria-hidden="true">
       <h2>Fund</h2>
       <div className="members">
-        {Array.from({ length: 5 }, (_, i) => (
+        {Array.from({ length: CIRCLE_SIZE }, (_, i) => (
           <div key={i} className="member skeleton-member-row">
             <span className="skeleton skeleton-text" style={{ width: `${140 + i * 12}px` }} />
             <span className="skeleton skeleton-text-sm" />

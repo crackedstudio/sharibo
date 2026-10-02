@@ -21,6 +21,7 @@
     "statements": 0,
     "branches": 0,
     "functions": 0,
-    "lines": 0
+    "lines": 72,
+    "_comment": "Measured 2026-09-28: lib.rs 316/424 lines = 74.53% via cargo llvm-cov --ignore-filename-regex test; floor is baseline minus ~2pt margin. See contracts/COVERAGE_GAPS.md."
   }
 }

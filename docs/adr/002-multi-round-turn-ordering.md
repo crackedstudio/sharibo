@@ -108,6 +108,12 @@ Adopt **Option A** for the initial fix: cycle-scoped `externalNullifier`
 Option B only if a concrete future requirement needs round-level and
 cycle-level replay protection to be independently tunable.
 
+### Storage Bounding
+
+Under Option A, the `circle.nullifiers` set only needs to store one cycle's worth of nullifiers to prevent double-claiming within the cycle. When the cycle advances, all members receive fresh `externalNullifier`s anyway, making the old nullifier hashes irrelevant. 
+
+Therefore, we can safely clear the `circle.nullifiers` vector at cycle boundaries (e.g., when `round % size == 0`). This strictly bounds the maximum size of the `nullifiers` vector inside the `Circle` storage entry to exactly `size` elements, permanently resolving the unbounded growth issue (Issue #480).
+
 ## Consequences
 
 - `Contract::compute_external_nullifier` takes `cycle: u32` instead of

@@ -1,12 +1,12 @@
 name: Refactor / Architecture Proposal
-description: Propose a structural change — a current shape, a proposed shape, a blast radius, and a migration path
+description: Propose a structural change - a current shape, a proposed shape, a blast radius, and a migration path
 labels: [refactor]
 body:
   - type: textarea
     id: current-state
     attributes:
       label: Current state (where)
-      description: What exists today, with file paths. Required — a refactor issue that does not say which files is not actionable.
+      description: What exists today, with file paths. Required - a refactor issue that does not say which files is not actionable.
     validations:
       required: true
   - type: textarea
@@ -27,7 +27,7 @@ body:
     id: files-affected
     attributes:
       label: Files affected
-      description: The blast radius — which files change, which are new, which are deleted.
+      description: The blast radius - which files change, which are new, which are deleted.
     validations:
       required: true
   - type: dropdown
@@ -36,7 +36,7 @@ body:
       label: Does the public API change?
       description: Contract entrypoints, SDK exports, circuit public signals, or wire formats.
       options:
-        - No — behaviour-preserving
+        - No - behaviour-preserving
         - Yes
         - Not sure
     validations:
@@ -59,3 +59,36 @@ body:
         - "Not sure"
     validations:
       required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area (topic label)
+      description: >
+        Pick the area(s) this belongs to. An automation
+        (`.github/workflows/auto-label.yml`) applies the matching topic
+        label(s) from CONTRIBUTING.md.
+      multiple: true
+      options:
+        - frontend (app/)
+        - sdk (packages/client)
+        - core (packages/core)
+        - contracts
+        - circuits
+        - scripts/e2e
+        - docs
+        - tooling/dx
+        - testing
+        - security
+        - performance
+        - architecture
+    validations:
+      required: false
+  - type: checkboxes
+    id: newcomer
+    attributes:
+      label: Newcomer suitability
+      description: >
+        Tick this if the work looks small and well-scoped - maintainers use it
+        to apply the `good first issue` label (see CONTRIBUTING.md "Picking an Issue").
+      options:
+        - label: This looks like a good first issue

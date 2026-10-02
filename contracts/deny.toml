@@ -1,0 +1,39 @@
+# cargo-deny configuration for the contracts workspace.
+# Run with `cargo deny check` (see the `just audit` recipe).
+# Covers advisories, licences, and duplicate crates.
+
+[advisories]
+# Fail the gate on any advisory that is not explicitly ignored below.
+# To accept a finding, add an entry with a reason and an expiry date:
+#
+#   [[advisories.ignore]]
+#   id = "RUSTSEC-0000-0000"
+#   reason = "No fixed release yet; tracked in #000"
+#   expiry = "2025-12-31"
+#
+# Never silence the gate with `|| true`.
+ignore = []
+
+[licenses]
+# Allow the licences used across the contracts dependency tree.
+allow = [
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "MIT",
+    "MPL-2.0",
+    "Unicode-3.0",
+    "Unicode-DFS-2016",
+    "Zlib",
+]
+confidence-threshold = 0.8
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"

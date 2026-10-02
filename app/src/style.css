@@ -463,10 +463,11 @@ h2 {
 .ring-center {
   position: absolute;
   top: 50%;
-  left: 50%;
+  inset-inline-start: 50%;
   width: var(--ring-center-size);
   height: var(--ring-center-size);
-  margin: calc(var(--ring-center-size) / -2) 0 0 calc(var(--ring-center-size) / -2);
+  margin-top: calc(var(--ring-center-size) / -2);
+  margin-inline-start: calc(var(--ring-center-size) / -2);
   border: var(--border);
   border-radius: 50%;
   background: var(--surface);
@@ -480,10 +481,11 @@ h2 {
 .ring-node {
   position: absolute;
   top: 50%;
-  left: 50%;
+  inset-inline-start: 50%;
   width: var(--ring-node-size);
   height: var(--ring-node-size);
-  margin: calc(var(--ring-node-size) / -2) 0 0 calc(var(--ring-node-size) / -2);
+  margin-top: calc(var(--ring-node-size) / -2);
+  margin-inline-start: calc(var(--ring-node-size) / -2);
   border: var(--border-thin) solid var(--ink);
   border-radius: 50%;
   background: var(--surface-muted);
@@ -610,7 +612,7 @@ h2 {
 
 .claim-explainer-body ol {
   margin: 0;
-  padding-left: var(--space-6xl);
+  padding-inline-start: var(--space-6xl);
 }
 
 .members {
@@ -877,19 +879,21 @@ code {
 .skeleton-ring-node {
   position: absolute;
   top: 50%;
-  left: 50%;
+  inset-inline-start: 50%;
   width: var(--ring-node-size);
   height: var(--ring-node-size);
-  margin: calc(var(--ring-node-size) / -2) 0 0 calc(var(--ring-node-size) / -2);
+  margin-top: calc(var(--ring-node-size) / -2);
+  margin-inline-start: calc(var(--ring-node-size) / -2);
   border-radius: 50%;
 }
 .skeleton-ring-center {
   position: absolute;
   top: 50%;
-  left: 50%;
+  inset-inline-start: 50%;
   width: var(--ring-center-size);
   height: var(--ring-center-size);
-  margin: calc(var(--ring-center-size) / -2) 0 0 calc(var(--ring-center-size) / -2);
+  margin-top: calc(var(--ring-center-size) / -2);
+  margin-inline-start: calc(var(--ring-center-size) / -2);
   border-radius: 50%;
 }
 .skeleton-member-row {
@@ -929,7 +933,6 @@ code {
   }
 }
 
-@media (max-width: 767px) {
   .page {
     padding: var(--space-xl) var(--space-md);
     align-items: flex-start;
