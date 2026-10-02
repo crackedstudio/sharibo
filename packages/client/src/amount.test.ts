@@ -24,12 +24,11 @@ test("xlmToStroops accepts exponent-notation numbers below 1e-6", () => {
   assert.equal(xlmToStroops(1e-8), 0n); // sub-stroop truncates to 0
 });
 
-  it("round-trips through xlmToStroops", () => {
-    const values = [0n, 1n, STROOPS_PER_XLM, 10_000_001n, 170141183460469231731687303715884105727n];
-    for (const stroops of values) {
-      assert.equal(xlmToStroops(formatXlm(stroops)), stroops);
-    }
-  });
+test("round-trips through xlmToStroops", () => {
+  const values = [0n, 1n, STROOPS_PER_XLM, 10_000_001n, 170141183460469231731687303715884105727n];
+  for (const stroops of values) {
+    assert.equal(xlmToStroops(formatXlm(stroops)), stroops);
+  }
 });
 
 test("xlmToStroops and formatXlm handle negative values consistently", () => {
@@ -44,8 +43,7 @@ test("xlmToStroops and formatXlm handle negative values consistently", () => {
 function expectCause(raw: string | number, cause: string, size = 5) {
   assert.throws(
     () => validateContributionAmount(raw, { size }),
-    (err: unknown) =>
-      err instanceof ContributionValidationError && err.causeCode === cause,
+    (err: unknown) => err instanceof ContributionValidationError && err.causeCode === cause,
   );
 }
 

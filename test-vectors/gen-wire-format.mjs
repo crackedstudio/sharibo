@@ -17,15 +17,12 @@ import { fileURLToPath } from "node:url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(__dirname, "..");
 
-const FR_MODULUS =
-  0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001n;
+const FR_MODULUS = 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001n;
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
 function bytesToBigInt(bytes) {
-  return BigInt(
-    "0x" + Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join(""),
-  );
+  return BigInt("0x" + Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join(""));
 }
 
 function g1Encode(xDecimal, yDecimal) {
@@ -75,9 +72,7 @@ const testPairs = [
 ];
 
 for (const [cid, rnd] of testPairs) {
-  const preimageHex = Buffer.from(
-    new ArrayBuffer(12),
-  ).toString("hex");
+  const preimageHex = Buffer.from(new ArrayBuffer(12)).toString("hex");
   // Rebuild preimage hex properly
   const buf = new ArrayBuffer(12);
   const view = new DataView(buf);
@@ -151,11 +146,9 @@ const vectors = {
   externalNullifier: {
     _comment:
       "SHA-256 over big-endian u64(circle_id) || u32(round), reduced mod r. Both Rust (lib.rs) and TypeScript (identity.ts) must agree on byte order and modulus reduction. See docs/wire-format.md §2.",
-    algorithm:
-      "SHA-256( big_endian_u64(circle_id) || big_endian_u32(round) ) mod r",
+    algorithm: "SHA-256( big_endian_u64(circle_id) || big_endian_u32(round) ) mod r",
     preimageBytes: 12,
-    preimageLayout:
-      "circle_id: bytes 0..7 (big-endian u64), round: bytes 8..11 (big-endian u32)",
+    preimageLayout: "circle_id: bytes 0..7 (big-endian u64), round: bytes 8..11 (big-endian u32)",
     vectors: externalNullifierVectors,
   },
 

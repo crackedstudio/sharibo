@@ -43,7 +43,11 @@ const CLEAN_INPUT: BundleInput = {
   timings: { artifacts: 1100, proving: 34200, submitting: 2900 },
   recentEvents: [
     { type: "rpc:attempt", at: "2026-01-01T00:00:00.000Z" },
-    { type: "rpc:retry", at: "2026-01-01T00:00:00.100Z", detail: { attempt: 1, delay: 500, error: "429" } },
+    {
+      type: "rpc:retry",
+      at: "2026-01-01T00:00:00.100Z",
+      detail: { attempt: 1, delay: 500, error: "429" },
+    },
   ],
   userAgent: "Mozilla/5.0 (test)",
 };
@@ -58,16 +62,13 @@ const FIELD_ELEMENT_SCALAR =
   "52435875175126190479447740508185965837690552500527637822603658699938581184512";
 
 // A 64-hex-char field element (BLS12-381 scalar rendered as hex).
-const FIELD_ELEMENT_HEX =
-  "0x1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7f809";
+const FIELD_ELEMENT_HEX = "0x1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7f809";
 
 // A 64-hex-char transaction hash — legitimate, must NOT be flagged.
-const TX_HASH =
-  "a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90";
+const TX_HASH = "a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90";
 
 // A muxed account Strkey (M + 68 base-32 chars, 69 total).
-const MUXED_ACCOUNT =
-  "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVAAAAAAAAAAAAAJLK";
+const MUXED_ACCOUNT = "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVAAAAAAAAAAAAAJLK";
 
 // ─── fixture sanity ──────────────────────────────────────────────────────────
 
@@ -139,9 +140,7 @@ describe("findLeakedSecret", () => {
   });
 
   it("does not false-positive on a contract ID starting with C", () => {
-    expect(
-      findLeakedSecret("CB64IZIBBSPUY63UMIVACKWDKRFNH6WJ2EPAOLM7QR4ZI6IJOT4N2LCF"),
-    ).toBeNull();
+    expect(findLeakedSecret("CB64IZIBBSPUY63UMIVACKWDKRFNH6WJ2EPAOLM7QR4ZI6IJOT4N2LCF")).toBeNull();
   });
 
   it("does not false-positive on a 64-hex-char transaction hash", () => {

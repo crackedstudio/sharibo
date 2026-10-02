@@ -16,39 +16,42 @@ try {
   // Missing thresholds file is non-fatal; continue with permissive defaults
 }
 
-export default mergeConfig(viteConfig, defineConfig({
-  test: {
-    // jsdom provides a browser-like DOM environment without a real browser.
-    environment: "jsdom",
-    // Import @testing-library/jest-dom matchers (toBeInTheDocument, etc.)
-    // globally before every test file.
-    setupFiles: ["./src/setupTests.ts"],
-    globals: true,
-    // Playwright specs live in e2e/ and run via `npm run test:e2e` (mock by
-    // default, live only with E2E_LIVE=1). They must never be collected here,
-    // so `npm test` stays fast and cannot touch a browser or the network.
-    exclude: [...configDefaults.exclude, "e2e/**"],
-    // Config.ts validates VITE_* env vars at module load and the app renders
-    // a blocking "setup required" screen when they're missing. Supply valid
-    // values here so component tests exercise the real landing screen.
-    env: {
-      VITE_SHARIBO_CONTRACT_ID: "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-      VITE_STELLAR_RPC_URL: "https://soroban-testnet.stellar.org",
-      VITE_STELLAR_NETWORK_PASSPHRASE: "Test SDF Network ; September 2015",
-      VITE_TEST_TOKEN_CONTRACT_ID: "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-    },
-    coverage: {
-      provider: "v8",
-      reporter: ["text", "lcov", "json"],
-      include: ["src/**/*.{ts,tsx,js,jsx}"],
-      exclude: ["**/*.test.*", "**/test-setup.*"],
-      reportsDirectory: "coverage/app",
-      thresholds: {
-        statements: appThreshold.statements,
-        branches: appThreshold.branches,
-        functions: appThreshold.functions,
-        lines: appThreshold.lines,
+export default mergeConfig(
+  viteConfig,
+  defineConfig({
+    test: {
+      // jsdom provides a browser-like DOM environment without a real browser.
+      environment: "jsdom",
+      // Import @testing-library/jest-dom matchers (toBeInTheDocument, etc.)
+      // globally before every test file.
+      setupFiles: ["./src/setupTests.ts"],
+      globals: true,
+      // Playwright specs live in e2e/ and run via `npm run test:e2e` (mock by
+      // default, live only with E2E_LIVE=1). They must never be collected here,
+      // so `npm test` stays fast and cannot touch a browser or the network.
+      exclude: [...configDefaults.exclude, "e2e/**"],
+      // Config.ts validates VITE_* env vars at module load and the app renders
+      // a blocking "setup required" screen when they're missing. Supply valid
+      // values here so component tests exercise the real landing screen.
+      env: {
+        VITE_SHARIBO_CONTRACT_ID: "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        VITE_STELLAR_RPC_URL: "https://soroban-testnet.stellar.org",
+        VITE_STELLAR_NETWORK_PASSPHRASE: "Test SDF Network ; September 2015",
+        VITE_TEST_TOKEN_CONTRACT_ID: "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      },
+      coverage: {
+        provider: "v8",
+        reporter: ["text", "lcov", "json"],
+        include: ["src/**/*.{ts,tsx,js,jsx}"],
+        exclude: ["**/*.test.*", "**/test-setup.*"],
+        reportsDirectory: "coverage/app",
+        thresholds: {
+          statements: appThreshold.statements,
+          branches: appThreshold.branches,
+          functions: appThreshold.functions,
+          lines: appThreshold.lines,
+        },
       },
     },
-  },
-}));
+  }),
+);

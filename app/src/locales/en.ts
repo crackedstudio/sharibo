@@ -49,28 +49,34 @@ const en = {
   "circle.onChainLink": "circle #{id} on-chain ↗",
   "common.startNewCircle": "Start a new circle",
   "browser.unsupportedTitle": "Browser support required",
-  "browser.unsupportedIntro": "Sharibo generates the proof in your browser, so JavaScript is required.",
-  "browser.unsupportedDetails": "This browser is missing one or more features needed for the zero-knowledge proof flow.",
+  "browser.unsupportedIntro":
+    "Sharibo generates the proof in your browser, so JavaScript is required.",
+  "browser.unsupportedDetails":
+    "This browser is missing one or more features needed for the zero-knowledge proof flow.",
   "browser.unsupportedMissing": "Missing browser support:",
-  "browser.unsupportedSecureContext": "Open this app over HTTPS or localhost. Plain HTTP on a LAN IP is not supported.",
-  "browser.unsupportedFooter": "Use a modern browser that supports WebAssembly, BigInt, and Web Crypto.",
+  "browser.unsupportedSecureContext":
+    "Open this app over HTTPS or localhost. Plain HTTP on a LAN IP is not supported.",
+  "browser.unsupportedFooter":
+    "Use a modern browser that supports WebAssembly, BigInt, and Web Crypto.",
   "browser.capability.webassembly": "WebAssembly",
   "browser.capability.bigint": "BigInt",
   "browser.capability.cryptoSubtle": "Web Crypto (crypto.subtle)",
   "browser.capability.secureContext": "Secure context (HTTPS or localhost)",
   "cancel.title": "Cancel Circle",
-  "cancel.confirmation": "Cancel this circle?\n\nThis will refund {count} contributor(s) a total of {total} XLM.\n\nThis action is irreversible. The circle will be permanently closed.",
+  "cancel.confirmation":
+    "Cancel this circle?\n\nThis will refund {count} contributor(s) a total of {total} XLM.\n\nThis action is irreversible. The circle will be permanently closed.",
   "cancel.busy": "Cancelling circle and refunding contributors…",
   "cancel.cancelled": "Circle Cancelled",
-  "cancel.cancelledMessage": "This circle has been cancelled and all contributors have been refunded.",
+  "cancel.cancelledMessage":
+    "This circle has been cancelled and all contributors have been refunded.",
   "cancel.refundInfo": "The following contributors will be refunded if the circle is cancelled:",
   "cancel.willBeRefunded": "→ will be refunded",
-  "wallet.networkMismatch": "Network mismatch: Your Freighter wallet is on {walletNetwork} but this app expects {appNetwork}. Please open Freighter, click the network selector in the upper right, and switch to {appNetwork}.",
+  "wallet.networkMismatch":
+    "Network mismatch: Your Freighter wallet is on {walletNetwork} but this app expects {appNetwork}. Please open Freighter, click the network selector in the upper right, and switch to {appNetwork}.",
   "wallet.unknownNetwork": "Unknown network configuration. Please verify your Freighter settings.",
   "ring.label.revealed":
     "{count}-member circle — pot claimed. Payout recipient is unlinkable to any member.",
-  "ring.label.loading":
-    "{count}-member circle, {funded} of {count} funded, pot not yet claimed.",
+  "ring.label.loading": "{count}-member circle, {funded} of {count} funded, pot not yet claimed.",
   "ring.caption":
     "Payout landed on the address above — cryptographically, it could be tied to any of the {count} members in the ring. An outside observer cannot tell which.",
   "ring.pot": "pot",
@@ -122,8 +128,7 @@ const en = {
 
   "result.heading": "Payout landed",
   "result.recipientIntro": "Fresh recipient",
-  "result.recipientOutro":
-    "received the pot. It has never appeared anywhere else on this circle.",
+  "result.recipientOutro": "received the pot. It has never appeared anywhere else on this circle.",
   "result.recipientLabel": "recipient address",
   "result.viewClaimTx": "view claim transaction ↗",
   "result.hashLabel": "claim transaction hash",
@@ -151,8 +156,7 @@ const en = {
   "busy.refunding": "Refunding a new round, then replaying the same proof's nullifier…",
   "busy.replaying": "Replaying the used nullifier…",
 
-  "rejection.unexpected":
-    "Unexpected: the replayed claim was accepted (this should never happen).",
+  "rejection.unexpected": "Unexpected: the replayed claim was accepted (this should never happen).",
 
   "error.generic": "Something went wrong. Please retry.",
   "error.invalidCircleParams":
@@ -185,10 +189,8 @@ const en = {
   "resume.resumeButton": "Resume Circle",
   "resume.discardButton": "Discard",
 
-
   "errorBoundary.heading": "Something broke",
-  "errorBoundary.body":
-    "The demo hit an unexpected error and can't continue safely from here.",
+  "errorBoundary.body": "The demo hit an unexpected error and can't continue safely from here.",
   "errorBoundary.reload": "Start over",
   "errorBoundary.fineprint": "If this keeps happening,",
   "errorBoundary.issueLink": "file a GitHub issue ↗",

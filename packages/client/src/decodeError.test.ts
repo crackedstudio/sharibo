@@ -21,11 +21,10 @@ import {
 
 /** Simulation-phase failure: the SDK wraps the contract error in its own message. */
 const SIMULATION_ALREADY_CLAIMED =
-  'Transaction simulation failed with error: Error(Contract, #4): [pdf0] xdr: XDR::ContractError...';
+  "Transaction simulation failed with error: Error(Contract, #4): [pdf0] xdr: XDR::ContractError...";
 
 /** Submission-phase failure: Horizon returns the error inside a JSON envelope. */
-const SUBMISSION_ROUND_NOT_FUNDED =
-  'sendTransaction failed: Error(Contract, #2)';
+const SUBMISSION_ROUND_NOT_FUNDED = "sendTransaction failed: Error(Contract, #2)";
 
 /** Raw XDR-heavy dump from a full simulation trace. */
 const XDR_HEAVY_WRONG_ROUND_TAG =
@@ -36,28 +35,22 @@ const NESTED_OBJECT_FORMAT =
   'Error(Contract, #5): {\"authData\":null,\"result\":\"Error(Contract, #5)\"}';
 
 /** Just the raw XDR with spaces. */
-const SPACED_XDR =
-  'Error( Contract , #1 )';
+const SPACED_XDR = "Error( Contract , #1 )";
 
 /** Error(Contract, #6) — RoundFull. */
-const ROUND_FULL_PAYLOAD =
-  'Simulation failed: Error(Contract, #6) — pot already at target';
+const ROUND_FULL_PAYLOAD = "Simulation failed: Error(Contract, #6) — pot already at target";
 
 /** Error(Contract, #7) — Overflow. */
-const OVERFLOW_PAYLOAD =
-  'Transaction failed: Error(Contract, #7)';
+const OVERFLOW_PAYLOAD = "Transaction failed: Error(Contract, #7)";
 
 /** Error(Contract, #8) — CircleCancelled. */
-const CANCELLED_PAYLOAD =
-  'ContractError(Contract, #8)';
+const CANCELLED_PAYLOAD = "ContractError(Contract, #8)";
 
 /** Transient RPC error (should map to RpcError). */
-const RPC_429 =
-  'RPC Error 429 Too Many Requests: rate limit exceeded';
+const RPC_429 = "RPC Error 429 Too Many Requests: rate limit exceeded";
 
 /** Transient 504 error. */
-const RPC_504 =
-  'RPC Error 504 Gateway Timeout during polling';
+const RPC_504 = "RPC Error 504 Gateway Timeout during polling";
 
 /** Plain Error object (no contract code). */
 const GENERIC_ERROR = new Error("Something went wrong");

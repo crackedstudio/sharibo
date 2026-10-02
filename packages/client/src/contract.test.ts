@@ -30,15 +30,21 @@ function testSigner(publicKey: string) {
 
 test("connect caches separately by signer and refreshes event handlers", async () => {
   clearContractClientCache();
-  const from = vi.spyOn(ContractClient, "from").mockImplementation(async (options) => ({
-    publicKey: options.publicKey,
-  }) as never);
+  const from = vi.spyOn(ContractClient, "from").mockImplementation(
+    async (options) =>
+      ({
+        publicKey: options.publicKey,
+      }) as never,
+  );
   const firstHandler = vi.fn();
   const secondHandler = vi.fn();
 
   try {
     const first = await connect({ ...TEST_CONFIG, onEvent: firstHandler }, testSigner("G-FIRST"));
-    const repeated = await connect({ ...TEST_CONFIG, onEvent: secondHandler }, testSigner("G-FIRST"));
+    const repeated = await connect(
+      { ...TEST_CONFIG, onEvent: secondHandler },
+      testSigner("G-FIRST"),
+    );
     const otherSigner = await connect(TEST_CONFIG, testSigner("G-SECOND"));
 
     assert.strictEqual(first, repeated);
@@ -76,9 +82,12 @@ test("clearing the contract client cache refetches the contract spec", async () 
 
 test("read-only clients use a separate cache identity", async () => {
   clearContractClientCache();
-  const from = vi.spyOn(ContractClient, "from").mockImplementation(async (options) => ({
-    publicKey: options.publicKey,
-  }) as never);
+  const from = vi.spyOn(ContractClient, "from").mockImplementation(
+    async (options) =>
+      ({
+        publicKey: options.publicKey,
+      }) as never,
+  );
 
   try {
     const signed = await connect(TEST_CONFIG, testSigner("G-SIGNED"));
@@ -112,17 +121,17 @@ test("contract client cache evicts the least recently used entry at its bound", 
 });
 
 test("transient simulate-phase failure recovers", async () => {
-    let simulateCalls = 0;
-    let signAndSendCalls = 0;
-    const mockTx = {
-      signAndSend: async () => {
-        signAndSendCalls++;
-        return {
-          result: undefined,
-          sendTransactionResponse: { hash: "0xabc" },
-        };
-      },
-    };
+  let simulateCalls = 0;
+  let signAndSendCalls = 0;
+  const mockTx = {
+    signAndSend: async () => {
+      signAndSendCalls++;
+      return {
+        result: undefined,
+        sendTransactionResponse: { hash: "0xabc" },
+      };
+    },
+  };
 
   const mockClient = {
     fund: () => {
@@ -161,11 +170,15 @@ test("post-submit failure surfaces immediately without a second submission", asy
 
   await assert.rejects(
     async () =>
-      await fund(mockClient, { circleId: makeCircleId(0n), from: "G..." }, {
-        ...DEFAULT_RETRY_POLICY,
-        sleep: async () => {},
-      }),
-    /504/
+      await fund(
+        mockClient,
+        { circleId: makeCircleId(0n), from: "G..." },
+        {
+          ...DEFAULT_RETRY_POLICY,
+          sleep: async () => {},
+        },
+      ),
+    /504/,
   );
   assert.strictEqual(simulateCalls, 1);
   assert.strictEqual(signAndSendCalls, 1);
@@ -185,10 +198,7 @@ test("fund() maps signAndSend fixture to TxResult (hash, ledger, feeCharged bigi
   assert.strictEqual(result.hash, "abc123");
   assert.strictEqual(result.ledger, 1_234_567);
   assert.strictEqual(result.feeCharged, 100n);
-  assert.strictEqual(
-    result.explorerUrl,
-    "https://stellar.expert/explorer/testnet/tx/abc123",
-  );
+  assert.strictEqual(result.explorerUrl, "https://stellar.expert/explorer/testnet/tx/abc123");
 });
 
 test("populateTxResult throws when hash is missing or empty", () => {
@@ -235,11 +245,7 @@ const __dirname = path.dirname(__filename);
 const SCHEMA_VERSION = 2;
 
 function goldenPath(filename: string): string {
-  const underTestVectors = path.resolve(
-    __dirname,
-    "../../../../test-vectors/xdr",
-    filename,
-  );
+  const underTestVectors = path.resolve(__dirname, "../../../../test-vectors/xdr", filename);
   if (fs.existsSync(underTestVectors)) return underTestVectors;
   return path.resolve(
     __dirname,

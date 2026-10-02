@@ -12,9 +12,7 @@ const {
   FR_MODULUS,
 } = require("../../packages/client/src/identity.ts");
 const { MerkleTree } = require("../../packages/client/src/tree.ts");
-const {
-  referenceProof,
-} = require("../../packages/client/src/tree.reference.ts");
+const { referenceProof } = require("../../packages/client/src/tree.reference.ts");
 
 // Single source of truth for the tree depth is circuits/config.json (see
 // "Changing the Merkle tree depth" in the repo README) — read it here

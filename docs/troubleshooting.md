@@ -195,7 +195,7 @@ ledger) are stale.
 Full ordered recovery — redeploy contract + token, re-fund identities, update both `.env` files,
 re-run `e2e`, rebuild/redeploy the (non-git-connected) Vercel app, and refresh the README's
 on-chain evidence — is [`docs/runbook-testnet-reset.md`](runbook-testnet-reset.md). Start there
-rather than improvising; it also covers what does *not* need redoing (the circuit/trusted-setup
+rather than improvising; it also covers what does _not_ need redoing (the circuit/trusted-setup
 artifacts survive a reset untouched).
 
 ---
@@ -450,7 +450,7 @@ almost certainly in the encoding, not the cryptography. Common causes:
   coordinate order or using the compressed (48/96 byte) form causes a silent
   mismatch.
 - **Wrong public signal order** — the contract expects `[nullifierHash, root,
-  externalNullifier, recipientHash]` in that order. If `publicSignals` is passed in a different
+externalNullifier, recipientHash]` in that order. If `publicSignals` is passed in a different
   order the encoded `pi_a`/`pi_b`/`pi_c` will be correct but the IC combination
   will mismatch on-chain.
 - **Mismatched verification key** — the VK stored in the contract at
@@ -528,7 +528,7 @@ npx playwright show-trace app/e2e/test-results/<test-folder>/trace.zip
 npx playwright show-report app/e2e/playwright-report
 ```
 
-To capture a *passing* run — e.g. for the README demo GIF — keep the artifacts on success too:
+To capture a _passing_ run — e.g. for the README demo GIF — keep the artifacts on success too:
 
 ```bash
 E2E_TRACE=on npm run test:e2e --workspace=app

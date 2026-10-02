@@ -25,6 +25,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: just sdk-build
+      - run: just format-check
       - run: just typecheck
       - run: just lint
       - run: just lint-dead

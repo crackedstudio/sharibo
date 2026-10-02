@@ -100,15 +100,21 @@ describe("verify-artifacts failure paths", () => {
   });
 
   it("readExpectedHash rejects empty and missing files distinctly", () => {
-    expect(readExpectedHash(path.join(artifactFixtures, "empty-hash", "verification_key.json.sha256"))).to.deep.equal({
+    expect(
+      readExpectedHash(path.join(artifactFixtures, "empty-hash", "verification_key.json.sha256")),
+    ).to.deep.equal({
       ok: false,
       reason: "malformed",
     });
-    expect(readExpectedHash(path.join(artifactFixtures, "missing-hash", "verification_key.json.sha256"))).to.deep.equal({
+    expect(
+      readExpectedHash(path.join(artifactFixtures, "missing-hash", "verification_key.json.sha256")),
+    ).to.deep.equal({
       ok: false,
       reason: "missing",
     });
-    const good = readExpectedHash(path.join(artifactFixtures, "valid", "verification_key.json.sha256"));
+    const good = readExpectedHash(
+      path.join(artifactFixtures, "valid", "verification_key.json.sha256"),
+    );
     expect(good.ok).to.equal(true);
     expect(good.hash).to.equal(
       hashFile(path.join(artifactFixtures, "valid", "verification_key.json")),
@@ -161,7 +167,10 @@ describe("verify-setup.sh failure paths", () => {
       // Copy the script into an empty circuits-like layout so relative paths resolve.
       const scripts = path.join(tmp, "scripts");
       fs.mkdirSync(scripts);
-      fs.copyFileSync(path.join(scriptsDir, "verify-setup.sh"), path.join(scripts, "verify-setup.sh"));
+      fs.copyFileSync(
+        path.join(scriptsDir, "verify-setup.sh"),
+        path.join(scripts, "verify-setup.sh"),
+      );
       fs.chmodSync(path.join(scripts, "verify-setup.sh"), 0o755);
 
       const result = spawnSync("bash", [path.join(scripts, "verify-setup.sh")], {

@@ -5,7 +5,11 @@ import {
   type ContractProof,
   type ContractVerificationKey,
 } from "./prove.js";
-import { validateContractProof, validateContractVerificationKey, assertInField } from "./validate.js";
+import {
+  validateContractProof,
+  validateContractVerificationKey,
+  assertInField,
+} from "./validate.js";
 import { InvalidInputError } from "./errors.js";
 import { FR_MODULUS } from "./identity.js";
 
@@ -28,9 +32,7 @@ function makeG1(x: bigint, y: bigint): Uint8Array {
   return bytes;
 }
 
-function makeG2(
-  x1: bigint, x0: bigint, y1: bigint, y0: bigint,
-): Uint8Array {
+function makeG2(x1: bigint, x0: bigint, y1: bigint, y0: bigint): Uint8Array {
   const bytes = new Uint8Array(192);
   const buf = new Uint8Array(48);
   let v: bigint;
@@ -170,9 +172,21 @@ test("converts a minimal valid VK JSON", () => {
   const vkJson = {
     nPublic: 1,
     vk_alpha_1: ["0", "0", "1"],
-    vk_beta_2: [["0", "0"], ["0", "0"], ["1", "0"]],
-    vk_gamma_2: [["0", "0"], ["0", "0"], ["1", "0"]],
-    vk_delta_2: [["0", "0"], ["0", "0"], ["1", "0"]],
+    vk_beta_2: [
+      ["0", "0"],
+      ["0", "0"],
+      ["1", "0"],
+    ],
+    vk_gamma_2: [
+      ["0", "0"],
+      ["0", "0"],
+      ["1", "0"],
+    ],
+    vk_delta_2: [
+      ["0", "0"],
+      ["0", "0"],
+      ["1", "0"],
+    ],
     IC: [
       ["0", "0", "1"],
       ["0", "0", "1"],
@@ -188,12 +202,22 @@ test("rejects VK JSON with IC length not equal to nPublic + 1", () => {
   const vkJson = {
     nPublic: 2,
     vk_alpha_1: ["0", "0", "1"],
-    vk_beta_2: [["0", "0"], ["0", "0"], ["1", "0"]],
-    vk_gamma_2: [["0", "0"], ["0", "0"], ["1", "0"]],
-    vk_delta_2: [["0", "0"], ["0", "0"], ["1", "0"]],
-    IC: [
-      ["0", "0", "1"],
+    vk_beta_2: [
+      ["0", "0"],
+      ["0", "0"],
+      ["1", "0"],
     ],
+    vk_gamma_2: [
+      ["0", "0"],
+      ["0", "0"],
+      ["1", "0"],
+    ],
+    vk_delta_2: [
+      ["0", "0"],
+      ["0", "0"],
+      ["1", "0"],
+    ],
+    IC: [["0", "0", "1"]],
   };
   assert.throws(
     () => verificationKeyToContractFormat(vkJson),
@@ -204,9 +228,21 @@ test("rejects VK JSON with IC length not equal to nPublic + 1", () => {
 test("rejects VK JSON missing nPublic", () => {
   const vkJson = {
     vk_alpha_1: ["0", "0", "1"],
-    vk_beta_2: [["0", "0"], ["0", "0"], ["1", "0"]],
-    vk_gamma_2: [["0", "0"], ["0", "0"], ["1", "0"]],
-    vk_delta_2: [["0", "0"], ["0", "0"], ["1", "0"]],
+    vk_beta_2: [
+      ["0", "0"],
+      ["0", "0"],
+      ["1", "0"],
+    ],
+    vk_gamma_2: [
+      ["0", "0"],
+      ["0", "0"],
+      ["1", "0"],
+    ],
+    vk_delta_2: [
+      ["0", "0"],
+      ["0", "0"],
+      ["1", "0"],
+    ],
     IC: [["0", "0", "1"]],
   };
   assert.throws(
@@ -241,7 +277,8 @@ test("assertInField rejects scalars out of range", () => {
 
 // ── Coordinate range validation ──────────────────────────────────────
 
-const FP_MODULUS = 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaabn;
+const FP_MODULUS =
+  0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaabn;
 
 test("rejects G1 coordinate >= p", () => {
   const invalidA = makeG1(FP_MODULUS, 2n);

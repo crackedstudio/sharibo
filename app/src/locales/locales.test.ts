@@ -11,10 +11,9 @@
 import { describe, it, expect } from "vitest";
 
 function loadAllLocales(): Record<string, Record<string, string>> {
-  const localeModules = import.meta.glob<{ default: Record<string, string> }>(
-    "./!(*.test).ts",
-    { eager: true },
-  );
+  const localeModules = import.meta.glob<{ default: Record<string, string> }>("./!(*.test).ts", {
+    eager: true,
+  });
 
   const locales: Record<string, Record<string, string>> = {};
   for (const [path, mod] of Object.entries(localeModules)) {
@@ -87,7 +86,9 @@ describe("locale data", () => {
         if (value === "") emptyKeys.push(key);
       }
       if (emptyKeys.length > 0) {
-        failures.push(`Locale "${localeName}" has empty string values for: ${emptyKeys.join(", ")}`);
+        failures.push(
+          `Locale "${localeName}" has empty string values for: ${emptyKeys.join(", ")}`,
+        );
       }
     }
 

@@ -35,7 +35,7 @@ test("package imports cleanly in Node with document undefined", async () => {
 });
 
 test("prefetchMembershipArtifacts is internal-only and not auto-called at import time", async () => {
-  const main = await import("./index.js") as Record<string, unknown>;
+  const main = (await import("./index.js")) as Record<string, unknown>;
   // Main entrypoint must NOT leak artifact machinery — it's behind ./internal
   assert.strictEqual(
     typeof main.prefetchMembershipArtifacts,
@@ -48,7 +48,8 @@ test("prefetchMembershipArtifacts is internal-only and not auto-called at import
     "main entrypoint should not export getArtifactPrefetchProgress (use @sharibo/client/internal)",
   );
 
-  const { prefetchMembershipArtifacts, getArtifactPrefetchProgress } = await import("./internal.js");
+  const { prefetchMembershipArtifacts, getArtifactPrefetchProgress } =
+    await import("./internal.js");
 
   assert.strictEqual(typeof prefetchMembershipArtifacts, "function");
 
@@ -59,6 +60,6 @@ test("prefetchMembershipArtifacts is internal-only and not auto-called at import
     progress.status,
     "idle",
     `expected status "idle" but got "${progress.status}" — ` +
-    "artifacts.ts is triggering a prefetch on import",
+      "artifacts.ts is triggering a prefetch on import",
   );
 });

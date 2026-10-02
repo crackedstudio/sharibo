@@ -79,10 +79,7 @@ describe("withRetry", () => {
     const events: string[] = [];
     const emitter = new SdkEventEmitter((e) => events.push(e.type));
 
-    const fn = vi
-      .fn()
-      .mockRejectedValueOnce(new Error("timeout"))
-      .mockResolvedValueOnce("ok");
+    const fn = vi.fn().mockRejectedValueOnce(new Error("timeout")).mockResolvedValueOnce("ok");
 
     const promise = withRetry(fn, { maxRetries: 1, baseDelayMs: 10 }, emitter);
     await vi.runAllTimersAsync();

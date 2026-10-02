@@ -106,9 +106,7 @@ export async function computeExternalNullifier(circleId: bigint, round: bigint):
     );
   }
   if (round < 0n || round >= 2n ** 32n) {
-    throw new InvalidInputError(
-      `round must satisfy 0 <= round < 2**32 (u32), got ${round}`,
-    );
+    throw new InvalidInputError(`round must satisfy 0 <= round < 2**32 (u32), got ${round}`);
   }
 
   const buf = new ArrayBuffer(12);

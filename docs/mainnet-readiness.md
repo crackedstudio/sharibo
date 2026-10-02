@@ -50,6 +50,7 @@ fiction. Every item links to the issue tracking it.
 ## Foundational work already done
 
 These are closed issues / existing documents this checklist builds on:
+
 - [`docs/threat-model.md`](threat-model.md) — the structured security-properties document (#23).
 - [`docs/adr/001-upgradeability.md`](adr/001-upgradeability.md) — decision to stay immutable, admin rotation deferred (#92).
 - [`docs/adr/002-multi-round-turn-ordering.md`](adr/002-multi-round-turn-ordering.md) — turn-ordering **design** (#91).

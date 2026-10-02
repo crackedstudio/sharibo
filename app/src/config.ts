@@ -40,7 +40,9 @@ function isHttpUrl(value: string): boolean {
   }
 }
 
-export function validate(env: Record<string, string | undefined> = import.meta.env as Record<string, string | undefined>): ValidationResult {
+export function validate(
+  env: Record<string, string | undefined> = import.meta.env as Record<string, string | undefined>,
+): ValidationResult {
   const errors: string[] = [];
 
   const contractId = env.VITE_SHARIBO_CONTRACT_ID;
@@ -61,7 +63,7 @@ export function validate(env: Record<string, string | undefined> = import.meta.e
   } else if (!isHttpUrl(rpcUrl)) {
     errors.push(`VITE_STELLAR_RPC_URL — invalid URL (got "${rpcUrl}"; expected an http/https URL)`);
   }
-  
+
   if (!networkPassphrase || networkPassphrase.trim().length === 0) {
     errors.push("VITE_STELLAR_NETWORK_PASSPHRASE — missing or empty");
   }

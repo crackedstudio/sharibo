@@ -44,10 +44,7 @@ describe("ShariboSDK.getStatus", () => {
     vi.mocked(getStatus).mockResolvedValue(expected);
 
     const sdk = new ShariboSDK(client);
-    const [fromFacade, fromFree] = await Promise.all([
-      sdk.getStatus(7n),
-      getStatus(client, 7n),
-    ]);
+    const [fromFacade, fromFree] = await Promise.all([sdk.getStatus(7n), getStatus(client, 7n)]);
 
     expect(fromFacade).toEqual(fromFree);
   });

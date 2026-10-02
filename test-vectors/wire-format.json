@@ -3,11 +3,7 @@
   "frModulus": "52435875175126190479447740508185965837690552500527637822603658699938581184513",
   "publicSignalOrder": {
     "_comment": "snarkjs emits circuit outputs first, then declared public inputs in source-order. The generated component main line is: component main { public [root, externalNullifier] } = Sharibo(4). So nullifierHash (output) is index 0, root (first declared public input) is index 1, externalNullifier (second) is index 2.",
-    "order": [
-      "nullifierHash",
-      "root",
-      "externalNullifier"
-    ],
+    "order": ["nullifierHash", "root", "externalNullifier"],
     "indices": {
       "nullifierHash": 0,
       "root": 1,

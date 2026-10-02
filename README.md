@@ -21,26 +21,26 @@ A **rotating savings and credit association** (ROSCA) is one of the oldest finan
 2. **One person takes the whole pot** each round. The group rotates until every member has had a turn.
 3. **No bank, no interest, no credit score.** The group runs on social trust: if you take the pot early, you keep contributing until everyone else has had theirs.
 
-**Why they matter:** ROSCAs serve hundreds of millions of people worldwide — from market traders to software engineers — in places where banking is expensive, inaccessible, or simply not the norm. They turn *"I trust this group more than a faceless institution"* into working capital. A member who needs cash for inventory, school fees, or an emergency gets it without a loan application.
+**Why they matter:** ROSCAs serve hundreds of millions of people worldwide — from market traders to software engineers — in places where banking is expensive, inaccessible, or simply not the norm. They turn _"I trust this group more than a faceless institution"_ into working capital. A member who needs cash for inventory, school fees, or an emergency gets it without a loan application.
 
 **Where the names come from:**
 
-| Name | Region / Community | Locale | Review |
-|---|---|---|---|
-| **ajo** / **esusu** | Nigeria, West Africa (Yoruba) | yo | machine |
-| **tanda** | Mexico, Latin America | es | native |
-| **susu** | Ghana, the Caribbean | en (no dedicated) | — |
-| **tontine** | Francophone Africa, France (origin: 17th-c. Italian *tontina*) | fr | machine |
-| **cundina**, **junta**, **pandero** | Colombia / Peru, Dominican Republic / Venezuela | es | native |
-| **consórcio** | Brazil | pt | machine |
-| **hui** | China, Taiwan, Chinese diaspora | zh | machine |
-| **paluwagan** | Philippines | tl | machine |
-| **chit fund** | India (registered, regulated variant) | hi | machine |
-| **جمعية** / **gam'eya** | Arabic-speaking world | ar | machine |
+| Name                                | Region / Community                                             | Locale            | Review  |
+| ----------------------------------- | -------------------------------------------------------------- | ----------------- | ------- |
+| **ajo** / **esusu**                 | Nigeria, West Africa (Yoruba)                                  | yo                | machine |
+| **tanda**                           | Mexico, Latin America                                          | es                | native  |
+| **susu**                            | Ghana, the Caribbean                                           | en (no dedicated) | —       |
+| **tontine**                         | Francophone Africa, France (origin: 17th-c. Italian _tontina_) | fr                | machine |
+| **cundina**, **junta**, **pandero** | Colombia / Peru, Dominican Republic / Venezuela                | es                | native  |
+| **consórcio**                       | Brazil                                                         | pt                | machine |
+| **hui**                             | China, Taiwan, Chinese diaspora                                | zh                | machine |
+| **paluwagan**                       | Philippines                                                    | tl                | machine |
+| **chit fund**                       | India (registered, regulated variant)                          | hi                | machine |
+| **جمعية** / **gam'eya**             | Arabic-speaking world                                          | ar                | machine |
 
 `en` and `es` are the reviewed, complete locales. Other locale files may be machine-translated stubs or partials; **`ar` is the RTL proof locale** (sets `dir="rtl"` and exercises logical CSS).
 
-**Why privacy matters:** In a traditional ROSCA, everyone knows who collected the pot this round. That transparency is fine when the group is small and offline — but put the same circle on a public blockchain and suddenly every deposit and payout is visible to *the entire world*. Sharibo's zero-knowledge proof restores the privacy boundary the original social structure assumes: the contract knows *that* the claimant is a rightful member (via the ZK proof and the group's Merkle root), but **no observer — not even the other members — can link the payout address back to a specific member**. The circle stays on-chain; the connections stay off it.
+**Why privacy matters:** In a traditional ROSCA, everyone knows who collected the pot this round. That transparency is fine when the group is small and offline — but put the same circle on a public blockchain and suddenly every deposit and payout is visible to _the entire world_. Sharibo's zero-knowledge proof restores the privacy boundary the original social structure assumes: the contract knows _that_ the claimant is a rightful member (via the ZK proof and the group's Merkle root), but **no observer — not even the other members — can link the payout address back to a specific member**. The circle stays on-chain; the connections stay off it.
 
 **[🚀 live app (testnet)](https://dist-flax-three-43.vercel.app)** · **[📖 full product breakdown](full_product_breakdown.md)** · **[🛠 build log](NOTES.md)** · **[📚 glossary](docs/glossary.md)** · **[🤝 contributing](CONTRIBUTING.md)**
 
@@ -61,7 +61,7 @@ Every claim below was produced by running this repo against live Stellar testnet
 > npm run e2e
 > ```
 >
-> This script exercises the entire 4-signal circuit and smart contract on testnet, proving that the flow works *right now*, regardless of historical resets.
+> This script exercises the entire 4-signal circuit and smart contract on testnet, proving that the flow works _right now_, regardless of historical resets.
 
 ## Verify it yourself in 60 seconds
 
@@ -122,15 +122,15 @@ Full structured breakdown — assets, adversaries, and which code enforces each 
 
 ## Tests
 
-| Suite                                      | Coverage                                                                                                                                | Result      |
-| ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
-| Circuit (`circuits/test/`)                 | valid proof, wrong root, tampered path, nullifier determinism, non-boolean path index                                                   | passing     |
-| Contract (`contracts/sharibo/src/test/`)   | happy path **with a real proof**, underfunded, replay, stale round tag, forged public input (real pairing failure), CPU budget, auth ×2 | passing     |
-| Core (`packages/core/`)                    | cryptography primitives, poseidon hashes, merkle tree logic                                                                             | passing     |
-| Client (`packages/client/`)                | identity generation, tree construction, proof generation, typed contract calls                                                          | passing     |
-| App (`app/`)                               | browser UI, identity state, funding flow, proof generation in-browser                                                                   | passing     |
-| Scripts (`scripts/`)                       | e2e and smoke test helpers, maintenance checkers                                                                                        | passing     |
-| E2E (`scripts/e2e.ts`, live testnet)       | create → 5× fund → prove → claim to fresh address → assertions → round 2 fund → replay → `AlreadyClaimed`                               | passing     |
+| Suite                                    | Coverage                                                                                                                                | Result  |
+| ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| Circuit (`circuits/test/`)               | valid proof, wrong root, tampered path, nullifier determinism, non-boolean path index                                                   | passing |
+| Contract (`contracts/sharibo/src/test/`) | happy path **with a real proof**, underfunded, replay, stale round tag, forged public input (real pairing failure), CPU budget, auth ×2 | passing |
+| Core (`packages/core/`)                  | cryptography primitives, poseidon hashes, merkle tree logic                                                                             | passing |
+| Client (`packages/client/`)              | identity generation, tree construction, proof generation, typed contract calls                                                          | passing |
+| App (`app/`)                             | browser UI, identity state, funding flow, proof generation in-browser                                                                   | passing |
+| Scripts (`scripts/`)                     | e2e and smoke test helpers, maintenance checkers                                                                                        | passing |
+| E2E (`scripts/e2e.ts`, live testnet)     | create → 5× fund → prove → claim to fresh address → assertions → round 2 fund → replay → `AlreadyClaimed`                               | passing |
 
 ## Benchmarks
 
@@ -224,12 +224,12 @@ Fresh-machine steps, in order. Everything below targets **Stellar testnet only**
 
 ### 0. Prerequisites
 
-| Tool | Minimum | Tested |
-|---|---|---|
-| [Rust](https://rustup.rs/) + `wasm32v1-none` target | rustc **1.94.1** (pinned in rust-toolchain.toml) | `rustc 1.94.1` |
-| [`stellar` CLI](https://developers.stellar.org/docs/tools/cli/install-cli) | **v21.0** (protocol 22 required for BLS12-381 host functions; protocol 23 for `soroban-sdk = "23"`) | `23.4.1` |
-| [Node.js](https://nodejs.org/) | **20.6.0** (`process.loadEnvFile`, used in `scripts/e2e.ts`) | `v24.11.1` |
-| [`circom`](https://docs.circom.io/getting-started/installation/) on `PATH` | **2.1.6** (pragma in `circuits/membership.template.circom`) | `2.2.3` (pinned in `circuits/config.json`, asserted by `compile.sh`) |
+| Tool                                                                       | Minimum                                                                                             | Tested                                                               |
+| -------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| [Rust](https://rustup.rs/) + `wasm32v1-none` target                        | rustc **1.94.1** (pinned in rust-toolchain.toml)                                                    | `rustc 1.94.1`                                                       |
+| [`stellar` CLI](https://developers.stellar.org/docs/tools/cli/install-cli) | **v21.0** (protocol 22 required for BLS12-381 host functions; protocol 23 for `soroban-sdk = "23"`) | `23.4.1`                                                             |
+| [Node.js](https://nodejs.org/)                                             | **20.6.0** (`process.loadEnvFile`, used in `scripts/e2e.ts`)                                        | `v24.11.1`                                                           |
+| [`circom`](https://docs.circom.io/getting-started/installation/) on `PATH` | **2.1.6** (pragma in `circuits/membership.template.circom`)                                         | `2.2.3` (pinned in `circuits/config.json`, asserted by `compile.sh`) |
 
 `snarkjs` (`0.7.6`) is a devDependency in `circuits/package.json` — no separate global install required; it runs via `npx` during `npm run setup`.
 
@@ -312,11 +312,11 @@ Runs a full round against testnet for real: creates a 5-member circle, funds it 
 
 **Flags** (`node:util parseArgs`, no new deps):
 
-| Flag | Effect |
-|---|---|
-| `--skip-replay` | Stop after the successful claim (skip round 2 funding + replay check) |
-| `--reuse-circle <id>` | Skip circle creation; run against an existing circle |
-| `--verbose` | Echo each RPC/HTTP interaction for debugging |
+| Flag                  | Effect                                                                |
+| --------------------- | --------------------------------------------------------------------- |
+| `--skip-replay`       | Stop after the successful claim (skip round 2 funding + replay check) |
+| `--reuse-circle <id>` | Skip circle creation; run against an existing circle                  |
+| `--verbose`           | Echo each RPC/HTTP interaction for debugging                          |
 
 > This script shells out to `curl` for friendbot/Horizon calls rather than using `fetch()` — see `NOTES.md` if you're curious why. Run `npm run e2e` in the foreground when debugging hangs — see [docs/canary.md](docs/canary.md).
 
@@ -370,7 +370,7 @@ Full annotated version (what each file does and why): [breakdown §16](full_prod
 
 ## Contributing
 
-We welcome contributions to Sharibo! See [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow, how to run the test suites, and the dependency audit runbook. Please ensure you have read and adhere to our [Code of Conduct](CODE_OF_CONDUCT.md) when participating in this project. If terms like *Groth16* or *Merkle root* are new to you, start with the [glossary](docs/glossary.md).
+We welcome contributions to Sharibo! See [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow, how to run the test suites, and the dependency audit runbook. Please ensure you have read and adhere to our [Code of Conduct](CODE_OF_CONDUCT.md) when participating in this project. If terms like _Groth16_ or _Merkle root_ are new to you, start with the [glossary](docs/glossary.md).
 
 `@stellar/stellar-sdk` is declared independently in `app`, `packages/client`, and `scripts`, and pinned to a single resolved version via a root `overrides` entry. **Bump `stellar-sdk` in all three places at once** — `npm run check:stellar-sdk` (also run automatically on `npm install`) fails the build if the declared ranges ever drift apart.
 
@@ -388,4 +388,5 @@ There is a detailed mainnet readiness checklist covering audits, trusted setups,
 ## Handsoff notes
 
 <!-- handsoff-issue-501 -->
+
 - #501: App.tsx dynamically imports `@sharibo/client` in four handlers while also importing it statically — no split, just noise

@@ -1,12 +1,6 @@
 import { execFile } from "node:child_process";
 import { promisify, parseArgs } from "node:util";
-import {
-  readFileSync,
-  writeFileSync,
-  unlinkSync,
-  mkdirSync,
-  existsSync,
-} from "node:fs";
+import { readFileSync, writeFileSync, unlinkSync, mkdirSync, existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -96,10 +90,7 @@ async function checkRust(): Promise<Check> {
 
   let toolchainChannel = "1.94.1";
   try {
-    const toolchainContent = readFileSync(
-      path.join(REPO_ROOT, "rust-toolchain.toml"),
-      "utf8",
-    );
+    const toolchainContent = readFileSync(path.join(REPO_ROOT, "rust-toolchain.toml"), "utf8");
     const match = toolchainContent.match(/channel\s*=\s*"([^"]+)"/);
     if (match && match[1]) {
       toolchainChannel = match[1];
@@ -218,23 +209,17 @@ async function checkNodeVersion(): Promise<Check> {
   const nvmrcPath = path.join(REPO_ROOT, ".nvmrc");
   const enginesRaw = (() => {
     try {
-      const pkg = JSON.parse(
-        readFileSync(path.join(REPO_ROOT, "package.json"), "utf8"),
-      );
+      const pkg = JSON.parse(readFileSync(path.join(REPO_ROOT, "package.json"), "utf8"));
       return (pkg.engines?.node as string | undefined) ?? null;
     } catch {
       return null;
     }
   })();
-  const nvmrc = existsSync(nvmrcPath)
-    ? readFileSync(nvmrcPath, "utf8").trim()
-    : null;
+  const nvmrc = existsSync(nvmrcPath) ? readFileSync(nvmrcPath, "utf8").trim() : null;
   const currentRaw = await run("node", ["--version"]);
   const current = currentRaw.replace(/^v/, "");
   const pinned = nvmrc ?? enginesRaw;
-  const pinnedMajor = pinned
-    ? Number.parseInt(pinned.replace(/[^0-9].*$/, ""), 10)
-    : undefined;
+  const pinnedMajor = pinned ? Number.parseInt(pinned.replace(/[^0-9].*$/, ""), 10) : undefined;
   const currentMajor = Number.parseInt(current.split(".")[0], 10);
   const ok = pinnedMajor === undefined || currentMajor === pinnedMajor;
 
@@ -278,8 +263,7 @@ async function checkCircom(): Promise<Check> {
       "--json",
       tmpJson,
     ]);
-    primeOk =
-      !primeOut.includes("Unknown prime") && !primeOut.includes("__ERROR__");
+    primeOk = !primeOut.includes("Unknown prime") && !primeOut.includes("__ERROR__");
     try {
       unlinkSync(tmpCircom);
     } catch {}
@@ -329,21 +313,14 @@ async function checkCircomDeps(): Promise<Check> {
     found: packageNames
       .map((name) => `${name}: ${found[name] ? "installed" : "missing"}`)
       .join(" | "),
-    required:
-      "snarkjs, mocha, and circom_tester installed (needed by circuit setup and tests)",
+    required: "snarkjs, mocha, and circom_tester installed (needed by circuit setup and tests)",
     fix: "npm install",
     docsAnchor: "circuit-tests-fail-because-javascript-dependencies-are-missing",
   };
 }
 
 async function checkClientDist(): Promise<Check> {
-  const distIndex = path.join(
-    REPO_ROOT,
-    "packages",
-    "client",
-    "dist",
-    "index.js",
-  );
+  const distIndex = path.join(REPO_ROOT, "packages", "client", "dist", "index.js");
   const ok = existsSync(distIndex);
   return {
     name: "packages/client dist built",
@@ -362,12 +339,7 @@ async function checkClientDist(): Promise<Check> {
 }
 
 async function checkCircuitArtifacts(): Promise<Check> {
-  const verifier = path.join(
-    REPO_ROOT,
-    "circuits",
-    "scripts",
-    "verify-artifacts.mjs",
-  );
+  const verifier = path.join(REPO_ROOT, "circuits", "scripts", "verify-artifacts.mjs");
   const result = await run(process.execPath, [verifier]);
   const ok = result === "Circuit artifacts verified.";
 
@@ -375,14 +347,11 @@ async function checkCircuitArtifacts(): Promise<Check> {
     name: "circuit build artifacts and SHA-256 manifests",
     blocking: true,
     ok,
-    found: ok
-      ? result
-      : result.replace(/^__ERROR__:[^:]+:?\s*/, "").replace(/\n/g, " "),
+    found: ok ? result : result.replace(/^__ERROR__:[^:]+:?\s*/, "").replace(/\n/g, " "),
     required:
       "Compiled membership wasm, final zkey, verification key, and matching SHA-256 manifests",
     fix: "cd circuits && npm run compile && ALLOW_KEY_ROTATION=1 npm run setup",
-    docsAnchor:
-      "browser-app-build-fails-because-circuit-artifacts-or-hashes-are-missing",
+    docsAnchor: "browser-app-build-fails-because-circuit-artifacts-or-hashes-are-missing",
   };
 }
 
@@ -418,11 +387,7 @@ async function checkEnv(): Promise<Check> {
     envValues[key] = process.env[key] ?? value;
   }
 
-  const requiredKeys = [
-    "TEST_TOKEN_CONTRACT_ID",
-    "SHARIBO_CONTRACT_ID",
-    "ADMIN_SECRET_KEY",
-  ];
+  const requiredKeys = ["TEST_TOKEN_CONTRACT_ID", "SHARIBO_CONTRACT_ID", "ADMIN_SECRET_KEY"];
   const invalidKeys = requiredKeys.filter((key) => {
     const value = envValues[key]?.trim() ?? "";
     const prefix = key === "ADMIN_SECRET_KEY" ? "S" : "C";
@@ -462,8 +427,7 @@ async function checkCargoCov(): Promise<Check> {
     blocking: false,
     ok,
     found: ok ? out : "missing",
-    required:
-      "optional — needed only for `just coverage` (contracts coverage report)",
+    required: "optional — needed only for `just coverage` (contracts coverage report)",
     fix: "cargo install cargo-llvm-cov",
     docsAnchor: "cargo-llvm-cov-is-optional",
   };
@@ -561,9 +525,7 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  console.log(
-    "✅ All blocking checks passed. Run `just circuits` to compile circuits.\n",
-  );
+  console.log("✅ All blocking checks passed. Run `just circuits` to compile circuits.\n");
 }
 
 main().catch((e) => {

@@ -21,10 +21,7 @@ export const STELLAR_SECRET_KEY_PATTERN = /\bS[A-Z2-7]{55}\b/g;
 export const FIELD_ELEMENT_SCALAR_PATTERN = /\b\d{77,}\b/g;
 
 /** Patterns that must never appear in a debug bundle. */
-export const REDACT_PATTERNS = [
-  STELLAR_SECRET_KEY_PATTERN,
-  FIELD_ELEMENT_SCALAR_PATTERN,
-];
+export const REDACT_PATTERNS = [STELLAR_SECRET_KEY_PATTERN, FIELD_ELEMENT_SCALAR_PATTERN];
 
 /** Pattern used by the pre-commit secret scanner (secret keys only). */
 export const COMMIT_SECRET_PATTERNS = [STELLAR_SECRET_KEY_PATTERN];

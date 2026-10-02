@@ -17,10 +17,9 @@ import { fileURLToPath } from "node:url";
 import { I18nProvider, useI18n } from "./i18n";
 import en from "./locales/en";
 
-const localeModules = import.meta.glob<{ default: Record<string, string> }>(
-  "./locales/*.ts",
-  { eager: true },
-);
+const localeModules = import.meta.glob<{ default: Record<string, string> }>("./locales/*.ts", {
+  eager: true,
+});
 
 function localeCodes(): string[] {
   return Object.keys(localeModules)
@@ -243,9 +242,9 @@ describe("i18n provider", () => {
 
     walk(appSrc);
 
-    expect(
-      [...missing.entries()].map(([key, files]) => `${key} (${files.join(", ")})`),
-    ).toEqual([]);
+    expect([...missing.entries()].map(([key, files]) => `${key} (${files.join(", ")})`)).toEqual(
+      [],
+    );
   });
 
   // No vitest-axe / axe-core dependency — lightweight smoke: each locale
@@ -261,7 +260,12 @@ describe("i18n provider", () => {
           <p data-testid="tagline">{t("landing.tagline")}</p>
           <p data-testid="launch">{t("landing.launch")}</p>
           {locales.map((code) => (
-            <button key={code} type="button" onClick={() => setLocale(code)} data-testid={`set-${code}`}>
+            <button
+              key={code}
+              type="button"
+              onClick={() => setLocale(code)}
+              data-testid={`set-${code}`}
+            >
               {code}
             </button>
           ))}

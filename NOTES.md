@@ -2,27 +2,27 @@
 
 > **HISTORICAL — append-only build log.** This file records what was discovered during the original hackathon build. It is **not** the authoritative reference for current invariants. For still-in-force decisions, use:
 >
-> | Topic | Authoritative doc |
-> | ----- | ----------------- |
-> | BLS12-381 vs BN254 | [docs/adr/005-bls12-381-curve-choice.md](docs/adr/005-bls12-381-curve-choice.md) |
-> | Public signal order & byte encodings | [docs/wire-format.md](docs/wire-format.md) |
-> | Poseidon BLS12-381 constants | [docs/poseidon-provenance.md](docs/poseidon-provenance.md) |
-> | E2E foreground / canary scheduling | [docs/canary.md](docs/canary.md) |
-> | Trusted setup (future multi-party) | [docs/ceremony.md](docs/ceremony.md) |
-> | Audit prep (no report here) | [docs/audit/README.md](docs/audit/README.md) |
+> | Topic                                | Authoritative doc                                                                |
+> | ------------------------------------ | -------------------------------------------------------------------------------- |
+> | BLS12-381 vs BN254                   | [docs/adr/005-bls12-381-curve-choice.md](docs/adr/005-bls12-381-curve-choice.md) |
+> | Public signal order & byte encodings | [docs/wire-format.md](docs/wire-format.md)                                       |
+> | Poseidon BLS12-381 constants         | [docs/poseidon-provenance.md](docs/poseidon-provenance.md)                       |
+> | E2E foreground / canary scheduling   | [docs/canary.md](docs/canary.md)                                                 |
+> | Trusted setup (future multi-party)   | [docs/ceremony.md](docs/ceremony.md)                                             |
+> | Audit prep (no report here)          | [docs/audit/README.md](docs/audit/README.md)                                     |
 
 ## Chronology (approximate)
 
-| Phase | When (approx.) | What landed |
-| ----- | -------------- | ----------- |
-| Phase 0 | 2025-06 | Testnet identities, hello-world contract, bn128 smoke test |
-| Phase 1 | 2025-06 | `membership` circuit, circuit tests, single-party setup, committed vk |
-| Phase 2 | 2025-06 | Soroban circle logic + unit tests (stub verifier) |
-| Phase 3 | 2025-07 | BLS12-381 pivot, real verifier, testnet claim with real proof |
-| Phase 4 | 2025-07 | `@sharibo/client`, `scripts/e2e.ts` full round |
-| Phase 5 | 2025-07 | Browser demo (`app/`), isomorphic SDK |
-| Phase 6 | 2025-07 | README rewrite, secrets audit, demo checklist |
-| Live deployment | 2025-07 | Vercel static app (testnet) |
+| Phase           | When (approx.) | What landed                                                           |
+| --------------- | -------------- | --------------------------------------------------------------------- |
+| Phase 0         | 2025-06        | Testnet identities, hello-world contract, bn128 smoke test            |
+| Phase 1         | 2025-06        | `membership` circuit, circuit tests, single-party setup, committed vk |
+| Phase 2         | 2025-06        | Soroban circle logic + unit tests (stub verifier)                     |
+| Phase 3         | 2025-07        | BLS12-381 pivot, real verifier, testnet claim with real proof         |
+| Phase 4         | 2025-07        | `@sharibo/client`, `scripts/e2e.ts` full round                        |
+| Phase 5         | 2025-07        | Browser demo (`app/`), isomorphic SDK                                 |
+| Phase 6         | 2025-07        | README rewrite, secrets audit, demo checklist                         |
+| Live deployment | 2025-07        | Vercel static app (testnet)                                           |
 
 Running log of decisions, deviations from the build spec, and `// DEMO MOCK:` items. Updated as phases land.
 
@@ -98,7 +98,7 @@ Running log of decisions, deviations from the build spec, and `// DEMO MOCK:` it
 
 - `packages/client/src/prove.ts`: wraps `snarkjs.groth16.fullProve`, encodes the resulting proof/vk into the contract's exact wire format (BLS12-381 `G1Affine`/`G2Affine` = raw big-endian bytes per `contracts/sharibo/src/lib.rs`'s doc comments — no compression flags to set manually, since canonical field elements already have their reserved flag bits at 0). `verificationKeyToContractFormat` converts `circuits/verification_key.json` once at circle-creation time.
 - `packages/client/src/contract.ts`: thin wrappers over `@stellar/stellar-sdk`'s `contract.Client` (which pulls the contract's method spec live from chain — `stellar contract invoke ... --help` and the SDK's `Spec.funcArgsToScVals` source were read to confirm exact argument shapes: `BytesN`/`Bytes` as `Buffer`, `Fr`/`U256` as plain `bigint`, struct fields keyed by their exact Rust snake_case names). `basicNodeSigner` handles Node-side signing from a raw `Keypair` (no wallet needed for this server-side SDK).
-- `scripts/e2e.ts`: full round — 5 fresh members funded via friendbot, circle created, funded, a real proof generated for one member, claimed to a **fresh, never-before-seen** recipient, payout + round-advance asserted, then round 1 is funded and the *same* nullifier is replayed and asserted to revert with `Error(Contract, #4)` (`AlreadyClaimed`) specifically (not just "pot not funded" — funding round 1 first makes this a real demonstration of nullifier-reuse rejection, not just accounting).
+- `scripts/e2e.ts`: full round — 5 fresh members funded via friendbot, circle created, funded, a real proof generated for one member, claimed to a **fresh, never-before-seen** recipient, payout + round-advance asserted, then round 1 is funded and the _same_ nullifier is replayed and asserted to revert with `Error(Contract, #4)` (`AlreadyClaimed`) specifically (not just "pot not funded" — funding round 1 first makes this a real demonstration of nullifier-reuse rejection, not just accounting).
 - **Environment-specific debugging note (RESOLVED):** Node's own `fetch()` calls to `friendbot.stellar.org` / Horizon originally hung indefinitely in the build session — even with `AbortSignal.timeout()` — while `curl` (same URLs) was reliable, so the script shelled out to `curl`. **Re-investigated (#94):** tested on Node 20/22/24 with 5 consecutive clean runs each against both friendbot and Horizon — the hang no longer reproduces. Root cause was likely an undici keep-alive interaction with friendbot's connection handling that has since been fixed upstream in Node's undici. **Migrated to native `fetch()` with `AbortSignal.timeout(15_000)` as a safety net, and removed the `curl`/`child_process` dependency entirely.** The background-process hang noted below was specific to the original tooling session, not the script itself.
 - **Migration landed (#511):** the fix described above was investigated in #94 but the change itself never landed — `e2e.ts` kept shelling out to `curl` and `scripts/fetch-migration.test.ts` (written to prove the migration) stayed red. As of #511: `httpGet`/`httpGetJson` live in `scripts/http.ts`, shared by `e2e.ts`, `smoke.ts` and `testnet-health.ts`; `curlGet` and the `node:child_process` import are gone from `e2e.ts`. The safety net is an explicit `AbortController` (not a bare `AbortSignal.timeout`, which cannot be combined with a caller's signal) plus `keepalive: false`, so a half-open pooled socket to a dead testnet endpoint cannot present as an indefinite hang. `fetch-migration.test.ts` is now hermetic (stubbed `fetch`); the live reachability check moved to `fetch-migration.live.test.ts` behind `npm run test:live`. `docs/canary.md` no longer requires the nightly canary to run in the foreground, because there is no longer a subprocess to hang.
 - All Phase 4 DoD assertions pass against testnet in one clean run: pot == 5×contribution, fresh recipient balance increases by exactly the pot, pot resets to 0, round increments, and nullifier reuse reverts with the specific `AlreadyClaimed` error.

@@ -10,9 +10,7 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 
-const MANIFEST = JSON.parse(
-  readFileSync(join(ROOT, "test-vectors/public-signals.json"), "utf8"),
-);
+const MANIFEST = JSON.parse(readFileSync(join(ROOT, "test-vectors/public-signals.json"), "utf8"));
 
 const CANONICAL_LIST = `[${MANIFEST.order.join(", ")}]`;
 const STALE_THREE = /\[nullifierHash,\s*root,\s*externalNullifier\](?!\s*,\s*recipientHash)/g;
@@ -102,19 +100,26 @@ describe("workspace structure", () => {
         offenders.push(ws);
       }
     }
-    assert.deepEqual(offenders, [], `Workspaces not extending base tsconfig: ${offenders.join(", ")}`);
+    assert.deepEqual(
+      offenders,
+      [],
+      `Workspaces not extending base tsconfig: ${offenders.join(", ")}`,
+    );
   });
 
   it("README Repository structure lists every top-level directory", () => {
     const readme = readFileSync(join(ROOT, "README.md"), "utf8");
-    const structMatch = /## Repository structure\n\n```[\s\S]*?\nsharibo\/\n([\s\S]*?)\n```/.exec(readme);
+    const structMatch = /## Repository structure\n\n```[\s\S]*?\nsharibo\/\n([\s\S]*?)\n```/.exec(
+      readme,
+    );
     assert.ok(structMatch, "Could not find Repository structure block in README.md");
     const structBlock = structMatch[1];
 
     const missing = [];
     for (const name of readdirSync(ROOT)) {
-      if (name.startsWith(".") || name === "node_modules" || name === "dist" || name === "target") continue;
-      
+      if (name.startsWith(".") || name === "node_modules" || name === "dist" || name === "target")
+        continue;
+
       const st = statSync(join(ROOT, name));
       if (st.isDirectory()) {
         if (!structBlock.includes(` ${name}/`)) {
@@ -122,7 +127,11 @@ describe("workspace structure", () => {
         }
       }
     }
-    
-    assert.deepEqual(missing, [], `Missing top-level directories in README structure: ${missing.join(", ")}`);
+
+    assert.deepEqual(
+      missing,
+      [],
+      `Missing top-level directories in README structure: ${missing.join(", ")}`,
+    );
   });
 });

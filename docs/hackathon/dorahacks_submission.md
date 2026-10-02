@@ -37,7 +37,7 @@ curl -s https://horizon-testnet.stellar.org/transactions/2258397474e3ad420d6dd83
 
 ## Honest scope
 
-Privacy covers who *claims*, not who *funds* — funding is fully public on-chain by design; shielding deposits is a separate, harder problem left for future work. One round is demoed, not a full multi-round rotation with on-chain turn ordering. This runs on Stellar testnet with test tokens and a single-party trusted-setup ceremony — appropriate for a hackathon demo, not for production. The Poseidon parameters for BLS12-381 come from a third-party package, cross-checked against Soroban SDK's own field constant but not independently audited. Every one of these is disclosed in the repo, not discovered by a judge — see [`README.md`](../../README.md) → Honest limitations and [`full_product_breakdown.md`](../../full_product_breakdown.md) §18.
+Privacy covers who _claims_, not who _funds_ — funding is fully public on-chain by design; shielding deposits is a separate, harder problem left for future work. One round is demoed, not a full multi-round rotation with on-chain turn ordering. This runs on Stellar testnet with test tokens and a single-party trusted-setup ceremony — appropriate for a hackathon demo, not for production. The Poseidon parameters for BLS12-381 come from a third-party package, cross-checked against Soroban SDK's own field constant but not independently audited. Every one of these is disclosed in the repo, not discovered by a judge — see [`README.md`](../../README.md) → Honest limitations and [`full_product_breakdown.md`](../../full_product_breakdown.md) §18.
 
 ## Links
 

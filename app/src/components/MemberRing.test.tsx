@@ -25,9 +25,7 @@ describe("MemberRing", () => {
 
   it("marks a member who has already claimed as ineligible", () => {
     render(<MemberRing members={members} />);
-    expect(
-      screen.getByLabelText(/already claimed/i),
-    ).toBeInTheDocument();
+    expect(screen.getByLabelText(/already claimed/i)).toBeInTheDocument();
   });
 
   it("does not mark eligible members as ineligible", () => {
@@ -44,13 +42,9 @@ describe("component stylesheets", () => {
     const entries = await fs.readdir(dir);
     const modules = entries.filter((f) => f.endsWith(".module.css"));
     const sources = await Promise.all(
-      entries
-        .filter((f) => f.endsWith(".tsx"))
-        .map((f) => fs.readFile(path.join(dir, f), "utf8")),
+      entries.filter((f) => f.endsWith(".tsx")).map((f) => fs.readFile(path.join(dir, f), "utf8")),
     );
-    const orphans = modules.filter(
-      (m) => !sources.some((src) => src.includes(`./${m}`)),
-    );
+    const orphans = modules.filter((m) => !sources.some((src) => src.includes(`./${m}`)));
     expect(orphans).toEqual([]);
   });
 });

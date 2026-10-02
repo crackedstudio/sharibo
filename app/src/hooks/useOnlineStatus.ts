@@ -22,23 +22,22 @@ export function useOnlineStatus(): boolean {
       try {
         const result = await checkContractDeployed(config.rpcUrl, config.contractId);
         if (active) {
-          setOnline(
-            (typeof navigator === "undefined" || navigator.onLine) && result.rpcReachable,
-          );
+          setOnline((typeof navigator === "undefined" || navigator.onLine) && result.rpcReachable);
         }
       } catch {
         if (active) setOnline(false);
       }
     };
-    const goOnline = () => { void refreshReachability(); };
+    const goOnline = () => {
+      void refreshReachability();
+    };
     const goOffline = () => setOnline(false);
     window.addEventListener("online", goOnline);
     window.addEventListener("offline", goOffline);
     void refreshReachability();
-    const intervalId = window.setInterval(
-      () => { void refreshReachability(); },
-      REACHABILITY_CHECK_INTERVAL_MS,
-    );
+    const intervalId = window.setInterval(() => {
+      void refreshReachability();
+    }, REACHABILITY_CHECK_INTERVAL_MS);
     return () => {
       active = false;
       window.removeEventListener("online", goOnline);

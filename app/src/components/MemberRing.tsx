@@ -10,13 +10,7 @@ import type { Member } from "../types.js";
 import { useI18n } from "../i18n.js";
 import styles from "./MemberRing.module.css";
 
-export function MemberRing({
-  members,
-  revealed,
-}: {
-  members: Member[];
-  revealed: boolean;
-}) {
+export function MemberRing({ members, revealed }: { members: Member[]; revealed: boolean }) {
   const { t } = useI18n();
   const radius = 100;
   const center = 170;
@@ -30,13 +24,7 @@ export function MemberRing({
         role="img"
         aria-label={revealed ? t("ring.label.revealed") : t("ring.label.loading")}
       >
-        <circle
-          cx={center}
-          cy={center}
-          r={radius}
-          fill="none"
-          className={styles.ringCircle}
-        />
+        <circle cx={center} cy={center} r={radius} fill="none" className={styles.ringCircle} />
 
         <text
           x={center}
@@ -60,12 +48,7 @@ export function MemberRing({
               aria-label={`member ${i + 1}${m.ineligible ? ", ineligible: already claimed" : ""}`}
             >
               <circle cx={x} cy={y} r="20" />
-              <text
-                x={x}
-                y={y}
-                textAnchor="middle"
-                dominantBaseline="middle"
-              >
+              <text x={x} y={y} textAnchor="middle" dominantBaseline="middle">
                 {m.ineligible ? "×" : i + 1}
               </text>
             </g>
@@ -75,12 +58,7 @@ export function MemberRing({
         {revealed && (
           <g className={`${styles.ringNode} ${styles.ringRecipient}`}>
             <circle cx={center} cy="0" r="20" />
-            <text
-              x={center}
-              y="0"
-              textAnchor="middle"
-              dominantBaseline="middle"
-            >
+            <text x={center} y="0" textAnchor="middle" dominantBaseline="middle">
               ?
             </text>
           </g>
@@ -89,9 +67,8 @@ export function MemberRing({
 
       {revealed && (
         <p className={styles.ringCaption}>
-          Payout landed on the address above — cryptographically, it could be
-          tied to <em>any</em> of the 5 members in the ring. An outside
-          observer cannot tell which.
+          Payout landed on the address above — cryptographically, it could be tied to <em>any</em>{" "}
+          of the 5 members in the ring. An outside observer cannot tell which.
         </p>
       )}
     </div>

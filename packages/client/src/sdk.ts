@@ -180,11 +180,7 @@ export class ShariboSDK {
   }
 
   /** Pure read: whether `nullifierHash` already claimed in this circle. */
-  hasClaimed(
-    circleId: bigint,
-    nullifierHash: bigint,
-    retryPolicy?: RetryPolicy,
-  ): Promise<boolean> {
+  hasClaimed(circleId: bigint, nullifierHash: bigint, retryPolicy?: RetryPolicy): Promise<boolean> {
     return hasClaimed(this.client, circleId, nullifierHash, this.policy(retryPolicy));
   }
 }

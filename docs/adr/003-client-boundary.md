@@ -123,14 +123,14 @@ the React app — talks to the contract the same way today:
 
 The free-function API is thin, so this works, but it has real costs:
 
-- **Callers own the plumbing.** Every call site repeats *"connect once, pass
-  the client everywhere"* and every new caller must learn the pattern. The
+- **Callers own the plumbing.** Every call site repeats _"connect once, pass
+  the client everywhere"_ and every new caller must learn the pattern. The
   e2e script connects **seven** clients (one admin + five members) and
   passes them around manually; the app interleaves `connect` with `fund` /
   `claim` / `getCircle` in the same breath.
 - **`ShariboClient` is untyped (`any`).** The dynamic contract client is
   deliberately `any` (it's generated from the on-chain spec at runtime), so
-  the *only* typed surface a caller sees is the free functions' argument
+  the _only_ typed surface a caller sees is the free functions' argument
   lists. Threading the raw client puts an untyped value at every call site.
 - **Retry policy has nowhere to live.** Retry-backoff (`withRetry`) exists on
   the free functions, but there is no single place a caller declares "I want
@@ -210,7 +210,7 @@ The JUMP plan keeps that promise cheap:
   Deprecation starts when the SDK covers 100% of the surface and the
   "prune after one major" clock starts via the JUMP plan above.
 - Proving / identity free functions (`generateProof`, `generateIdentity`,
-  `computeExternalNullifier`, `MerkleTree`, ...) are deliberately *not*
+  `computeExternalNullifier`, `MerkleTree`, ...) are deliberately _not_
   folded into the SDK: they are stateless and don't touch the contract
   boundary. The SDK is for blockchain interaction, not proof math.
 

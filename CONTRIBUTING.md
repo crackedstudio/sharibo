@@ -8,53 +8,53 @@ We use a set of topic labels to categorize issues and pull requests. These label
 
 ### Topic Labels
 
-| Label | Description | Maps to |
-|-------|-------------|---------|
-| frontend | React demo app | `app/` |
-| sdk | TypeScript client SDK | `packages/client` |
-| contracts | Soroban smart contract | `contracts/` |
-| circuits | Circom circuit & ZK tooling | `circuits/` |
-| testing | Tests and test infrastructure | Various test directories |
-| dx | Developer experience & tooling | Tooling, scripts, configuration |
-| a11y | Accessibility | UI/UX components |
-| ux | User experience & polish | UI/UX components |
-| security | Security & robustness | Security-related code |
-| e2e | End-to-end script | `scripts/e2e.ts` |
-| refactor | Code structure improvements | Codebase-wide |
-| performance | Speed & resource usage | Performance-critical code |
-| roadmap | Larger feature from the roadmap | Planned features |
-| architecture | Structural / design decisions | Architecture proposals, ADRs |
-| tech-debt | Known shortcuts to pay down | Deferred cleanups |
-| observability | Logging, metrics, tracing | Observability code |
-| i18n | Internationalization | User-facing strings |
-| harden | Robustness hardening | Input validation, error paths |
-| api | Public API surface | SDK exports, contract entrypoints |
+| Label         | Description                     | Maps to                           |
+| ------------- | ------------------------------- | --------------------------------- |
+| frontend      | React demo app                  | `app/`                            |
+| sdk           | TypeScript client SDK           | `packages/client`                 |
+| contracts     | Soroban smart contract          | `contracts/`                      |
+| circuits      | Circom circuit & ZK tooling     | `circuits/`                       |
+| testing       | Tests and test infrastructure   | Various test directories          |
+| dx            | Developer experience & tooling  | Tooling, scripts, configuration   |
+| a11y          | Accessibility                   | UI/UX components                  |
+| ux            | User experience & polish        | UI/UX components                  |
+| security      | Security & robustness           | Security-related code             |
+| e2e           | End-to-end script               | `scripts/e2e.ts`                  |
+| refactor      | Code structure improvements     | Codebase-wide                     |
+| performance   | Speed & resource usage          | Performance-critical code         |
+| roadmap       | Larger feature from the roadmap | Planned features                  |
+| architecture  | Structural / design decisions   | Architecture proposals, ADRs      |
+| tech-debt     | Known shortcuts to pay down     | Deferred cleanups                 |
+| observability | Logging, metrics, tracing       | Observability code                |
+| i18n          | Internationalization            | User-facing strings               |
+| harden        | Robustness hardening            | Input validation, error paths     |
+| api           | Public API surface              | SDK exports, contract entrypoints |
 
 ### GitHub Default Labels
 
-| Label | Description | Maps to |
-|-------|-------------|---------|
-| good first issue | Good for newcomers | Any area, suitable for new contributors |
-| documentation | Improvements or additions to documentation | `docs/`, README files, code comments |
-| bug | Something isn't working | Any area with defects |
-| duplicate | This issue or pull request already exists | N/A |
-| enhancement | New feature or request | Any area |
-| help wanted | Extra attention is needed | Any area needing help |
-| invalid | This doesn't seem right | N/A |
-| question | Further information is requested | N/A |
-| wontfix | This will not be worked on | N/A |
+| Label            | Description                                | Maps to                                 |
+| ---------------- | ------------------------------------------ | --------------------------------------- |
+| good first issue | Good for newcomers                         | Any area, suitable for new contributors |
+| documentation    | Improvements or additions to documentation | `docs/`, README files, code comments    |
+| bug              | Something isn't working                    | Any area with defects                   |
+| duplicate        | This issue or pull request already exists  | N/A                                     |
+| enhancement      | New feature or request                     | Any area                                |
+| help wanted      | Extra attention is needed                  | Any area needing help                   |
+| invalid          | This doesn't seem right                    | N/A                                     |
+| question         | Further information is requested           | N/A                                     |
+| wontfix          | This will not be worked on                 | N/A                                     |
 
 ### Special Labels
 
-| Label | Description | Maps to |
-|-------|-------------|---------|
+| Label        | Description                        | Maps to                    |
+| ------------ | ---------------------------------- | -------------------------- |
 | Stellar Wave | Issues in the Stellar wave program | Stellar Wave program tasks |
 
 ## Dead code (knip)
 
 `knip.jsonc` states that **zero issues is the baseline**. A knip finding is resolved by **deleting the code or wiring it into the running app** — never by adding a reference that exists only to satisfy the checker.
 
-- Do not add barrel files (`index.ts`) whose stated purpose is to make knip see components as referenced. If nothing imports the barrel, knip reports the barrel *and* the components, so the workaround makes the report worse, not better.
+- Do not add barrel files (`index.ts`) whose stated purpose is to make knip see components as referenced. If nothing imports the barrel, knip reports the barrel _and_ the components, so the workaround makes the report worse, not better.
 - Import components by path (`./components/Foo`) rather than through a barrel.
 - If a component is not rendered by the app, either adopt it into the render tree or delete it. Leaving it in place with a fake reference misleads anyone reading the directory to understand the UI.
 - Do not add `knip.jsonc` entries to silence a finding for the same reason.
@@ -97,6 +97,14 @@ screen readers, so keyboard reachability, visible focus, and the polite live
 region are load-bearing. A change that makes the UI quieter for sighted users
 is a regression even when it looks like a cleanup.
 
+## Code Formatting
+
+This repository uses Prettier for formatting. The baseline was established in a single bulk commit (`388bcd83218b7385edef30ec0e30a729583b4dcc`) to avoid obscuring real diffs. You can configure your local git to skip this commit in `git blame` output:
+
+```bash
+git config blame.ignoreRevsFile .git-blame-ignore-revs
+```
+
 ## Filing an issue
 
 Use the templates in `.github/ISSUE_TEMPLATE/`: **Bug Report** for defects, **Feature Request** for new capabilities, and **Refactor / Architecture Proposal** for restructuring work — when there is no bug and no new feature, but there is a current shape, a proposed shape, a blast radius, and a migration path (e.g. moving code between packages, changing the contract's storage layout, changing the circuit's public signals). The refactor template requires the "where" (current state with file paths) and a behaviour-preservation plan, because those are the two things a refactor issue most often leaves out.
@@ -116,18 +124,21 @@ The SDK (`@sharibo/client`) has a committed snapshot of its public API surface i
 If your change is intentional (e.g., renaming a function, adding a new export):
 
 1. Make your code change and run the test:
+
    ```bash
    npm run test -- packages/client/src/api-surface.test.ts
    ```
-   
+
 2. The test will fail with a diff showing what changed.
 
 3. Review the diff carefully to confirm it matches your intent.
 
 4. Update `packages/client/api-surface.json` to match the new API:
+
    ```bash
    npm run test -- packages/client/src/api-surface.test.ts --reporter=json > /tmp/api.json
    ```
+
    Then copy the actual exports into `api-surface.json`.
 
 5. Commit both your code changes and the updated `api-surface.json` together. This makes it easy to see in the PR what the API change is.
@@ -138,12 +149,12 @@ If the test fails unexpectedly, it means you've inadvertently changed the public
 
 Decide which workspace a new file (or a moved one) belongs to before writing code. The authoritative answer is the ownership map and layer diagram in **[docs/architecture.md](docs/architecture.md)**; as a quick decision list:
 
-| What you're writing | Where it lives |
-| ------------------- | -------------- |
-| Pure crypto — Poseidon hashing, Merkle trees, identity/nullifier derivation, field arithmetic, no I/O | `packages/core` |
+| What you're writing                                                                                       | Where it lives    |
+| --------------------------------------------------------------------------------------------------------- | ----------------- |
+| Pure crypto — Poseidon hashing, Merkle trees, identity/nullifier derivation, field arithmetic, no I/O     | `packages/core`   |
 | Anything touching Stellar RPC — contract calls, proof generation, amount/address encoding, network config | `packages/client` |
-| Anything touching the DOM — React components, browser-only UI state | `app/` |
-| One-off operator tooling — smoke probes, the e2e round runner, migrations | `scripts/` |
+| Anything touching the DOM — React components, browser-only UI state                                       | `app/`            |
+| One-off operator tooling — smoke probes, the e2e round runner, migrations                                 | `scripts/`        |
 
 Two rules are load-bearing and will be enforced in review:
 
@@ -190,11 +201,11 @@ contributors to ignore red.
 
 Concretely, for `scripts/`:
 
-| | |
-|---|---|
-| **Default** — `npm test --workspace=scripts` | Hermetic. Glob is `*.test.ts`. Stub `fetch`, or point at a local `http.createServer`. |
-| **Live** — `npm run test:live --workspace=scripts` (`just scripts-test-live`) | Opt-in. May reach friendbot / Horizon / testnet. Naming convention: `*.live.ts`. |
-| **Probe** — `npm run smoke` | The live read-only deployment health check. Not part of any suite. |
+|                                                                               |                                                                                       |
+| ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| **Default** — `npm test --workspace=scripts`                                  | Hermetic. Glob is `*.test.ts`. Stub `fetch`, or point at a local `http.createServer`. |
+| **Live** — `npm run test:live --workspace=scripts` (`just scripts-test-live`) | Opt-in. May reach friendbot / Horizon / testnet. Naming convention: `*.live.ts`.      |
+| **Probe** — `npm run smoke`                                                   | The live read-only deployment health check. Not part of any suite.                    |
 
 Rules of thumb:
 

@@ -13,7 +13,9 @@ export function Stepper({ step }: { step: 0 | 1 | 2 | 3 }) {
           aria-current={i === step ? "step" : undefined}
           className={`${styles.step} ${i < step ? styles.done : i === step ? styles.active : ""}`}
         >
-          <span className={styles.stepDot} aria-hidden="true">{i < step ? "✓" : i + 1}</span>
+          <span className={styles.stepDot} aria-hidden="true">
+            {i < step ? "✓" : i + 1}
+          </span>
           {label}
         </div>
       ))}

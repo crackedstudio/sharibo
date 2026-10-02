@@ -39,8 +39,7 @@ export const MAX_CIRCLE_SIZE = 2 ** TREE_LEVELS;
 
 // ── Identity ──────────────────────────────────────────────────────────────────
 
-export const FR_MODULUS =
-  0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001n;
+export const FR_MODULUS = 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001n;
 
 const STROOPS_PER_XLM = 10_000_000n;
 
@@ -141,15 +140,13 @@ export class MerkleTree {
 
 // ── Proof / verify ────────────────────────────────────────────────────────────
 
-export const verificationKeyToContractFormat = vi.fn(
-  (_vk: unknown): ContractVerificationKey => ({
-    alpha: new Uint8Array(96),
-    beta: new Uint8Array(192),
-    gamma: new Uint8Array(192),
-    delta: new Uint8Array(192),
-    ic: [new Uint8Array(96), new Uint8Array(96), new Uint8Array(96), new Uint8Array(96)],
-  }),
-);
+export const verificationKeyToContractFormat = vi.fn((_vk: unknown): ContractVerificationKey => ({
+  alpha: new Uint8Array(96),
+  beta: new Uint8Array(192),
+  gamma: new Uint8Array(192),
+  delta: new Uint8Array(192),
+  ic: [new Uint8Array(96), new Uint8Array(96), new Uint8Array(96), new Uint8Array(96)],
+}));
 
 export const generateProof = vi.fn(async () => ({
   proof: {
@@ -157,7 +154,15 @@ export const generateProof = vi.fn(async () => ({
     b: new Uint8Array(192),
     c: new Uint8Array(96),
   } as ContractProof,
-  snarkjsProof: { pi_a: ["0", "0", "1"], pi_b: [["0","0"],["0","0"],["1","0"]], pi_c: ["0","0","1"] },
+  snarkjsProof: {
+    pi_a: ["0", "0", "1"],
+    pi_b: [
+      ["0", "0"],
+      ["0", "0"],
+      ["1", "0"],
+    ],
+    pi_c: ["0", "0", "1"],
+  },
   publicSignals: ["77", "12345", "99"],
   nullifierHash: 77n,
   root: 12345n,
@@ -179,10 +184,8 @@ export const estimateClaimFee = vi.fn(
 // ── Contract ──────────────────────────────────────────────────────────────────
 
 export const connect = vi.fn(
-  async (
-    _config: ShariboNetworkConfig,
-    _keypair: unknown,
-  ): Promise<ShariboClient> => ({}) as ShariboClient,
+  async (_config: ShariboNetworkConfig, _keypair: unknown): Promise<ShariboClient> =>
+    ({}) as ShariboClient,
 );
 
 export const createCircle = vi.fn(
@@ -241,8 +244,11 @@ export const cancelCircle = vi.fn(
 export const getCircleCount = vi.fn(async (): Promise<bigint> => 1n);
 
 export const hasClaimed = vi.fn(
-  async (_client: ShariboClient, _circleId: CircleId, _nullifierHash: NullifierHash): Promise<boolean> =>
-    false,
+  async (
+    _client: ShariboClient,
+    _circleId: CircleId,
+    _nullifierHash: NullifierHash,
+  ): Promise<boolean> => false,
 );
 
 // ── SDK facade ────────────────────────────────────────────────────────────────
@@ -268,7 +274,7 @@ export class ShariboSDK {
     this.networkConfig = networkConfig;
     this.signer = signer;
     this.publicKey = publicKey;
-    this.client = ({} as ShariboClient);
+    this.client = {} as ShariboClient;
   }
 
   static async connect(
@@ -281,7 +287,7 @@ export class ShariboSDK {
     const publicKey =
       typeof keypairOrSigner?.publicKey === "function"
         ? keypairOrSigner.publicKey()
-        : keypairOrSigner?.publicKey ?? "MOCK_PUBLIC_KEY";
+        : (keypairOrSigner?.publicKey ?? "MOCK_PUBLIC_KEY");
     return new ShariboSDK(config, keypairOrSigner, publicKey);
   }
 
@@ -314,7 +320,6 @@ export class ShariboSDK {
   }
 }
 
-
 // ── Re-exports the UI layer needs (kept in sync with App.tsx's imports) ──────
 
 export {
@@ -334,8 +339,16 @@ export {
 } from "../../packages/client/src/errors.js";
 
 export { networkOf, NETWORKS } from "../../packages/client/src/networks.js";
-export { makeCircleId, makeNullifierHash, makeExternalNullifier } from "../../packages/client/src/brand.js";
-export type { CircleId, NullifierHash, ExternalNullifier } from "../../packages/client/src/brand.js";
+export {
+  makeCircleId,
+  makeNullifierHash,
+  makeExternalNullifier,
+} from "../../packages/client/src/brand.js";
+export type {
+  CircleId,
+  NullifierHash,
+  ExternalNullifier,
+} from "../../packages/client/src/brand.js";
 
 // ── Artifact prefetch / event plumbing ───────────────────────────────────────
 //

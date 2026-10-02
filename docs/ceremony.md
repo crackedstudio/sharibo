@@ -13,13 +13,13 @@ This document is an **executable runbook** for when the project runs a genuine m
 
 ## Prerequisites
 
-| Item | Expected |
-| ---- | -------- |
-| Circuit | `circuits/membership.circom` generated from template + `config.json` (with `recipientHash`) |
-| Tooling | `circom` 2.1.6+ (repo tested with 2.2.3), `snarkjs` 0.7.6 (`circuits/package.json`) |
-| Curve | `bls12381` |
-| Powers-of-Tau | `circuits/build/pot12_bls12381_final.ptau` (phase 1 complete; see `setup.sh`) |
-| R1CS | `circuits/build/membership.r1cs` from `npm run compile` |
+| Item          | Expected                                                                                    |
+| ------------- | ------------------------------------------------------------------------------------------- |
+| Circuit       | `circuits/membership.circom` generated from template + `config.json` (with `recipientHash`) |
+| Tooling       | `circom` 2.1.6+ (repo tested with 2.2.3), `snarkjs` 0.7.6 (`circuits/package.json`)         |
+| Curve         | `bls12381`                                                                                  |
+| Powers-of-Tau | `circuits/build/pot12_bls12381_final.ptau` (phase 1 complete; see `setup.sh`)               |
+| R1CS          | `circuits/build/membership.r1cs` from `npm run compile`                                     |
 
 Recruit contributors who will **destroy** their toxic waste after contributing and who do **not** collude (different orgs, different jurisdictions, different hardware).
 
@@ -55,7 +55,7 @@ cd circuits
   "Contributor Name / org — YYYY-MM-DD"
 ```
 
-Pass the **output** zkey of contributor *n* as the **input** to contributor *n+1*. Rename paths per round (`membership_0001.zkey` → `membership_0002.zkey`, …).
+Pass the **output** zkey of contributor _n_ as the **input** to contributor _n+1_. Rename paths per round (`membership_0001.zkey` → `membership_0002.zkey`, …).
 
 Manual equivalent:
 

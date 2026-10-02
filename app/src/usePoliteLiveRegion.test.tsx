@@ -11,7 +11,9 @@ function Harness() {
       <button onClick={() => announce("Error: price update failed.")}>announce failure</button>
       <button onClick={() => announce("Help: Generating a fresh admin…")}>announce help</button>
       <button onClick={() => announce("")}>announce empty</button>
-      <button onClick={() => announce("Help: Creating the circle on testnet…")}>announce creating</button>
+      <button onClick={() => announce("Help: Creating the circle on testnet…")}>
+        announce creating
+      </button>
       <LiveRegion message={message} />
     </div>
   );

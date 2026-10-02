@@ -51,7 +51,9 @@ test("demo flow: create a circle, fund five members, prove, claim", async ({ pag
   // instead of a bare timeout on the result card.
   await expect(result.or(appError)).toBeVisible({ timeout: PROVE_AND_CLAIM });
   if (await appError.count()) {
-    throw new Error(`the app reported an error during the claim: ${await appError.first().innerText()}`);
+    throw new Error(
+      `the app reported an error during the claim: ${await appError.first().innerText()}`,
+    );
   }
 
   await expect(result.getByRole("heading", { name: "Payout landed" })).toBeVisible();

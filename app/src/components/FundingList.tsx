@@ -20,18 +20,21 @@ export function FundingList({
   showRefundInfo?: boolean;
 }) {
   const { t } = useI18n();
-  
+
   return (
     <>
       <h2>Fund</h2>
       {showRefundInfo && (
-        <p className="sub" style={{ marginBottom: '1rem' }}>
+        <p className="sub" style={{ marginBottom: "1rem" }}>
           {t("cancel.refundInfo")}
         </p>
       )}
       <div className="members">
         {members.map((m, i) => (
-          <div key={i} className={`member ${m.funded ? "funded" : ""} ${m.pending ? "pending" : ""}`}>
+          <div
+            key={i}
+            className={`member ${m.funded ? "funded" : ""} ${m.pending ? "pending" : ""}`}
+          >
             <span className="member-addr">
               {t("fund.memberLabel", { index: i + 1 })} · {short(m.keypair.publicKey())}
             </span>
@@ -43,7 +46,10 @@ export function FundingList({
                   ✓ funded ↗
                 </a>
                 {showRefundInfo && (
-                  <span className="refund-indicator" style={{ marginInlineStart: '0.5rem', color: 'var(--color-warning-text)' }}>
+                  <span
+                    className="refund-indicator"
+                    style={{ marginInlineStart: "0.5rem", color: "var(--color-warning-text)" }}
+                  >
                     {t("cancel.willBeRefunded")}
                   </span>
                 )}

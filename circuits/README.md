@@ -60,7 +60,7 @@ single-contributor entropy from `/dev/urandom`, no multi-party ceremony has
 run). That has a direct consequence for automation:
 
 - **CI must consume the committed `verification_key.json`, never generate a
-  new one.** A CI-generated setup would produce a *different, untrusted* key:
+  new one.** A CI-generated setup would produce a _different, untrusted_ key:
   every proof it verifies would fail against the key the contract actually
   stores. The `circuit` CI job therefore runs `npm run setup` with
   `ALLOW_KEY_ROTATION=0`, so setup's fast-path over the committed key is the
@@ -97,12 +97,12 @@ recompile + re-setup + key rotation, and record the new version in
 
 These four scripts are the mechanical claim behind "the artifacts we serve are the ones we built." An auditor will ask exactly what each guarantees. Failure-path fixtures live in `test/fixtures/` and run as part of `npm test` (see `test/checkers.test.js`).
 
-| Script | Guarantees | Threat addressed | Distinct exit codes |
-| ------ | ---------- | ---------------- | ------------------- |
-| `scripts/verify-artifacts.mjs` (`npm run verify-artifacts`) | Each of `verification_key.json`, `membership.wasm`, and `membership_final.zkey` matches a committed SHA-256 (sidecar `*.sha256` and/or `artifact-hashes.json`). An empty or malformed expected-hash file **fails** — never passes vacuously. | Substituted `.zkey` / `.wasm` (attacker-held toxic waste, or a circuit that proves a different statement than the on-chain vk). | `10` missing artifact · `11` missing hash · `12` hash mismatch · `13` malformed/empty hash |
-| `scripts/check-poseidon-constants.mjs` (`npm run check-constants`) | Circom Poseidon255(t=3) round constants + MDS equal the npm `poseidon2` instance; packages share the same `major.minor` family. | Silent cross-implementation drift: browser proofs verify locally but fail on-chain (or vice versa). | `20` version family mismatch · `21` constant/MDS mismatch · `22` parse/structural error |
-| `scripts/verify-setup.sh` (`npm run verify-setup`) | `snarkjs zkey verify` accepts the final zkey against this r1cs + ptau, and exporting the zkey reproduces the committed `verification_key.json` exactly. | Corrupt / foreign zkey, or a silent ceremony re-run that rotated the proving key without updating the committed vk. | `30` missing artifact · `31` zkey verify failed · `32` exported vk ≠ committed |
-| `app/scripts/sync-circuit.mjs` | Runs `verify-artifacts` before copying build outputs into `app/public/circuits/`. Propagates the verifier's exit code. | Serving unverified proving artifacts to the browser demo. | Passes through `verify-artifacts` codes |
+| Script                                                             | Guarantees                                                                                                                                                                                                                                   | Threat addressed                                                                                                                | Distinct exit codes                                                                        |
+| ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `scripts/verify-artifacts.mjs` (`npm run verify-artifacts`)        | Each of `verification_key.json`, `membership.wasm`, and `membership_final.zkey` matches a committed SHA-256 (sidecar `*.sha256` and/or `artifact-hashes.json`). An empty or malformed expected-hash file **fails** — never passes vacuously. | Substituted `.zkey` / `.wasm` (attacker-held toxic waste, or a circuit that proves a different statement than the on-chain vk). | `10` missing artifact · `11` missing hash · `12` hash mismatch · `13` malformed/empty hash |
+| `scripts/check-poseidon-constants.mjs` (`npm run check-constants`) | Circom Poseidon255(t=3) round constants + MDS equal the npm `poseidon2` instance; packages share the same `major.minor` family.                                                                                                              | Silent cross-implementation drift: browser proofs verify locally but fail on-chain (or vice versa).                             | `20` version family mismatch · `21` constant/MDS mismatch · `22` parse/structural error    |
+| `scripts/verify-setup.sh` (`npm run verify-setup`)                 | `snarkjs zkey verify` accepts the final zkey against this r1cs + ptau, and exporting the zkey reproduces the committed `verification_key.json` exactly.                                                                                      | Corrupt / foreign zkey, or a silent ceremony re-run that rotated the proving key without updating the committed vk.             | `30` missing artifact · `31` zkey verify failed · `32` exported vk ≠ committed             |
+| `app/scripts/sync-circuit.mjs`                                     | Runs `verify-artifacts` before copying build outputs into `app/public/circuits/`. Propagates the verifier's exit code.                                                                                                                       | Serving unverified proving artifacts to the browser demo.                                                                       | Passes through `verify-artifacts` codes                                                    |
 
 `app/scripts/sync-circuit.mjs` and CI should treat non-zero exits as distinct causes (not a single "verification failed" bucket).
 
@@ -135,7 +135,7 @@ standalone without regenerating anything:
 
 ### What it proves — and what it does not
 
-- **Proves**: the final zkey is a self-consistent Groth16 key for *this* r1cs under *this*
+- **Proves**: the final zkey is a self-consistent Groth16 key for _this_ r1cs under _this_
   powers-of-tau file (detecting corruption, or a key assembled from a different circuit or ptau);
   and the exported vk faithfully reproduces the committed canonical key (detecting a silent
   regeneration).
@@ -229,10 +229,10 @@ The relevant line in the output is:
 `circuits/constraints.json` commits the expected `snarkjs r1cs info`
 constraint count per tree depth. Two checks enforce it:
 
-| Check | Where | What it covers |
-| ----- | ----- | -------------- |
-| `npm test` (issue #272) | `circuits/test/membership.test.js` | The **one** depth the suite is configured for (`circuits/config.json`, overridable with `LEVELS`) — recompiled via `circom_tester`, count read back from the `.r1cs` it already produced. |
-| `npm run check-constraints` (issue #536) | `circuits/scripts/check-constraints.cjs` | **Every** guarded depth — recompiles at depths 4, 8, 16 and 20 and compares each against the committed value. |
+| Check                                    | Where                                    | What it covers                                                                                                                                                                            |
+| ---------------------------------------- | ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm test` (issue #272)                  | `circuits/test/membership.test.js`       | The **one** depth the suite is configured for (`circuits/config.json`, overridable with `LEVELS`) — recompiled via `circom_tester`, count read back from the `.r1cs` it already produced. |
+| `npm run check-constraints` (issue #536) | `circuits/scripts/check-constraints.cjs` | **Every** guarded depth — recompiles at depths 4, 8, 16 and 20 and compares each against the committed value.                                                                             |
 
 Both fail, with a message explaining how to update the file, when the compiled
 count drifts — so an innocuous circuit edit or a Poseidon package bump can't
@@ -246,7 +246,7 @@ fails if a guarded depth has **no** committed count, and also if
 cannot drift apart in either direction. `membership.test.js` asserts the same
 equality, which catches a deleted entry even on a local depth-4-only run. The
 list of guarded depths lives in `GUARDED_DEPTHS` in the script, deliberately
-*not* derived from the file's own keys: iterating over those would let a
+_not_ derived from the file's own keys: iterating over those would let a
 deletion quietly shrink the guard's remit.
 
 Run by the **Circuits** GitHub Actions workflow
@@ -263,7 +263,6 @@ the two numbers differ (at depth 4: 3,757 raw vs 1,453 non-linear).
 > `.github/workflows/circuits.yml` and regenerate the counts deliberately
 > rather than letting CI resolve "latest circom".
 
-
 ### Breakdown estimate
 
 > The recipient binding (issue #266) was folded into the circuit after this
@@ -272,13 +271,13 @@ the two numbers differ (at depth 4: 3,757 raw vs 1,453 non-linear).
 > Use the committed `constraints.json` (or `snarkjs r1cs info`) for the exact
 > constraint count.
 
-| Component                                                              | Constraints (approx.) |
-| ---------------------------------------------------------------------- | --------------------- |
-| `commitmentHasher` — Poseidon(identityNullifier, identitySecret)       | ~315                  |
-| `nullifierHasher` — Poseidon(identityNullifier, externalNullifier)     | ~315                  |
-| `MerkleTreeChecker` (4 levels × Poseidon + mux per level)              | ~820                  |
-| Booleanity + recipient-binding plumbing (rest)                         | the remainder         |
-| **Total (measured, `snarkjs r1cs info`)**                              | **3,757**             |
+| Component                                                          | Constraints (approx.) |
+| ------------------------------------------------------------------ | --------------------- |
+| `commitmentHasher` — Poseidon(identityNullifier, identitySecret)   | ~315                  |
+| `nullifierHasher` — Poseidon(identityNullifier, externalNullifier) | ~315                  |
+| `MerkleTreeChecker` (4 levels × Poseidon + mux per level)          | ~820                  |
+| Booleanity + recipient-binding plumbing (rest)                     | the remainder         |
+| **Total (measured, `snarkjs r1cs info`)**                          | **3,757**             |
 
 Each `Poseidon255(2)` instance costs roughly 315 constraints (BLS12-381
 Poseidon with a 3-element state and 8 full + 57 partial rounds — see the
@@ -345,7 +344,7 @@ artifact, a ceremony, a deployed contract, and a committed key file:
    (and add the depth to `GUARDED_DEPTHS` in
    `scripts/check-constraints.cjs` so it is guarded), plus the "Current count"
    line above and the "3,757 constraints" string in `app/src/App.tsx`. State
-   the reason in the commit message — the file is the record of *why* a count
+   the reason in the commit message — the file is the record of _why_ a count
    moved, and a bare number bump is indistinguishable from a mistake.
 5. **Update and redeploy the contract** — set
    `MAX_CIRCLE_SIZE = 1 << levels` in `contracts/sharibo/src/lib.rs`, then
@@ -393,12 +392,12 @@ timings below were measured for this table, one at a time, on **2026-09-29**:
 - A single Groth16 contribution. A contribution only re-randomises the same
   key, so it does not affect proving cost or `.zkey` size.
 
-| levels | capacity (2^levels) | constraints | `.zkey` size | wasm size | witness gen | **full prove** | verify |
-|-------:|---------------------:|------------:|-------------:|----------:|------------:|---------------:|-------:|
-| 4     | 16                  | 3,757       | 2.3 MB       | 957 KB    | 78 ms       | **488 ms**      | 16.8 ms |
-| 8     | 256                 | 6,265       | 3.8 MB       | 966 KB    | 82 ms       | **811 ms**      | 15.4 ms |
-| 16    | 65,536              | 11,281      | 7.0 MB       | 995 KB    | 84 ms       | **1,317 ms**   | 13.4 ms |
-| 20    | 1,048,576           | 13,789      | 8.3 MB       | 1,020 KB  | 94 ms       | **2,196 ms**   | 23.1 ms |
+| levels | capacity (2^levels) | constraints | `.zkey` size | wasm size | witness gen | **full prove** |  verify |
+| -----: | ------------------: | ----------: | -----------: | --------: | ----------: | -------------: | ------: |
+|      4 |                  16 |       3,757 |       2.3 MB |    957 KB |       78 ms |     **488 ms** | 16.8 ms |
+|      8 |                 256 |       6,265 |       3.8 MB |    966 KB |       82 ms |     **811 ms** | 15.4 ms |
+|     16 |              65,536 |      11,281 |       7.0 MB |    995 KB |       84 ms |   **1,317 ms** | 13.4 ms |
+|     20 |           1,048,576 |      13,789 |       8.3 MB |  1,020 KB |       94 ms |   **2,196 ms** | 23.1 ms |
 
 Reading the table:
 
@@ -413,12 +412,12 @@ Reading the table:
 - **Every guarded depth is browser-viable**; depth 20 at ~2.2 s is the
   practical ceiling, and that is native M1 performance — budget more for a
   mid-range phone. Depths above ~20 were not measured.
-- **On-chain claim cost does *not* scale with depth.** Groth16 verification is
+- **On-chain claim cost does _not_ scale with depth.** Groth16 verification is
   two pairings plus a linear combination over `nPublic` (4, fixed), not over
   the constraint count. The measured 51.5% of Soroban's 100M instruction budget
   for depth 4 (`contracts/BENCHMARKS.md`, 51,507,065 CPU units) applies
   essentially unchanged at every depth — the verifier never reads the `.r1cs`.
-  Depth is therefore a *client-side* cost, not an on-chain one.
+  Depth is therefore a _client-side_ cost, not an on-chain one.
 - `.zkey` is what a member downloads to prove: 8.3 MB at depth 20 against
   2.3 MB at depth 4. That download is often a larger share of the wait than
   the proving itself on a cold cache.
@@ -433,4 +432,3 @@ measurements above support that: depth 8 costs under a second to prove while
 still allowing 256 members. The shipped `levels: 4` remains appropriate for
 the demo (16-member ceiling) and should not be read as a production sizing
 recommendation.
-

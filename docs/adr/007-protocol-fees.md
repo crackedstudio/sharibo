@@ -26,7 +26,7 @@ way, in the same call, by the same actor. There is no protocol-wide constant
 and no governance — a circle is an admin-created standalone instrument, so
 the fee belongs to the instrument, not to a global policy table. The fee is a
 basis-point rate (`fee_bps`) and a payout address (`fee_recipient`), both
-stored *on the circle* and readable via `get_circle` before a member funds —
+stored _on the circle_ and readable via `get_circle` before a member funds —
 so the fee is visible up front, never discovered after a win.
 
 ### Mutable or immutable?
@@ -36,7 +36,7 @@ the `Circle` entry once; there is no setter and no entrypoint that can change
 them later (`fee_is_immutable_after_creation` pins this). This avoids a
 front-running class where an admin adjusts the fee between funding and claim,
 and keeps the fee axiomatically stable for the whole lifecycle. The
-consequence is that `Circle`'s layout changes — see *Consequences* for the
+consequence is that `Circle`'s layout changes — see _Consequences_ for the
 migration story.
 
 ### Validation
@@ -72,7 +72,7 @@ amount`, which a restored proptest (`mod proptest_apply_fee`) asserts across
    `schema_version` is bumped to `2`.
 2. `create_circle` gains `fee_bps` and `fee_recipient` parameters, validated
    per the rules above.
-3. `apply_fee` is restored as a free function (see *Context* for the math).
+3. `apply_fee` is restored as a free function (see _Context_ for the math).
 4. `claim` splits the pot:
 
    - `let (fee, net) = apply_fee(&env, circle.fee_bps, payout);`

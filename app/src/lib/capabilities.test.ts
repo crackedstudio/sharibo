@@ -39,9 +39,7 @@ describe("getCapabilityReport", () => {
 
     expect(report.ok).toBe(false);
     expect(report.missing).toEqual(["secure-context"]);
-    expect(report.details).toEqual([
-      expect.stringContaining("HTTPS or localhost"),
-    ]);
+    expect(report.details).toEqual([expect.stringContaining("HTTPS or localhost")]);
   });
 
   it("passes when every required browser capability is present", () => {

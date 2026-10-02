@@ -28,7 +28,8 @@ const CONFIG_PATH = path.join(CIRCUITS_DIR, "config.json");
 const CONSTRAINTS_PATH = path.join(CIRCUITS_DIR, "build/constraints.json");
 const BENCHMARKS_MD = path.join(__dirname, "../BENCHMARKS.md");
 
-const perf = typeof globalThis.performance !== "undefined" ? globalThis.performance : { now: () => 0 };
+const perf =
+  typeof globalThis.performance !== "undefined" ? globalThis.performance : { now: () => 0 };
 
 function parseArgN(): number {
   const idx = process.argv.indexOf("--n");
@@ -174,4 +175,3 @@ main().catch((err) => {
   console.error(err);
   process.exitCode = 1;
 });
-

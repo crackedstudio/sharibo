@@ -272,9 +272,7 @@ export function formatBundleAsMarkdown(bundle: DebugBundle): string {
     "```",
     "",
     "#### Last error",
-    bundle.lastError
-      ? "```\n" + bundle.lastError + "\n```"
-      : "_none_",
+    bundle.lastError ? "```\n" + bundle.lastError + "\n```" : "_none_",
     "",
     "#### Artifact hashes",
     "```",

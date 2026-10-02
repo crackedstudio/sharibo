@@ -17,8 +17,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 process.loadEnvFile(process.env.SHARIBO_ENV_FILE || path.join(__dirname, "..", ".env"));
 
 const RPC_URL = process.env.STELLAR_RPC_URL;
-const HORIZON_URL =
-  process.env.STELLAR_HORIZON_URL || "https://horizon-testnet.stellar.org";
+const HORIZON_URL = process.env.STELLAR_HORIZON_URL || "https://horizon-testnet.stellar.org";
 const NETWORK_PASSPHRASE = process.env.STELLAR_NETWORK_PASSPHRASE;
 const CONTRACT_ID = process.env.SHARIBO_CONTRACT_ID;
 
@@ -155,11 +154,11 @@ async function checkEvidenceFreshness(): Promise<DiagResult> {
       return { name, ok: true, detail: "No current TX hash found in deployments.md" };
     }
     const txHash = match[1];
-    
+
     const res = await fetch(`${HORIZON_URL}/transactions/${txHash}`, {
       signal: AbortSignal.timeout(10_000),
     });
-    
+
     if (res.status === 404) {
       return { name, ok: false, detail: `Transaction ${txHash} not found (testnet likely reset)` };
     }

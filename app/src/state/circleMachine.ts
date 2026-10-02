@@ -134,7 +134,14 @@ export async function diagnose(e: unknown): Promise<{ message: UiError; retryabl
     const health = await checkContractDeployed(config.rpcUrl, config.contractId);
     if (!health.ok) {
       return {
-        message: { key: "error.testnetReset", vars: { message: health.message ?? "The testnet appears to have been reset and your circle no longer exists." } },
+        message: {
+          key: "error.testnetReset",
+          vars: {
+            message:
+              health.message ??
+              "The testnet appears to have been reset and your circle no longer exists.",
+          },
+        },
         retryable: false,
       };
     }
@@ -207,14 +214,7 @@ export interface FailedCircle extends CircleSnapshot {
 }
 
 export type CircleStatus =
-  | "idle"
-  | "creating"
-  | "funding"
-  | "readyToClaim"
-  | "proving"
-  | "claiming"
-  | "claimed"
-  | "failed";
+  "idle" | "creating" | "funding" | "readyToClaim" | "proving" | "claiming" | "claimed" | "failed";
 
 interface IdleState {
   status: "idle";
@@ -295,7 +295,13 @@ export type CircleAction =
   | { type: "start"; busy: string }
   | { type: "setBusy"; busy: string; clearRejection?: boolean }
   | { type: "created"; circle: CircleSnapshot }
-  | { type: "patchMember"; index: number; pending?: boolean; fundHash?: string; freighterKey?: string }
+  | {
+      type: "patchMember";
+      index: number;
+      pending?: boolean;
+      fundHash?: string;
+      freighterKey?: string;
+    }
   | {
       type: "syncChain";
       pot: bigint;
@@ -309,7 +315,12 @@ export type CircleAction =
   | { type: "beginProve"; busy: string }
   | { type: "proveStage"; stage: Exclude<ClaimStage, "submitting">; proveElapsedSeconds?: number }
   | { type: "proveTick" }
-  | { type: "beginClaim"; proof: ContractProof; nullifierHash: bigint; provingElapsedMs: number | null }
+  | {
+      type: "beginClaim";
+      proof: ContractProof;
+      nullifierHash: bigint;
+      provingElapsedMs: number | null;
+    }
   | { type: "claimed"; claimResult: CircleClaimResult; nullifierClaimed: boolean }
   | { type: "recordRejection"; rejection: string }
   | { type: "clearBusy" }
@@ -571,7 +582,9 @@ function emptyClaimFields(): Pick<
   };
 }
 
-function toFailedCircle(state: Exclude<CircleState, IdleState | CreatingState | FailedState>): FailedCircle {
+function toFailedCircle(
+  state: Exclude<CircleState, IdleState | CreatingState | FailedState>,
+): FailedCircle {
   const snapshot = snapshotOf({ ...state, members: clearPending(state.members) });
   if (state.status === "claiming") {
     return {
@@ -596,14 +609,17 @@ function toFailedCircle(state: Exclude<CircleState, IdleState | CreatingState | 
   return { ...snapshot, ...emptyClaimFields() };
 }
 
-function busyLive<S extends FundingState | ReadyToClaimState | ProvingState | ClaimingState | ClaimedState>(
-  state: S,
-  busy: S["busy"],
-): S {
+function busyLive<
+  S extends FundingState | ReadyToClaimState | ProvingState | ClaimingState | ClaimedState,
+>(state: S, busy: S["busy"]): S {
   return { ...state, busy };
 }
 
-function restoreFailed(state: FailedState, busy: string | null, clearRejection: boolean): CircleState | null {
+function restoreFailed(
+  state: FailedState,
+  busy: string | null,
+  clearRejection: boolean,
+): CircleState | null {
   if (!state.circle) return null;
   const circle = state.circle;
   const snapshot = snapshotOf(circle);
@@ -748,7 +764,8 @@ function reduceCircle(state: CircleState, action: CircleAction, dev: boolean): C
 
     case "beginProve": {
       if (!canBeginProve(state)) return reject(state, action, dev);
-      const source = state.status === "readyToClaim" ? state : state.status === "failed" ? state.circle : null;
+      const source =
+        state.status === "readyToClaim" ? state : state.status === "failed" ? state.circle : null;
       if (!source) return reject(state, action, dev);
       const previousCircleId = state.previousCircleId;
       return {
@@ -812,7 +829,11 @@ function reduceCircle(state: CircleState, action: CircleAction, dev: boolean): C
     }
 
     case "clearBusy": {
-      if (state.status === "funding" || state.status === "readyToClaim" || state.status === "claimed") {
+      if (
+        state.status === "funding" ||
+        state.status === "readyToClaim" ||
+        state.status === "claimed"
+      ) {
         return busyLive(state, null);
       }
       if (state.status === "proving" || state.status === "claiming") {
@@ -953,7 +974,10 @@ function reduceSync(
   const synced = syncedSnapshot(state, action);
 
   if (state.status === "funding" || state.status === "readyToClaim") {
-    const status: "funding" | "readyToClaim" = isCircleFullyFunded(synced.pot, synced.contributionXlm)
+    const status: "funding" | "readyToClaim" = isCircleFullyFunded(
+      synced.pot,
+      synced.contributionXlm,
+    )
       ? "readyToClaim"
       : "funding";
     return { ...state, ...synced, status };
@@ -980,7 +1004,10 @@ function syncedSnapshot(
   };
 }
 
-function resumeInto(state: IdleState, action: Extract<CircleAction, { type: "resume" }>): CircleState {
+function resumeInto(
+  state: IdleState,
+  action: Extract<CircleAction, { type: "resume" }>,
+): CircleState {
   const previousCircleId = state.previousCircleId;
   if (action.claimResult && action.proof && action.nullifierHash !== null) {
     return {

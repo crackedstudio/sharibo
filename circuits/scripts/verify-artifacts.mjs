@@ -164,7 +164,9 @@ export function loadManifest(circuitsDir) {
   }
 }
 
-export function runVerify(circuitsDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")) {
+export function runVerify(
+  circuitsDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), ".."),
+) {
   const result = verifyArtifacts({
     artifacts: defaultArtifacts(circuitsDir),
     manifest: loadManifest(circuitsDir),
@@ -181,8 +183,7 @@ export function runVerify(circuitsDir = path.resolve(path.dirname(fileURLToPath(
 }
 
 const isMain =
-  process.argv[1] &&
-  path.resolve(fileURLToPath(import.meta.url)) === path.resolve(process.argv[1]);
+  process.argv[1] && path.resolve(fileURLToPath(import.meta.url)) === path.resolve(process.argv[1]);
 
 if (isMain) {
   process.exit(runVerify());

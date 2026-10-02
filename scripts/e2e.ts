@@ -159,9 +159,7 @@ function printStepSummary(): void {
   console.log("\nStep timing summary:");
   console.log(`  ${"phase".padEnd(nameWidth)}  duration    status`);
   for (const s of stepResults) {
-    console.log(
-      `  ${s.name.padEnd(nameWidth)}  ${`${s.durationMs}ms`.padEnd(10)}  ${s.status}`,
-    );
+    console.log(`  ${s.name.padEnd(nameWidth)}  ${`${s.durationMs}ms`.padEnd(10)}  ${s.status}`);
   }
   console.log(`  ${"total".padEnd(nameWidth)}  ${`${totalMs}ms`.padEnd(10)}`);
 }
@@ -226,7 +224,11 @@ function writeRunArtifact(): string {
   );
   writeFileSync(
     filePath,
-    JSON.stringify(runArtifact, (_key, value) => (typeof value === "bigint" ? value.toString() : value), 2),
+    JSON.stringify(
+      runArtifact,
+      (_key, value) => (typeof value === "bigint" ? value.toString() : value),
+      2,
+    ),
   );
   return filePath;
 }
@@ -293,7 +295,12 @@ async function main() {
 
     const vkJson = JSON.parse(
       readFileSync(
-        path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "circuits", "verification_key.json"),
+        path.join(
+          path.dirname(fileURLToPath(import.meta.url)),
+          "..",
+          "circuits",
+          "verification_key.json",
+        ),
         "utf8",
       ),
     );
@@ -305,7 +312,9 @@ async function main() {
     circleId = makeCircleId(REUSE_CIRCLE);
     console.log(`\n2. Reusing existing circle ${circleId} (--reuse-circle)...`);
     const existing = await adminSdk.getCircle(circleId);
-    console.log(`   circle ${circleId}: round=${existing.round}, pot=${existing.pot}, size=${existing.size}`);
+    console.log(
+      `   circle ${circleId}: round=${existing.round}, pot=${existing.pot}, size=${existing.size}`,
+    );
   } else {
     console.log("\n2. Creating the circle...");
     const { result, hash } = await withTimeout(
@@ -364,21 +373,25 @@ async function main() {
     "build",
   );
   verbose("generating proof with wasm + zkey from", circuitsBuildDir);
-  const { proof, nullifierHash, root: proofRoot, externalNullifier: proofExternalNullifier } =
-    await timed("proof generation", () =>
-      generateProof(
-        {
-          identityNullifier: claimant.identity.identityNullifier,
-          identitySecret: claimant.identity.identitySecret,
-          pathElements: merkleProof.pathElements,
-          pathIndices: merkleProof.pathIndices,
-          root: tree.root,
-          externalNullifier,
-        },
-        path.join(circuitsBuildDir, "membership_js", "membership.wasm"),
-        path.join(circuitsBuildDir, "membership_final.zkey"),
-      ),
-    );
+  const {
+    proof,
+    nullifierHash,
+    root: proofRoot,
+    externalNullifier: proofExternalNullifier,
+  } = await timed("proof generation", () =>
+    generateProof(
+      {
+        identityNullifier: claimant.identity.identityNullifier,
+        identitySecret: claimant.identity.identitySecret,
+        pathElements: merkleProof.pathElements,
+        pathIndices: merkleProof.pathIndices,
+        root: tree.root,
+        externalNullifier,
+      },
+      path.join(circuitsBuildDir, "membership_js", "membership.wasm"),
+      path.join(circuitsBuildDir, "membership_final.zkey"),
+    ),
+  );
   assert(proofRoot === tree.root, "proof's public root must match the circle's root");
   assert(
     proofExternalNullifier === externalNullifier,
@@ -432,14 +445,10 @@ async function main() {
   assert(claimedCircle.pot === 0n, "pot should be empty after claim");
   assert(claimedCircle.round === 1, "round should have advanced to 1");
   console.log("   payout confirmed: pot -> 0, round -> 1");
-  
+
   // Log fee estimate vs actual charged delta if available
   if (claimResult.feeCharged) {
-    console.log(
-      "   claim fee charged:",
-      claimResult.feeCharged.toString(),
-      "stroops",
-    );
+    console.log("   claim fee charged:", claimResult.feeCharged.toString(), "stroops");
   }
 
   if (SKIP_REPLAY) {
@@ -487,8 +496,7 @@ async function main() {
       const message = (err as Error).message;
       secondClaimRejected = true;
       assert(
-        message.includes("Error(Contract, #4)",
-      ),
+        message.includes("Error(Contract, #4)"),
         `expected AlreadyClaimed (#4), got: ${message.split("\n")[0]}`,
       );
       console.log("   rejected as expected (AlreadyClaimed):", message.split("\n")[0]);
