@@ -238,4 +238,3 @@ export function formatXlmDisplay(
   }).format(negative ? -asNumber : asNumber);
   return formatted;
 }
-

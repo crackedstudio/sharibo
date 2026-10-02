@@ -46,9 +46,10 @@ export function ClaimSection({
               checked={claimantIndex === i}
               onChange={() => onSelectClaimant(i)}
               disabled={!!busy || !!m.ineligible}
-              title={m.ineligible ? m.ineligibleReason ?? "Ineligible to claim" : undefined}
+              title={m.ineligible ? (m.ineligibleReason ?? "Ineligible to claim") : undefined}
             />
-            member {i + 1}{m.ineligible ? ` (ineligible)` : ""}
+            member {i + 1}
+            {m.ineligible ? ` (ineligible)` : ""}
           </label>
         ))}
       </div>

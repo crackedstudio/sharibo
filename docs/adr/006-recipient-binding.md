@@ -21,12 +21,14 @@ Two approaches exist to solve this:
 Add `signal input recipientHash;` and a squaring constraint `recipientSquare <== recipientHash * recipientHash;` to the membership circuit. The public signal order becomes `[nullifierHash, root, externalNullifier, recipientHash]`.
 
 **Pros:**
+
 - Flexible: recipient can change each round (member picks a fresh address per claim)
 - Minimal circuit change: +1 constraint (squaring), no change to commitment structure
 - No trusted setup re-generation needed (only the existing zkey changes)
 - Compatible with existing identity generation (`Poseidon(nullifier, secret)`)
 
 **Cons:**
+
 - Prover must know the recipient at proof generation time
 - Contract must verify the additional public signal
 - Slightly larger public input vector (4 signals instead of 3)
@@ -36,6 +38,7 @@ Add `signal input recipientHash;` and a squaring constraint `recipientSquare <==
 ### Approach B — Join-time binding (arity-3 commitment)
 
 Change the commitment hasher from `Poseidon255(2)` to `Poseidon255(3)`:
+
 ```
 commitment = Poseidon(identityNullifier, identitySecret, payoutAddressHash)
 ```
@@ -43,11 +46,13 @@ commitment = Poseidon(identityNullifier, identitySecret, payoutAddressHash)
 The member commits to a payout address at join time. The circuit proves the recipient matches the committed one without revealing which member it is.
 
 **Pros:**
+
 - Harder to get wrong: payout address is fixed for the circle's lifetime
 - No per-proof recipient selection needed (simpler UX for claimers)
 - Recipient is cryptographically bound to identity, not just the proof
 
 **Cons:**
+
 - Inflexible: payout address cannot change after joining
 - A member who loses access to that address loses their turn permanently
 - Requires changing the identity generation and all existing commitments
@@ -59,6 +64,7 @@ The member commits to a payout address at join time. The circuit proves the reci
 ### Why per-proof binding is better for Sharibo
 
 Sharibo's core use case is a **rotating savings circle** where members take turns claiming. The payout address should ideally be:
+
 - **Fresh each round** (privacy: no address reuse across rounds)
 - **Chosen at claim time** (flexibility: member can use a different address)
 - **Not tied to identity** (the identity is for membership, not payment routing)
@@ -72,6 +78,7 @@ Additionally, join-time binding would invalidate all existing circles and requir
 **Adopt per-proof binding (Approach A)** as the recipient-binding strategy. Join-time binding (Approach B) becomes a documented non-goal.
 
 Specifically:
+
 1. The `recipientHash` public input added in #266 is the canonical approach.
 2. Do not change the identity commitment to arity-3 (`Poseidon(nullifier, secret, payoutHash)`).
 3. Document this decision so future contributors understand why the commitment is arity-2.

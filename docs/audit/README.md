@@ -6,13 +6,13 @@ This folder collects material an engagement team would need to reproduce claims,
 
 ## Pinned toolchain (reproduce the build)
 
-| Tool | Version / source |
-| ---- | ---------------- |
-| Rust | `rustc 1.92.0` (see root README); target `wasm32v1-none` for Soroban |
-| `stellar` CLI | `23.4.1` (README) |
-| Node.js | `v24.11.1` (README); workspaces root + `circuits/` + `packages/client/` |
-| circom | `2.2.3` (built from source in original build); pragma `2.1.6` in template |
-| snarkjs | `0.7.6` (`circuits/package.json`, via `npx`) |
+| Tool          | Version / source                                                          |
+| ------------- | ------------------------------------------------------------------------- |
+| Rust          | `rustc 1.92.0` (see root README); target `wasm32v1-none` for Soroban      |
+| `stellar` CLI | `23.4.1` (README)                                                         |
+| Node.js       | `v24.11.1` (README); workspaces root + `circuits/` + `packages/client/`   |
+| circom        | `2.2.3` (built from source in original build); pragma `2.1.6` in template |
+| snarkjs       | `0.7.6` (`circuits/package.json`, via `npx`)                              |
 
 ## Reproduce circuit + verification artifacts
 

@@ -40,8 +40,7 @@ const RPC = "VITE_STELLAR_RPC_URL";
 const PASSPHRASE = "VITE_STELLAR_NETWORK_PASSPHRASE";
 const TOKEN = "VITE_TEST_TOKEN_CONTRACT_ID";
 
-const CONTRACT_SHAPE_SUFFIX =
-  "expected a 56-character Stellar contract ID starting with 'C'";
+const CONTRACT_SHAPE_SUFFIX = "expected a 56-character Stellar contract ID starting with 'C'";
 
 /**
  * Reloads config.ts (fresh module) with `withEnv` stubbed into
@@ -166,7 +165,10 @@ describe("VITE_STELLAR_NETWORK_PASSPHRASE", () => {
   });
 
   it("accepts any non-empty value (no shape check)", async () => {
-    const mod = await loadConfig({ ...VALID, [PASSPHRASE]: "Public Global Stellar Network ; September 2015" });
+    const mod = await loadConfig({
+      ...VALID,
+      [PASSPHRASE]: "Public Global Stellar Network ; September 2015",
+    });
     expect(mod.configError).toEqual([]);
   });
 });

@@ -8,7 +8,6 @@ export function assertInField(value: bigint, name: string): void {
   }
 }
 
-
 export {
   validateContributionAmount,
   ContributionValidationError,
@@ -17,7 +16,8 @@ export {
   FRIENDBOT_ACCOUNT_XLM,
 } from "./amount.js";
 
-const FP_MODULUS = 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaabn;
+const FP_MODULUS =
+  0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaabn;
 
 const G1_SIZE = 96;
 const G2_SIZE = 192;

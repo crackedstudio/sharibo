@@ -15,17 +15,17 @@ const SIGN_AND_SEND_FIXTURE = {
 } as const;
 
 test("transient simulate-phase failure recovers", async () => {
-    let simulateCalls = 0;
-    let signAndSendCalls = 0;
-    const mockTx = {
-      signAndSend: async () => {
-        signAndSendCalls++;
-        return {
-          result: undefined,
-          sendTransactionResponse: { hash: "0xabc" },
-        };
-      },
-    };
+  let simulateCalls = 0;
+  let signAndSendCalls = 0;
+  const mockTx = {
+    signAndSend: async () => {
+      signAndSendCalls++;
+      return {
+        result: undefined,
+        sendTransactionResponse: { hash: "0xabc" },
+      };
+    },
+  };
 
   const mockClient = {
     fund: () => {
@@ -64,11 +64,15 @@ test("post-submit failure surfaces immediately without a second submission", asy
 
   await assert.rejects(
     async () =>
-      await fund(mockClient, { circleId: 0n, from: "G..." }, {
-        ...DEFAULT_RETRY_POLICY,
-        sleep: async () => {},
-      }),
-    /504/
+      await fund(
+        mockClient,
+        { circleId: 0n, from: "G..." },
+        {
+          ...DEFAULT_RETRY_POLICY,
+          sleep: async () => {},
+        },
+      ),
+    /504/,
   );
   assert.strictEqual(simulateCalls, 1);
   assert.strictEqual(signAndSendCalls, 1);
@@ -88,10 +92,7 @@ test("fund() maps signAndSend fixture to TxResult (hash, ledger, feeCharged bigi
   assert.strictEqual(result.hash, "abc123");
   assert.strictEqual(result.ledger, 1_234_567);
   assert.strictEqual(result.feeCharged, 100n);
-  assert.strictEqual(
-    result.explorerUrl,
-    "https://stellar.expert/explorer/testnet/tx/abc123",
-  );
+  assert.strictEqual(result.explorerUrl, "https://stellar.expert/explorer/testnet/tx/abc123");
 });
 
 test("populateTxResult throws when hash is missing or empty", () => {
@@ -138,11 +139,7 @@ const __dirname = path.dirname(__filename);
 const SCHEMA_VERSION = 2;
 
 function goldenPath(filename: string): string {
-  const underTestVectors = path.resolve(
-    __dirname,
-    "../../../../test-vectors/xdr",
-    filename,
-  );
+  const underTestVectors = path.resolve(__dirname, "../../../../test-vectors/xdr", filename);
   if (fs.existsSync(underTestVectors)) return underTestVectors;
   return path.resolve(
     __dirname,

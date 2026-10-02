@@ -98,9 +98,7 @@ describe("App — landing screen", () => {
 
   it("renders the tagline copy", () => {
     renderApp();
-    expect(
-      screen.getByText(/private rotating savings circle/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/private rotating savings circle/i)).toBeInTheDocument();
   });
 
   it("renders the testnet-only disclaimer fineprint", () => {
@@ -122,7 +120,9 @@ describe("App — landing screen", () => {
     fireEvent.change(select, { target: { value: "es" } });
 
     expect(screen.getByText(/tanda privada y rotativa en stellar/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /lanzar una tanda de 5 miembros/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /lanzar una tanda de 5 miembros/i }),
+    ).toBeInTheDocument();
     expect(screen.getByText(/solo testnet\./i)).toBeInTheDocument();
   });
 });

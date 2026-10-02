@@ -115,10 +115,9 @@ export function parseJsPoseidon2(tsPath) {
   const rcMatch = /const ROUND_CONSTANTS\s*=\s*\[([\s\S]*?)\];/.exec(src);
   const mdsMatch = /const MDS_MATRIX\s*=\s*\[([\s\S]*?)\];/.exec(src);
   if (!rcMatch || !mdsMatch) {
-    throw Object.assign(
-      new Error(`JS: could not find ROUND_CONSTANTS / MDS_MATRIX in ${tsPath}`),
-      { exitCode: EXIT.PARSE_ERROR },
-    );
+    throw Object.assign(new Error(`JS: could not find ROUND_CONSTANTS / MDS_MATRIX in ${tsPath}`), {
+      exitCode: EXIT.PARSE_ERROR,
+    });
   }
   const roundConstants = parseHexLiterals(rcMatch[1]);
   const rowRe = /\[([^\[\]]+)\]/g;
@@ -160,9 +159,7 @@ export function diffMds(a, b, log = console.error) {
     }
     for (let j = 0; j < a[i].length; j++) {
       if (a[i][j] !== b[i][j]) {
-        log(
-          `MISMATCH MDS[${i}][${j}]:\n  circom: ${hex(a[i][j])}\n  js:     ${hex(b[i][j])}`,
-        );
+        log(`MISMATCH MDS[${i}][${j}]:\n  circom: ${hex(a[i][j])}\n  js:     ${hex(b[i][j])}`);
         return false;
       }
     }
@@ -236,8 +233,7 @@ export function checkPoseidonConstants({
 
     return {
       ok: true,
-      message:
-        `Poseidon constants OK (t=${T}): ${circomConsts.roundConstants.length} round constants, ${T}×${T} MDS — circom ↔ poseidon2 match.`,
+      message: `Poseidon constants OK (t=${T}): ${circomConsts.roundConstants.length} round constants, ${T}×${T} MDS — circom ↔ poseidon2 match.`,
       versions: { js: js.raw, circom: circom.raw },
     };
   } catch (err) {
@@ -269,8 +265,7 @@ export function main() {
 }
 
 const isMain =
-  process.argv[1] &&
-  path.resolve(fileURLToPath(import.meta.url)) === path.resolve(process.argv[1]);
+  process.argv[1] && path.resolve(fileURLToPath(import.meta.url)) === path.resolve(process.argv[1]);
 
 if (isMain) {
   main();

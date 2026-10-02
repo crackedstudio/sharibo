@@ -20,10 +20,7 @@ export interface ScriptConfig {
 
 // ---- Helpers ----
 
-const repoRoot = path.resolve(
-  path.dirname(fileURLToPath(import.meta.url)),
-  "..",
-);
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 /**
  * Which env file to read. Defaults to the repo-root `.env`.

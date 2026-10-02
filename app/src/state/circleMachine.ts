@@ -1,9 +1,4 @@
-import {
-  ContractError,
-  RpcError,
-  ProvingError,
-  InvalidInputError,
-} from "@sharibo/client";
+import { ContractError, RpcError, ProvingError, InvalidInputError } from "@sharibo/client";
 import { FriendbotRetryableError } from "../lib/friendbot.js";
 import { config } from "../config.js";
 import { checkContractDeployed } from "../lib/testnetHealth.js";
@@ -127,7 +122,14 @@ export async function diagnose(e: unknown): Promise<{ message: UiError; retryabl
     const health = await checkContractDeployed(config.rpcUrl, config.contractId);
     if (!health.ok) {
       return {
-        message: { key: "error.testnetReset", vars: { message: health.message ?? "The testnet appears to have been reset and your circle no longer exists." } },
+        message: {
+          key: "error.testnetReset",
+          vars: {
+            message:
+              health.message ??
+              "The testnet appears to have been reset and your circle no longer exists.",
+          },
+        },
         retryable: false,
       };
     }

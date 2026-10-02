@@ -2,13 +2,13 @@
 
 This directory contains the Soroban smart contracts for **Sharibo**, private rotating savings circles on Stellar. The payout of the shared pot is anonymized by a real Groth16 zero-knowledge proof, verified on-chain.
 
-| Method          | Kind  | Purpose                                                            |
-| --------------- | ----- | ------------------------------------------------------------------ |
-| `create_circle` | write | Admin creates a circle (Merkle root, contribution, size, vk, fee).  |
-| `fund`          | write | Deposit one `contribution` into the current round's pot.           |
-| `claim`         | write | Pay the pot (minus protocol fee) to `recipient` given a valid proof.|
-| `get_circle`    | view  | Read circle state.                                                 |
-| `has_claimed`   | view  | Whether a nullifier has already been used in this circle.          |
+| Method          | Kind  | Purpose                                                              |
+| --------------- | ----- | -------------------------------------------------------------------- |
+| `create_circle` | write | Admin creates a circle (Merkle root, contribution, size, vk, fee).   |
+| `fund`          | write | Deposit one `contribution` into the current round's pot.             |
+| `claim`         | write | Pay the pot (minus protocol fee) to `recipient` given a valid proof. |
+| `get_circle`    | view  | Read circle state.                                                   |
+| `has_claimed`   | view  | Whether a nullifier has already been used in this circle.            |
 
 ---
 
@@ -48,10 +48,10 @@ To execute the test suite, run the following command from the `contracts/` direc
 
 Every write entrypoint (`create_circle`, `fund`, `claim`, `cancel_circle`) calls `extend_ttl` on all touched persistent and instance entries. The two constants governing this behaviour are defined and justified in [`contracts/sharibo/src/lib.rs`](sharibo/src/lib.rs):
 
-| Constant | Value | Wall-clock equivalent |
-| --- | --- | --- |
-| `LEDGER_THRESHOLD` | 100 ledgers | ≈ 8 minutes |
-| `LEDGER_EXTEND_TO` | 500,000 ledgers | ≈ 29 days |
+| Constant           | Value           | Wall-clock equivalent |
+| ------------------ | --------------- | --------------------- |
+| `LEDGER_THRESHOLD` | 100 ledgers     | ≈ 8 minutes           |
+| `LEDGER_EXTEND_TO` | 500,000 ledgers | ≈ 29 days             |
 
 The Soroban network maximum for persistent entry TTL is **535,679 ledgers (≈ 30 days)** ([Stellar CLI docs](https://developers.stellar.org/docs/tools/cli/cookbook/extend-contract-wasm)). `LEDGER_EXTEND_TO` is set below that ceiling intentionally, giving a small safety margin while keeping circles live for as long as the network allows.
 
@@ -81,8 +81,8 @@ The membership circuit's depth is declared in [`circuits/config.json`](../circui
 (`"levels": 4`). The Merkle tree it generates holds `2^levels` commitments at
 most, so the contract enforces the same bound at circle creation:
 
-| Constant | Value | Source of truth |
-| --- | --- | --- |
+| Constant                                                                    | Value           | Source of truth                 |
+| --------------------------------------------------------------------------- | --------------- | ------------------------------- |
 | `MAX_CIRCLE_SIZE` (in [`contracts/sharibo/src/lib.rs`](sharibo/src/lib.rs)) | `2^levels = 16` | `circuits/config.json` `levels` |
 
 `create_circle` rejects `size > MAX_CIRCLE_SIZE` with
@@ -118,13 +118,15 @@ Deployments are performed using the `stellar` CLI.
 ### Deployment Commands
 
 1. **Deploy the WASM contract onto Testnet**:
+
    ```bash
    stellar contract deploy \
      --wasm target/wasm32v1-none/release/sharibo.wasm \
      --source admin \
      --network testnet
    ```
-   *This command returns the Contract ID (e.g., `CB64IZIBBSPUY63UMIVACKWDKRFNH6WJ2EPAOLM7QR4ZI6IJOT4N2LCF`), which should be recorded in your environment variables.*
+
+   _This command returns the Contract ID (e.g., `CB64IZIBBSPUY63UMIVACKWDKRFNH6WJ2EPAOLM7QR4ZI6IJOT4N2LCF`), which should be recorded in your environment variables._
 
 2. **Retrieve the Test Token ID (using native XLM Stellar Asset Contract on Testnet)**:
    ```bash
@@ -139,7 +141,8 @@ Below is the documentation for all public contract methods.
 
 ### `create_circle`
 
-* **Signature**:
+- **Signature**:
+
   ```rust
   pub fn create_circle(
       env: Env,
@@ -154,43 +157,46 @@ Below is the documentation for all public contract methods.
       fee_recipient: Address,
   ) -> u64
   ```
+
   (See [`docs/adr/007-protocol-fees.md`](../docs/adr/007-protocol-fees.md) for
   the fee design.)
 
-* **Purpose**:
+- **Purpose**:
   Allows an administrator to initialize a new rotating savings circle with a designated payment token, Merkle root containing member commitments, expected contribution amount per member, total circle size (number of members), an optional round deadline (in ledgers), and the Groth16 verification key (`vk`). `fee_bps` (0–10,000 basis points; `0` = no fee) and `fee_recipient` commit an immutable protocol fee paid out of the pot on each `claim`.
 
-* **Preconditions**:
-  * The admin must authorize the transaction (`admin.require_auth()`).
-  * The contribution amount and circle size must be valid and must not result in an integer overflow when multiplied to determine the pot target.
-  * `fee_bps` must be `<= 10_000` (`Error::InvalidFeeParams` otherwise), and when `fee_bps > 0` the `fee_recipient` must not be the contract itself (`Error::InvalidRecipient`).
+- **Preconditions**:
+  - The admin must authorize the transaction (`admin.require_auth()`).
+  - The contribution amount and circle size must be valid and must not result in an integer overflow when multiplied to determine the pot target.
+  - `fee_bps` must be `<= 10_000` (`Error::InvalidFeeParams` otherwise), and when `fee_bps > 0` the `fee_recipient` must not be the contract itself (`Error::InvalidRecipient`).
 
 ---
 
 ### `fund`
 
-* **Signature**:
+- **Signature**:
+
   ```rust
   pub fn fund(env: Env, circle_id: u64, from: Address)
   ```
 
-* **Purpose**:
+- **Purpose**:
   Deposits exactly one `contribution` amount of tokens into the designated circle's pot for the current round.
 
-* **Preconditions**:
-  * The funder must authorize the transfer (`from.require_auth()`).
-  * The circle associated with `circle_id` must exist and must **not** be cancelled.
-  * The current round's pot must not be full. If the pot has already reached the target (`contribution * size`), further contributions are blocked.
-  * The funder must hold a sufficient balance of the circle's configured token.
+- **Preconditions**:
+  - The funder must authorize the transfer (`from.require_auth()`).
+  - The circle associated with `circle_id` must exist and must **not** be cancelled.
+  - The current round's pot must not be full. If the pot has already reached the target (`contribution * size`), further contributions are blocked.
+  - The funder must hold a sufficient balance of the circle's configured token.
 
-* **Open Funding Design**:
+- **Open Funding Design**:
   Funding is intentionally unshielded and public. Any address can call `fund` on behalf of a circle (not restricted to Merkle root members). This allows external benefactors to top up community pots.
 
 ---
 
 ### `claim`
 
-* **Signature**:
+- **Signature**:
+
   ```rust
   pub fn claim(
       env: Env,
@@ -202,7 +208,7 @@ Below is the documentation for all public contract methods.
   )
   ```
 
-* **Purpose**:
+- **Purpose**:
   Anonymously pays out the round pot (`contribution * size` minus the
   committed protocol fee) to the designated `recipient` address upon
   presenting a valid Groth16 zero-knowledge proof of membership. `claim`
@@ -212,43 +218,44 @@ Below is the documentation for all public contract methods.
   circle), and the net goes to `recipient`. The `claimed` event reports
   the full pot.
 
-* **Preconditions**:
-  * The circle associated with `circle_id` must exist and must **not** be cancelled.
-  * The pot must be fully funded (`pot == contribution * size`).
-  * The provided `external_nullifier` must match the expected SHA-256 round tag of the current round, computed as `SHA256(circle_id, round) mod r`. This binds the proof to the exact circle and round.
-  * The `nullifier_hash` must **not** have been previously used for any claim in this circle.
-  * The Groth16 ZK proof must verify successfully against the circle's stored verification key (`vk`) and public inputs (`[nullifier_hash, root, external_nullifier]`).
+- **Preconditions**:
+  - The circle associated with `circle_id` must exist and must **not** be cancelled.
+  - The pot must be fully funded (`pot == contribution * size`).
+  - The provided `external_nullifier` must match the expected SHA-256 round tag of the current round, computed as `SHA256(circle_id, round) mod r`. This binds the proof to the exact circle and round.
+  - The `nullifier_hash` must **not** have been previously used for any claim in this circle.
+  - The Groth16 ZK proof must verify successfully against the circle's stored verification key (`vk`) and public inputs (`[nullifier_hash, root, external_nullifier]`).
 
-* **Postconditions**:
-  * The nullifier hash is marked as spent in persistent storage.
-  * The entire pot balance is transferred to the `recipient` address.
-  * The circle's `pot` is reset to `0`, the `round` is incremented by `1`, and the `contributors` list is cleared.
+- **Postconditions**:
+  - The nullifier hash is marked as spent in persistent storage.
+  - The entire pot balance is transferred to the `recipient` address.
+  - The circle's `pot` is reset to `0`, the `round` is incremented by `1`, and the `contributors` list is cleared.
 
 ---
 
 ### `get_circle`
 
-* **Signature**:
+- **Signature**:
+
   ```rust
   pub fn get_circle(env: Env, circle_id: u64) -> Circle
   ```
 
-* **Purpose**:
+- **Purpose**:
   A view method to retrieve the complete public state and configuration of a circle (e.g., admin, token, Merkle root, round, current pot, and contributors).
 
-* **Preconditions**:
-  * The circle associated with `circle_id` must exist.
+- **Preconditions**:
+  - The circle associated with `circle_id` must exist.
 
 ### Events
 
 Every state-changing entrypoint emits a contract event so off-chain observers can react without polling `get_circle`.
 
-| Entrypoint | Topics | Data |
-| --- | --- | --- |
-| `create_circle` | `("circle", "created", circle_id)` | `(admin, token, contribution, size)` |
-| `fund` | `("circle", "funded", circle_id)` | `(from, new_pot, target)` |
-| `claim` | `("circle", "claimed", circle_id)` | `(round, amount, recipient)` |
-| `cancel_circle` | `("circle", "cancelled", circle_id)` | `(refunded_count, refunded_total)` |
+| Entrypoint      | Topics                               | Data                                 |
+| --------------- | ------------------------------------ | ------------------------------------ |
+| `create_circle` | `("circle", "created", circle_id)`   | `(admin, token, contribution, size)` |
+| `fund`          | `("circle", "funded", circle_id)`    | `(from, new_pot, target)`            |
+| `claim`         | `("circle", "claimed", circle_id)`   | `(round, amount, recipient)`         |
+| `cancel_circle` | `("circle", "cancelled", circle_id)` | `(refunded_count, refunded_total)`   |
 
 The `claim` event deliberately omits the nullifier hash: publishing it would give observers a linkability handle for correlating anonymized payouts.
 
@@ -258,17 +265,17 @@ The `claim` event deliberately omits the nullifier hash: publishing it would giv
 
 When a transaction reverts, Soroban returns a typed contract error of the form `Error(Contract, #Code)`. The canonical mapping — covering all eight current codes with SDK class, user-facing message, likely cause, and remedy — is in **[`docs/errors.md`](../docs/errors.md)**.
 
-| Code | Error Name | Trigger / Cause | What the Caller Should Do |
-| :---: | :--- | :--- | :--- |
-| **1** | `CircleNotFound` | The specified `circle_id` does not exist in persistent storage. | Verify that the circle ID is correct and was successfully created. |
-| **2** | `RoundNotFunded` | `claim` was called on a circle whose pot has not yet reached the required target size (`contribution * size`). | Ensure that the required number of contributors have successfully called `fund` for this round. |
-| **3** | `WrongRoundTag` | The presented `external_nullifier` does not match the expected SHA-256 round tag (`SHA256(circle_id, round) mod r`) of the current round. | Re-generate the proof with the correct round tag matching the circle's current round number. |
-| **4** | `AlreadyClaimed` | The `nullifier_hash` presented in `claim` has already been recorded in persistent storage as claimed. | Do not attempt to reuse a spent nullifier. Each member may only claim once per circle/round. |
-| **5** | `InvalidProof` | The Groth16 pairing check failed, or the public signal order/values did not match the proof statement. | Verify that the zero-knowledge proof was correctly generated, utilizing the correct secret, nullifier, path elements, and verification key. |
-| **6** | `RoundFull` | `fund` was called on a circle whose pot is already fully funded. | Wait for the current round to be claimed and advanced before attempting to fund the next round. |
-| **7** | `Overflow` | Checked arithmetic failed during contribution calculation or pot addition. | Avoid using absurdly large contribution amounts or circle sizes that overflow integer capacities. |
-| **8** | `CircleCancelled` | `fund`, `claim`, or `cancel_circle` was called on a circle that has already been cancelled. | Do not interact with a cancelled circle. Any funds were already refunded to the contributors. |
-| **9** | `InvalidCircleParams` | `create_circle` was given a zero size, a non-positive contribution, an invalid verification key length, or a creation-time overflow in `contribution * size`. | Correct the circle configuration before submitting the transaction. |
+| Code  | Error Name            | Trigger / Cause                                                                                                                                               | What the Caller Should Do                                                                                                                   |
+| :---: | :-------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------ | :------------------------------------------------------------------------------------------------------------------------------------------ |
+| **1** | `CircleNotFound`      | The specified `circle_id` does not exist in persistent storage.                                                                                               | Verify that the circle ID is correct and was successfully created.                                                                          |
+| **2** | `RoundNotFunded`      | `claim` was called on a circle whose pot has not yet reached the required target size (`contribution * size`).                                                | Ensure that the required number of contributors have successfully called `fund` for this round.                                             |
+| **3** | `WrongRoundTag`       | The presented `external_nullifier` does not match the expected SHA-256 round tag (`SHA256(circle_id, round) mod r`) of the current round.                     | Re-generate the proof with the correct round tag matching the circle's current round number.                                                |
+| **4** | `AlreadyClaimed`      | The `nullifier_hash` presented in `claim` has already been recorded in persistent storage as claimed.                                                         | Do not attempt to reuse a spent nullifier. Each member may only claim once per circle/round.                                                |
+| **5** | `InvalidProof`        | The Groth16 pairing check failed, or the public signal order/values did not match the proof statement.                                                        | Verify that the zero-knowledge proof was correctly generated, utilizing the correct secret, nullifier, path elements, and verification key. |
+| **6** | `RoundFull`           | `fund` was called on a circle whose pot is already fully funded.                                                                                              | Wait for the current round to be claimed and advanced before attempting to fund the next round.                                             |
+| **7** | `Overflow`            | Checked arithmetic failed during contribution calculation or pot addition.                                                                                    | Avoid using absurdly large contribution amounts or circle sizes that overflow integer capacities.                                           |
+| **8** | `CircleCancelled`     | `fund`, `claim`, or `cancel_circle` was called on a circle that has already been cancelled.                                                                   | Do not interact with a cancelled circle. Any funds were already refunded to the contributors.                                               |
+| **9** | `InvalidCircleParams` | `create_circle` was given a zero size, a non-positive contribution, an invalid verification key length, or a creation-time overflow in `contribution * size`. | Correct the circle configuration before submitting the transaction.                                                                         |
 
 ---
 
@@ -322,7 +329,8 @@ If a circle's persistent entry (or any Nullifier) is not written to for 29+ days
 4. **State Preservation**: Upon restoration, the entry reappears with its last-written value intact (round number, pot, contributors, etc. are preserved).
 
 See the [Soroban Documentation](https://developers.stellar.org/) for "Temporary State" and "State Archival" (Soroban 23.0+).
-  - `cpu_instruction_benchmarks`: Benchmarks and prints the precise CPU instructions consumed by write operations (e.g., `create_circle`, `fund`, `claim`) and asserts that they remain safely under the 100M limit.
+
+- `cpu_instruction_benchmarks`: Benchmarks and prints the precise CPU instructions consumed by write operations (e.g., `create_circle`, `fund`, `claim`) and asserts that they remain safely under the 100M limit.
 
 ### Running Coverage (LLVM / Rust)
 

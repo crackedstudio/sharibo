@@ -15,8 +15,7 @@ const ar = {
   "banner.limitationsShort": "القيود ↗",
 
   "env.setupRequired": "الإعداد مطلوب",
-  "env.setupIntro":
-    "لا يمكن تشغيل التطبيق لأن متغير بيئة واحد أو أكثر مفقود أو غير صالح.",
+  "env.setupIntro": "لا يمكن تشغيل التطبيق لأن متغير بيئة واحد أو أكثر مفقود أو غير صالح.",
   "env.setupHowTo":
     "انسخ app/.env.example إلى app/.env واملأ القيم أدناه، ثم أعد تشغيل خادم التطوير.",
   "env.setupDetails":
@@ -29,10 +28,8 @@ const ar = {
 
   "circle.stepperAria": "تقدم الدائرة",
 
-  "landing.tagline":
-    "جمعية ادخار دوّارة خاصة على Stellar، مع براهين معرفة صفرية حقيقية.",
-  "landing.sub.before":
-    "في كل جولة، يساهم الجميع. في كل جولة، يأخذ عضو واحد الوعاء. يثبت Sharibo",
+  "landing.tagline": "جمعية ادخار دوّارة خاصة على Stellar، مع براهين معرفة صفرية حقيقية.",
+  "landing.sub.before": "في كل جولة، يساهم الجميع. في كل جولة، يأخذ عضو واحد الوعاء. يثبت Sharibo",
   "landing.sub.em1": "من يحق له المطالبة",
   "landing.sub.middle": "دون أن يكشف أبدًا",
   "landing.sub.em2": "من",
@@ -49,22 +46,26 @@ const ar = {
   "common.startNewCircle": "ابدأ دائرة جديدة",
   "browser.unsupportedTitle": "يتطلب دعم المتصفح",
   "browser.unsupportedIntro": "يُنشئ Sharibo البرهان في متصفحك، لذا يلزم JavaScript.",
-  "browser.unsupportedDetails": "يفتقر هذا المتصفح إلى ميزة واحدة أو أكثر لازمة لتدفق برهان المعرفة الصفرية.",
+  "browser.unsupportedDetails":
+    "يفتقر هذا المتصفح إلى ميزة واحدة أو أكثر لازمة لتدفق برهان المعرفة الصفرية.",
   "browser.unsupportedMissing": "دعم المتصفح المفقود:",
-  "browser.unsupportedSecureContext": "افتح هذا التطبيق عبر HTTPS أو localhost. HTTP العادي على عنوان IP في الشبكة المحلية غير مدعوم.",
+  "browser.unsupportedSecureContext":
+    "افتح هذا التطبيق عبر HTTPS أو localhost. HTTP العادي على عنوان IP في الشبكة المحلية غير مدعوم.",
   "browser.unsupportedFooter": "استخدم متصفحًا حديثًا يدعم WebAssembly وBigInt وWeb Crypto.",
   "browser.capability.webassembly": "WebAssembly",
   "browser.capability.bigint": "BigInt",
   "browser.capability.cryptoSubtle": "Web Crypto (crypto.subtle)",
   "browser.capability.secureContext": "سياق آمن (HTTPS أو localhost)",
   "cancel.title": "إلغاء الدائرة",
-  "cancel.confirmation": "إلغاء هذه الدائرة؟\n\nسيُسترد {count} مساهم(ين) بمبلغ إجمالي {total} XLM.\n\nهذا الإجراء لا رجعة فيه. ستُغلق الدائرة نهائيًا.",
+  "cancel.confirmation":
+    "إلغاء هذه الدائرة؟\n\nسيُسترد {count} مساهم(ين) بمبلغ إجمالي {total} XLM.\n\nهذا الإجراء لا رجعة فيه. ستُغلق الدائرة نهائيًا.",
   "cancel.busy": "جارٍ إلغاء الدائرة واسترداد المساهمين…",
   "cancel.cancelled": "أُلغيت الدائرة",
   "cancel.cancelledMessage": "أُلغيت هذه الدائرة واستُردت أموال جميع المساهمين.",
   "cancel.refundInfo": "سيُسترد المساهمون التاليون إذا أُلغيت الدائرة:",
   "cancel.willBeRefunded": "→ سيُسترد",
-  "wallet.networkMismatch": "عدم تطابق الشبكة: محفظة Freighter لديك على {walletNetwork} لكن هذا التطبيق يتوقع {appNetwork}. افتح Freighter، وانقر على محدد الشبكة في أعلى اليمين، وبدّل إلى {appNetwork}.",
+  "wallet.networkMismatch":
+    "عدم تطابق الشبكة: محفظة Freighter لديك على {walletNetwork} لكن هذا التطبيق يتوقع {appNetwork}. افتح Freighter، وانقر على محدد الشبكة في أعلى اليمين، وبدّل إلى {appNetwork}.",
   "wallet.unknownNetwork": "تكوين شبكة غير معروف. يُرجى التحقق من إعدادات Freighter.",
   "ring.label.revealed":
     "دائرة من {count} أعضاء — تمت المطالبة بالوعاء. مستلم الدفع غير قابل للربط بأي عضو.",
@@ -121,8 +122,7 @@ const ar = {
 
   "result.heading": "وصل الدفع",
   "result.recipientIntro": "مستلم جديد",
-  "result.recipientOutro":
-    "استلم الوعاء. لم يظهر في أي مكان آخر في هذه الدائرة.",
+  "result.recipientOutro": "استلم الوعاء. لم يظهر في أي مكان آخر في هذه الدائرة.",
   "result.recipientLabel": "عنوان المستلم",
   "result.viewClaimTx": "عرض معاملة المطالبة ↗",
   "result.hashLabel": "تجزئة معاملة المطالبة",
@@ -137,21 +137,18 @@ const ar = {
   "result.startNewCircleAlt": "↺ ابدأ دائرة جديدة",
   "result.livesOnChain": "الدائرة #{id} تبقى على السلسلة إلى الأبد —",
   "result.viewExplorer": "عرض في المستكشف ↗",
-  "result.newCircleOutro":
-    ". بدء دائرة جديدة يُنشئ هويات جديدة وسجلًا جديدًا تمامًا على السلسلة.",
+  "result.newCircleOutro": ". بدء دائرة جديدة يُنشئ هويات جديدة وسجلًا جديدًا تمامًا على السلسلة.",
 
   "copy.aria": "نسخ {label}",
   "copy.title": "نسخ {label}",
 
-  "busy.generating":
-    "جارٍ إنشاء مسؤول جديد + 5 هويات أعضاء والتمويل عبر friendbot…",
+  "busy.generating": "جارٍ إنشاء مسؤول جديد + 5 هويات أعضاء والتمويل عبر friendbot…",
   "busy.creating": "جارٍ إنشاء الدائرة على الشبكة التجريبية…",
   "busy.claiming": "جارٍ المطالبة…",
   "busy.refunding": "جارٍ استرداد جولة جديدة، ثم إعادة تشغيل نفس nullifier البرهان…",
   "busy.replaying": "جارٍ إعادة تشغيل الـ nullifier المستخدم…",
 
-  "rejection.unexpected":
-    "غير متوقع: قُبلت المطالبة المعاد تشغيلها (هذا لا ينبغي أن يحدث أبدًا).",
+  "rejection.unexpected": "غير متوقع: قُبلت المطالبة المعاد تشغيلها (هذا لا ينبغي أن يحدث أبدًا).",
 
   "error.generic": "حدث خطأ ما. يُرجى إعادة المحاولة.",
   "error.freighterNotTestnet":
@@ -167,14 +164,12 @@ const ar = {
   "liveRegion.claimStepReady": "اكتمل تحديث السعر. خطوة المطالبة جاهزة.",
 
   "resume.heading": "استئناف الدائرة #{id}؟",
-  "resume.subtitle":
-    "يبدو أنك حدّثت الصفحة أثناء نشاط دائرة. هل تريد الاستئناف؟",
+  "resume.subtitle": "يبدو أنك حدّثت الصفحة أثناء نشاط دائرة. هل تريد الاستئناف؟",
   "resume.resumeButton": "استئناف الدائرة",
   "resume.discardButton": "تجاهل",
 
   "errorBoundary.heading": "حدث خلل ما",
-  "errorBoundary.body":
-    "واجه العرض خطأ غير متوقع ولا يمكنه المتابعة بأمان من هنا.",
+  "errorBoundary.body": "واجه العرض خطأ غير متوقع ولا يمكنه المتابعة بأمان من هنا.",
   "errorBoundary.reload": "البدء من جديد",
   "errorBoundary.fineprint": "إذا استمر هذا،",
   "errorBoundary.issueLink": "افتح مشكلة على GitHub ↗",

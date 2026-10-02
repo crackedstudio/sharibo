@@ -22,7 +22,7 @@ const sdk = await ShariboSDK.connect(
     networkPassphrase: "Test SDF Network ; September 2015",
   },
   Keypair.random(),
-  { retryPolicy: { maxRetries: 3, baseDelayMs: 500 } }
+  { retryPolicy: { maxRetries: 3, baseDelayMs: 500 } },
 );
 ```
 
@@ -54,7 +54,12 @@ await sdk.fund({ circleId, from: memberPublicKey });
 Proof generation runs locally. It does not require a connected SDK, only the free functions.
 
 ```ts
-import { generateIdentity, MerkleTree, generateProof, computeExternalNullifier } from "@sharibo/client";
+import {
+  generateIdentity,
+  MerkleTree,
+  generateProof,
+  computeExternalNullifier,
+} from "@sharibo/client";
 
 const identity = generateIdentity();
 const tree = MerkleTree.create(4, commitments);
@@ -113,12 +118,12 @@ Stellar amounts are handled in Stroops (1 XLM = 10,000,000 Stroops) using `bigin
 import { formatXlm, xlmToStroops, stroopsToXlm } from "@sharibo/client";
 
 const amount = xlmToStroops(1.5); // 15000000n
-console.log(formatXlm(amount));   // "1.5"
+console.log(formatXlm(amount)); // "1.5"
 ```
 
 ## 9. Retries and Observability
 
-Network requests in the Soroban testnet environment can occasionally fail. The SDK handles transient retries automatically. 
+Network requests in the Soroban testnet environment can occasionally fail. The SDK handles transient retries automatically.
 
 ```ts
 import { POLL_RETRY_POLICY } from "@sharibo/client";
@@ -142,6 +147,7 @@ const sdk = await ShariboSDK.connect(config, signer, {
 ## Node vs browser entry points
 
 The package ships a conditional `exports` map:
+
 - `browser`: Resolves to `src/index.browser.ts`, which includes background artifact pre-fetching logic.
 - `default` (Node, tests): Resolves to `src/index.ts`, free of side effects and safe for scripts/tests.
 
@@ -154,100 +160,100 @@ The public surface is small and explicit. `index.ts` re-exports exactly the valu
 ### Values
 
 ```ts
-AlreadyClaimedError
-CircleCancelledError
-CircleNotFoundError
-ContractError
-DEFAULT_RETRY_POLICY
-EXPLORER_NETWORKS
-InvalidInputError
-InvalidProofError
-MAX_CIRCLE_SIZE
-MerkleTree
-NETWORKS
-OverflowError
-PATIENT_RETRY_POLICY
-POLL_RETRY_POLICY
-ProvingError
-RoundFullError
-RoundNotFundedError
-RpcError
-STROOPS_PER_XLM
-SdkEventEmitter
-ShariboError
-ShariboSDK
-TREE_LEVELS
-WrongRoundTagError
-ZERO_VALUE
-cancelCircle
-claim
-clearContractClientCache
-computeDelay
-computeExternalNullifier
-computeNullifierHash
-computeRecipientHash
-connect
-connectReadOnly
-createCircle
-decodeContractError
-describeContractError
-describeError
-encodeG1
-encodeG2
-estimateClaimFee
-explorerTxUrl
-feToBytes
-formatXlm
-formatXlmDisplay
-fullProve
-fund
-g1ToBytes
-g2ToBytes
-generateIdentity
-generateProof
-getCircle
-getCircleCount
-getCircleStatus
-getContributors
-getPot
-getRound
-getStatus
-hasClaimed
-isTestnet
-makeCircleId
-networkOf
-parseContractErrorCode
-populateTxResult
-poseidon
-prove
-randomFieldElement
-resolveSigner
-stroopsToXlm
-validateCircuitInput
-validateContractProof
-validateContractVerificationKey
-verificationKeyToContractFormat
-verifyProofLocally
-withRetry
-xlmToStroops
+AlreadyClaimedError;
+CircleCancelledError;
+CircleNotFoundError;
+ContractError;
+DEFAULT_RETRY_POLICY;
+EXPLORER_NETWORKS;
+InvalidInputError;
+InvalidProofError;
+MAX_CIRCLE_SIZE;
+MerkleTree;
+NETWORKS;
+OverflowError;
+PATIENT_RETRY_POLICY;
+POLL_RETRY_POLICY;
+ProvingError;
+RoundFullError;
+RoundNotFundedError;
+RpcError;
+STROOPS_PER_XLM;
+SdkEventEmitter;
+ShariboError;
+ShariboSDK;
+TREE_LEVELS;
+WrongRoundTagError;
+ZERO_VALUE;
+cancelCircle;
+claim;
+clearContractClientCache;
+computeDelay;
+computeExternalNullifier;
+computeNullifierHash;
+computeRecipientHash;
+connect;
+connectReadOnly;
+createCircle;
+decodeContractError;
+describeContractError;
+describeError;
+encodeG1;
+encodeG2;
+estimateClaimFee;
+explorerTxUrl;
+feToBytes;
+formatXlm;
+formatXlmDisplay;
+fullProve;
+fund;
+g1ToBytes;
+g2ToBytes;
+generateIdentity;
+generateProof;
+getCircle;
+getCircleCount;
+getCircleStatus;
+getContributors;
+getPot;
+getRound;
+getStatus;
+hasClaimed;
+isTestnet;
+makeCircleId;
+networkOf;
+parseContractErrorCode;
+populateTxResult;
+poseidon;
+prove;
+randomFieldElement;
+resolveSigner;
+stroopsToXlm;
+validateCircuitInput;
+validateContractProof;
+validateContractVerificationKey;
+verificationKeyToContractFormat;
+verifyProofLocally;
+withRetry;
+xlmToStroops;
 ```
 
 ### Types
 
 ```ts
-CircleView
-CircuitInput
-ContractProof
-ContractVerificationKey
-FeeEstimate
-GenerateProofResult
-Identity
-MerkleProof
-ProofResult
-ShariboClient
-ShariboNetworkConfig
-ShariboSigner
-TxResult
+CircleView;
+CircuitInput;
+ContractProof;
+ContractVerificationKey;
+FeeEstimate;
+GenerateProofResult;
+Identity;
+MerkleProof;
+ProofResult;
+ShariboClient;
+ShariboNetworkConfig;
+ShariboSigner;
+TxResult;
 ```
 
 ### Internal subpath
@@ -266,10 +272,10 @@ TxResult
 
 The package ships a conditional `exports` map:
 
-| Condition | Entry point | Side effects |
-|-----------|-------------|--------------|
-| `browser` | `src/index.browser.ts` | Mounts the "Preparing prover…" DOM toast; starts background artifact pre-fetch |
-| `default` (Node, tests) | `src/index.ts` | None — safe to import in scripts, tests, and CI |
+| Condition               | Entry point            | Side effects                                                                   |
+| ----------------------- | ---------------------- | ------------------------------------------------------------------------------ |
+| `browser`               | `src/index.browser.ts` | Mounts the "Preparing prover…" DOM toast; starts background artifact pre-fetch |
+| `default` (Node, tests) | `src/index.ts`         | None — safe to import in scripts, tests, and CI                                |
 
 Bundlers that honour the `browser` exports condition (Vite, webpack) resolve to the
 browser entry automatically. Node and test runners get the side-effect-free default.
@@ -321,11 +327,11 @@ to rate limits or transient load (e.g. `429 Too Many Requests`,
 
 ### Default policy and named presets
 
-| Preset | `maxRetries` | `baseDelayMs` | Worst-case sleep | Use for |
-|---|---|---|---|---|
-| `POLL_RETRY_POLICY` | 1 | 250 | ~250ms | UI polling loops |
-| `DEFAULT_RETRY_POLICY` | 3 | 500 | ~3.5s | Most reads/writes |
-| `PATIENT_RETRY_POLICY` | 5 | 750 | ~23.25s | `claim` (costly to regenerate proof) |
+| Preset                 | `maxRetries` | `baseDelayMs` | Worst-case sleep | Use for                              |
+| ---------------------- | ------------ | ------------- | ---------------- | ------------------------------------ |
+| `POLL_RETRY_POLICY`    | 1            | 250           | ~250ms           | UI polling loops                     |
+| `DEFAULT_RETRY_POLICY` | 3            | 500           | ~3.5s            | Most reads/writes                    |
+| `PATIENT_RETRY_POLICY` | 5            | 750           | ~23.25s          | `claim` (costly to regenerate proof) |
 
 Worst-case sleep is approximately `baseDelayMs * (2^maxRetries - 1)` (upper
 bound when every retry draws the maximum 1.0× jitter). That excludes the time

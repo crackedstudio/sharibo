@@ -55,17 +55,16 @@ function sync() {
     return;
   }
 
-  console.log(`[${new Date().toLocaleTimeString()}] circuit artifacts synced to app/public/circuits/`);
+  console.log(
+    `[${new Date().toLocaleTimeString()}] circuit artifacts synced to app/public/circuits/`,
+  );
 }
 
 sync();
 
 if (isWatch) {
   // Watch the source directories for changes and re-sync.
-  const watchPaths = [
-    buildDir,
-    path.join(repoRoot, "circuits", "verification_key.json"),
-  ];
+  const watchPaths = [buildDir, path.join(repoRoot, "circuits", "verification_key.json")];
 
   for (const target of watchPaths) {
     if (!existsSync(target)) continue;

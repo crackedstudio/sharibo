@@ -68,7 +68,11 @@ export function Landing({
           Every round, everyone contributes. Every round, one member takes the pot. Sharibo proves{" "}
           <em>who's entitled to claim</em> without ever revealing <em>who</em> claimed.
         </p>
-        <button className={`${styles.btn} ${styles.btnPrimary}`} disabled={!!busy} onClick={onLaunch}>
+        <button
+          className={`${styles.btn} ${styles.btnPrimary}`}
+          disabled={!!busy}
+          onClick={onLaunch}
+        >
           {busy ?? "Launch a 5-member circle on testnet"}
         </button>
         {error && <p className={styles.error}>{error}</p>}

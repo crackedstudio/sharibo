@@ -22,7 +22,12 @@ import {
   getArtifacts,
 } from "@sharibo/client";
 import { config } from "../config.js";
-import { friendbotFund, friendbotFundMany, FriendbotRetryableError, type FriendbotFundResult } from "../lib/friendbot.js";
+import {
+  friendbotFund,
+  friendbotFundMany,
+  FriendbotRetryableError,
+  type FriendbotFundResult,
+} from "../lib/friendbot.js";
 import type { Member, ClaimResult } from "../types.js";
 
 /** Where the circle view is in its on-chain load cycle, so the UI can show
@@ -225,7 +230,9 @@ export function useCircleFlow() {
             from: m.keypair.publicKey(),
           });
           setMembers((prev) =>
-            prev.map((mm, idx) => (idx === memberIndex ? { ...mm, funded: true, fundHash: hash } : mm)),
+            prev.map((mm, idx) =>
+              idx === memberIndex ? { ...mm, funded: true, fundHash: hash } : mm,
+            ),
           );
         } catch (e) {
           // On-chain fund failed — mark as not funded so it can be retried
@@ -233,7 +240,8 @@ export function useCircleFlow() {
             prev.map((mm, idx) => (idx === memberIndex ? { ...mm, funded: false } : mm)),
           );
           result.success = false;
-          result.error = e instanceof FriendbotRetryableError ? e : new FriendbotRetryableError(String(e));
+          result.error =
+            e instanceof FriendbotRetryableError ? e : new FriendbotRetryableError(String(e));
         }
       }
 
@@ -244,7 +252,9 @@ export function useCircleFlow() {
 
       const failedCount = results.filter((r) => !r.success).length;
       if (failedCount > 0) {
-        setError(`${failedCount} of ${results.length} accounts failed to fund. Use "Retry failed" to try again.`);
+        setError(
+          `${failedCount} of ${results.length} accounts failed to fund. Use "Retry failed" to try again.`,
+        );
       }
     } catch (e) {
       setError((e as Error).message);
@@ -295,14 +305,17 @@ export function useCircleFlow() {
             from: m.keypair.publicKey(),
           });
           setMembers((prev) =>
-            prev.map((mm, idx) => (idx === memberIndex ? { ...mm, funded: true, fundHash: hash } : mm)),
+            prev.map((mm, idx) =>
+              idx === memberIndex ? { ...mm, funded: true, fundHash: hash } : mm,
+            ),
           );
         } catch (e) {
           setMembers((prev) =>
             prev.map((mm, idx) => (idx === memberIndex ? { ...mm, funded: false } : mm)),
           );
           result.success = false;
-          result.error = e instanceof FriendbotRetryableError ? e : new FriendbotRetryableError(String(e));
+          result.error =
+            e instanceof FriendbotRetryableError ? e : new FriendbotRetryableError(String(e));
         }
       }
 

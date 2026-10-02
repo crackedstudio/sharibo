@@ -31,7 +31,7 @@
   "workspaces": {
     "root": {
       "entry": ["__mocks__/**/*.ts"],
-      "project": ["__mocks__/**/*.ts"]
+      "project": ["__mocks__/**/*.ts"],
     },
     // ── app workspace ───────────────────────────────────────────────────────
     "app": {
@@ -41,39 +41,29 @@
         "src/setupTests.ts",
         "vitest.config.ts",
         "vite.config.ts",
-        "scripts/sync-circuit.mjs"
+        "scripts/sync-circuit.mjs",
       ],
       "project": ["src/**/*.{ts,tsx}", "scripts/**/*.mjs", "vitest.config.ts", "vite.config.ts"],
       // @testing-library/jest-dom types are imported for side-effects only
       // (augmenting the expect interface); knip sees no explicit usage.
-      "ignoreDependencies": ["@testing-library/jest-dom"]
+      "ignoreDependencies": ["@testing-library/jest-dom"],
     },
 
     // ── packages/client workspace ───────────────────────────────────────────
     "packages/client": {
       // index.ts is the public API barrel — all its re-exports are intentional.
-      "entry": [
-        "src/index.ts",
-        "src/*.test.ts",
-        "vitest.config.ts"
-      ],
+      "entry": ["src/index.ts", "src/*.test.ts", "vitest.config.ts"],
       "project": ["src/**/*.ts", "vitest.config.ts"],
       // The barrel (index.ts) re-exports everything; suppress unused-export
       // noise for symbols that are exported from index.ts but only consumed
       // by external packages (they appear unused within the workspace).
-      "includeEntryExports": false
+      "includeEntryExports": false,
     },
 
     // ── scripts workspace ───────────────────────────────────────────────────
     "scripts": {
-      "entry": [
-        "e2e.ts",
-        "smoke.ts",
-        "testnet-health.ts",
-        "config.ts",
-        "*.test.ts"
-      ],
-      "project": ["**/*.ts"]
+      "entry": ["e2e.ts", "smoke.ts", "testnet-health.ts", "config.ts", "*.test.ts"],
+      "project": ["**/*.ts"],
     },
 
     // ── circuits workspace ──────────────────────────────────────────────────
@@ -85,8 +75,8 @@
       "project": ["scripts/**/*.{cjs,mjs,js}", "test/**/*.js"],
       // snarkjs ships without type declarations; the binary is used in shell
       // scripts, not imported as a module.
-      "ignoreDependencies": ["snarkjs"]
-    }
+      "ignoreDependencies": ["snarkjs"],
+    },
   },
 
   // ── Intentional exceptions ─────────────────────────────────────────────────
@@ -101,6 +91,6 @@
   // export both the function and its test).
   "ignoreExportsUsedInFile": {
     "interface": true,
-    "type": true
-  }
+    "type": true,
+  },
 }

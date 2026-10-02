@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { friendbotFund, friendbotFundMany, FriendbotRetryableError, FRIEND_BOT_RATE_LIMIT_MESSAGE, type FriendbotFundResult } from "./friendbot.js";
+import {
+  friendbotFund,
+  friendbotFundMany,
+  FriendbotRetryableError,
+  FRIEND_BOT_RATE_LIMIT_MESSAGE,
+  type FriendbotFundResult,
+} from "./friendbot.js";
 
 describe("friendbotFund", () => {
   const originalFetch = global.fetch;
@@ -16,7 +22,9 @@ describe("friendbotFund", () => {
 
   it("resolves on 200 OK", async () => {
     global.fetch = vi.fn().mockResolvedValue({ ok: true, status: 200 });
-    await expect(friendbotFund("GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")).resolves.toBeUndefined();
+    await expect(
+      friendbotFund("GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"),
+    ).resolves.toBeUndefined();
     expect(global.fetch).toHaveBeenCalledWith(
       "https://friendbot.stellar.org?addr=GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
     );
@@ -24,7 +32,9 @@ describe("friendbotFund", () => {
 
   it("treats 400 (already funded) as success", async () => {
     global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 400 });
-    await expect(friendbotFund("GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")).resolves.toBeUndefined();
+    await expect(
+      friendbotFund("GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"),
+    ).resolves.toBeUndefined();
   });
 
   it("retries on 429 and succeeds on second attempt", async () => {
@@ -121,17 +131,17 @@ describe("friendbotFund", () => {
   it("throws generic Error for non-retryable status codes (e.g., 404)", async () => {
     global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 404 });
 
-    await expect(friendbotFund("GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")).rejects.toThrow(
-      "friendbot funding failed: 404",
-    );
+    await expect(
+      friendbotFund("GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"),
+    ).rejects.toThrow("friendbot funding failed: 404");
   });
 
   it("throws generic Error for 401", async () => {
     global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 401 });
 
-    await expect(friendbotFund("GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")).rejects.toThrow(
-      "friendbot funding failed: 401",
-    );
+    await expect(
+      friendbotFund("GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"),
+    ).rejects.toThrow("friendbot funding failed: 401");
   });
 
   it("FriendbotRetryableError includes status in constructor", () => {

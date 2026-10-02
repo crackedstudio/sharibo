@@ -27,7 +27,10 @@ function reviver(_key: string, value: unknown): unknown {
 
 export function saveSession(value: Record<string, unknown>): boolean {
   try {
-    sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify({ ...value, version: SESSION_VERSION }, replacer));
+    sessionStorage.setItem(
+      SESSION_STORAGE_KEY,
+      JSON.stringify({ ...value, version: SESSION_VERSION }, replacer),
+    );
     return true;
   } catch {
     return false;
@@ -51,7 +54,11 @@ export function loadSession(): SessionLoadResult {
   }
   if (!value || typeof value !== "object") return { ok: false, reason: "corrupt" };
   if (value.version !== SESSION_VERSION) {
-    try { sessionStorage.removeItem(SESSION_STORAGE_KEY); } catch { /* blocked storage */ }
+    try {
+      sessionStorage.removeItem(SESSION_STORAGE_KEY);
+    } catch {
+      /* blocked storage */
+    }
     return { ok: false, reason: "version-mismatch" };
   }
   return { ok: true, value };

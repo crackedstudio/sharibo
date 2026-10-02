@@ -32,11 +32,7 @@ function filledPercent(progress: ArtifactPrefetchProgress): number {
   return Math.round(progress.fraction * 100);
 }
 
-export function ArtifactProgress({
-  announce,
-}: {
-  announce: (message: string) => void;
-}) {
+export function ArtifactProgress({ announce }: { announce: (message: string) => void }) {
   const [progress, setProgress] = useState<ArtifactPrefetchProgress>({
     status: IDLE,
     loaded: 0,

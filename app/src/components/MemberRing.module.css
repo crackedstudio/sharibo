@@ -6,7 +6,9 @@
   width: 100%;
   overflow: hidden;
 }
-.ringWrap { composes: ring-wrap; }
+.ringWrap {
+  composes: ring-wrap;
+}
 .ring {
   position: relative;
   width: var(--ring-size);
@@ -37,8 +39,12 @@
   font-weight: 700;
   font-size: 13px;
 }
-.ringCenter { composes: ring-center; }
-.ringCircle { fill: none; }
+.ringCenter {
+  composes: ring-center;
+}
+.ringCircle {
+  fill: none;
+}
 .ring-node {
   position: absolute;
   top: 50%;
@@ -59,9 +65,16 @@
     transform 0.4s ease,
     background 0.3s ease;
 }
-.ringNode { composes: ring-node; }
-.funded { composes: funded from global; }
-.ineligible { background: var(--danger); color: var(--surface); }
+.ringNode {
+  composes: ring-node;
+}
+.funded {
+  composes: funded from global;
+}
+.ineligible {
+  background: var(--danger);
+  color: var(--surface);
+}
 .ring-node.funded {
   background: var(--accent2);
 }
@@ -70,7 +83,9 @@
   border-style: dashed;
   transform: translate(0, var(--ring-recipient-offset));
 }
-.ringRecipient { composes: ring-recipient from global; }
+.ringRecipient {
+  composes: ring-recipient from global;
+}
 .ring-caption {
   max-width: 420px;
   width: 100%;
@@ -81,11 +96,19 @@
   border: 2px dashed var(--ink);
   padding: 10px;
 }
-.ringCaption { composes: ring-caption; }
+.ringCaption {
+  composes: ring-caption;
+}
 
-.skeleton { composes: skeleton from global; }
-.skeletonRingNode { composes: skeleton-ring-node from global; }
-.skeletonRingCenter { composes: skeleton-ring-center from global; }
+.skeleton {
+  composes: skeleton from global;
+}
+.skeletonRingNode {
+  composes: skeleton-ring-node from global;
+}
+.skeletonRingCenter {
+  composes: skeleton-ring-center from global;
+}
 
 @media (max-width: 767px) {
   .ring-caption {

@@ -30,12 +30,7 @@ export function Toaster({
             Retry
           </button>
         )}
-        <button
-          type="button"
-          className="btn btn-small"
-          disabled={busy}
-          onClick={onDismiss}
-        >
+        <button type="button" className="btn btn-small" disabled={busy} onClick={onDismiss}>
           Dismiss
         </button>
       </div>

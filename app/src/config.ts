@@ -42,8 +42,11 @@ export function validate(): ValidationResult {
   const errors: string[] = [];
 
   const contractId = import.meta.env.VITE_SHARIBO_CONTRACT_ID as string | undefined;
-  const rpcUrl = import.meta.env.VITE_STELLAR_RPC_URL as string | undefined ?? NETWORKS.testnet.rpcUrl;
-  const networkPassphrase = import.meta.env.VITE_STELLAR_NETWORK_PASSPHRASE as string | undefined ?? NETWORKS.testnet.passphrase;
+  const rpcUrl =
+    (import.meta.env.VITE_STELLAR_RPC_URL as string | undefined) ?? NETWORKS.testnet.rpcUrl;
+  const networkPassphrase =
+    (import.meta.env.VITE_STELLAR_NETWORK_PASSPHRASE as string | undefined) ??
+    NETWORKS.testnet.passphrase;
   const testTokenContractId = import.meta.env.VITE_TEST_TOKEN_CONTRACT_ID as string | undefined;
 
   if (!contractId) {

@@ -6,7 +6,8 @@ export const MEMBERSHIP_ZKEY_URL = "/circuits/membership_final.zkey";
 export interface ArtifactsConfig {
   wasmUrl?: string;
   zkeyUrl?: string;
-  fetchImpl?: typeof fetch | ((input: string | URL | Request, init?: RequestInit) => Promise<Response>);
+  fetchImpl?:
+    typeof fetch | ((input: string | URL | Request, init?: RequestInit) => Promise<Response>);
   /** Optional observability hook; also receives artifact:* SdkEvents. */
   onEvent?: OnEventFn;
 }
@@ -19,11 +20,7 @@ let configuredFetchImpl:
   | undefined;
 let configuredOnEvent: OnEventFn | undefined;
 
-export type ArtifactPrefetchStatus =
-  | "idle"
-  | "loading"
-  | "ready"
-  | "error";
+export type ArtifactPrefetchStatus = "idle" | "loading" | "ready" | "error";
 
 export interface ArtifactPrefetchProgress {
   status: ArtifactPrefetchStatus;
@@ -88,7 +85,8 @@ export function setArtifactOnEvent(onEvent?: OnEventFn): void {
 export function getArtifactsConfig(): {
   wasmUrl: string;
   zkeyUrl: string;
-  fetchImpl?: typeof fetch | ((input: string | URL | Request, init?: RequestInit) => Promise<Response>);
+  fetchImpl?:
+    typeof fetch | ((input: string | URL | Request, init?: RequestInit) => Promise<Response>);
 } {
   return {
     wasmUrl: configuredWasmUrl,
@@ -162,7 +160,8 @@ async function readResponse(
 
   const contentLengthHeader = response.headers?.get?.("content-length");
   const total = contentLengthHeader ? Number(contentLengthHeader) : null;
-  const reader = typeof response.body?.getReader === "function" ? response.body.getReader() : undefined;
+  const reader =
+    typeof response.body?.getReader === "function" ? response.body.getReader() : undefined;
 
   if (!reader) {
     signal?.throwIfAborted();
@@ -233,13 +232,9 @@ async function fetchArtifacts(signal?: AbortSignal): Promise<ProverArtifacts> {
   let zkeyLoaded = 0;
   const wasmTotal = wasmResponse.headers?.get?.("content-length");
   const zkeyTotal = zkeyResponse.headers?.get?.("content-length");
-  const knownTotal =
-    wasmTotal && zkeyTotal ? Number(wasmTotal) + Number(zkeyTotal) : null;
+  const knownTotal = wasmTotal && zkeyTotal ? Number(wasmTotal) + Number(zkeyTotal) : null;
 
-  const read = async (
-    response: Response,
-    index: 0 | 1,
-  ): Promise<Uint8Array> => {
+  const read = async (response: Response, index: 0 | 1): Promise<Uint8Array> => {
     return readResponse(
       response,
       (value) => {
@@ -250,20 +245,14 @@ async function fetchArtifacts(signal?: AbortSignal): Promise<ProverArtifacts> {
           status: "loading",
           loaded: currentLoaded,
           total: knownTotal,
-          fraction:
-            knownTotal && knownTotal > 0
-              ? Math.min(currentLoaded / knownTotal, 1)
-              : null,
+          fraction: knownTotal && knownTotal > 0 ? Math.min(currentLoaded / knownTotal, 1) : null,
         });
       },
       signal,
     );
   };
 
-  const [wasm, zkey] = await Promise.all([
-    read(wasmResponse, 0),
-    read(zkeyResponse, 1),
-  ]);
+  const [wasm, zkey] = await Promise.all([read(wasmResponse, 0), read(zkeyResponse, 1)]);
 
   const loaded = wasm.byteLength + zkey.byteLength;
   const total = knownTotal ?? loaded;
@@ -350,9 +339,7 @@ export function __resetForTesting(): void {
   listeners.clear();
 }
 
-export function subscribeToArtifactPrefetch(
-  listener: Listener,
-): () => void {
+export function subscribeToArtifactPrefetch(listener: Listener): () => void {
   listeners.add(listener);
   listener(currentProgress);
   return () => listeners.delete(listener);

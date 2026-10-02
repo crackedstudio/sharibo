@@ -48,17 +48,8 @@ export function isEnvLike(file) {
 }
 
 function getStagedFiles() {
-  const out = execFileSync("git", [
-    "diff",
-    "--cached",
-    "--name-only",
-    "--diff-filter=ACMR",
-  ]);
-  return out
-    .toString()
-    .trim()
-    .split("\n")
-    .filter(Boolean);
+  const out = execFileSync("git", ["diff", "--cached", "--name-only", "--diff-filter=ACMR"]);
+  return out.toString().trim().split("\n").filter(Boolean);
 }
 
 function main() {
@@ -70,9 +61,7 @@ function main() {
       console.error(
         `\x1b[31m[BLOCKED]\x1b[0m Attempted to commit \`${file}\` which looks like an env file.`,
       );
-      console.error(
-        "  If this is intentional, use `git commit --no-verify` to skip the hook.",
-      );
+      console.error("  If this is intentional, use `git commit --no-verify` to skip the hook.");
       blocked = true;
     }
   }
@@ -97,8 +86,7 @@ function main() {
   }
 }
 
-const isMain =
-  process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
+const isMain = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
 if (isMain) {
   main();
 }

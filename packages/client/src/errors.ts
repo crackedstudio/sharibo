@@ -145,7 +145,6 @@ export class InvalidCircleParamsError extends ContractError {
   }
 }
 
-
 // ── Contract-rejection prose (issue #53) ─────────────────────────────────────
 
 /** A human-readable description of a contract rejection code. */
@@ -194,8 +193,7 @@ const CONTRACT_ERROR_DESCRIPTIONS: Record<number, ContractErrorDescription> = {
   10: {
     code: 10,
     name: "InvalidCircleParams",
-    message:
-      "Circle parameters were rejected (size, contribution, or verification-key shape).",
+    message: "Circle parameters were rejected (size, contribution, or verification-key shape).",
     hint: "Use a positive contribution with at most 7 decimals, a size between 1 and the Merkle capacity, and the committed verification key.",
   },
 };

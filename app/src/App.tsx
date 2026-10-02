@@ -48,9 +48,7 @@ import { explorerTx, short, explorerAccount, explorerContract } from "./lib/expl
 import type { CirclePhase } from "./hooks/useCircleFlow";
 import { MemberRingSkeleton } from "./components/MemberRing";
 import { FundingListSkeleton } from "./components/FundingList";
-import {
-  friendbotFund as fundWithFriendbot,
-} from "./lib/friendbot";
+import { friendbotFund as fundWithFriendbot } from "./lib/friendbot";
 import styles from "./App.module.css";
 import {
   createDemoSigner,
@@ -69,7 +67,10 @@ import { diagnose, type Failure } from "./state/circleMachine";
 import { copyDebugBundle, type BundleInput } from "./lib/debugBundle";
 import type { LoggedSdkEvent } from "./lib/sdkEventLog";
 
-function formatError(error: unknown, t: (key: string, vars?: Record<string, string | number>) => string): string {
+function formatError(
+  error: unknown,
+  t: (key: string, vars?: Record<string, string | number>) => string,
+): string {
   const mapped = toUiError(error);
   return t(mapped.key, mapped.vars);
 }
@@ -119,7 +120,10 @@ const NAMES = [
   "chit fund",
 ];
 
-function toUiError(error: unknown, t: (key: string, vars?: Record<string, string | number>) => string): string {
+function toUiError(
+  error: unknown,
+  t: (key: string, vars?: Record<string, string | number>) => string,
+): string {
   if (error instanceof FriendbotRetryableError) {
     return FRIEND_BOT_RATE_LIMIT_MESSAGE;
   }
@@ -188,7 +192,6 @@ function getErrorMessage(error: unknown): string {
   }
   return describeError(error);
 }
-
 
 // Every truncated value on screen (addresses, tx hashes) needs to be
 // pasteable in full somewhere else — a CLI call, an explorer search — so
@@ -334,12 +337,7 @@ function CopyDebugBundleButton({
         {label}
       </button>
       {(status === "copied" || status === "fallback") && (
-        <a
-          className="link fineprint"
-          href={BUG_REPORT_URL}
-          target="_blank"
-          rel="noreferrer"
-        >
+        <a className="link fineprint" href={BUG_REPORT_URL} target="_blank" rel="noreferrer">
           open bug report ↗
         </a>
       )}
@@ -412,9 +410,9 @@ function ClaimProgress({ stage, elapsedSeconds }: { stage: ClaimStage; elapsedSe
       </div>
       {stage === "proving" && (
         <p className={styles.techline}>
-          <span className={styles.spinner} aria-hidden="true" /> Groth16 · BLS12-381 · 3,757 constraints ·
-          proving locally in your browser, nothing sent anywhere until the proof is done ·{" "}
-          {elapsedSeconds}s elapsed
+          <span className={styles.spinner} aria-hidden="true" /> Groth16 · BLS12-381 · 3,757
+          constraints · proving locally in your browser, nothing sent anywhere until the proof is
+          done · {elapsedSeconds}s elapsed
         </p>
       )}
     </div>
@@ -491,7 +489,13 @@ function useRingRadius(): number {
   return radius;
 }
 
-function MemberRing({ members, revealed }: { members: { funded: boolean; pending?: boolean }[]; revealed: boolean }) {
+function MemberRing({
+  members,
+  revealed,
+}: {
+  members: { funded: boolean; pending?: boolean }[];
+  revealed: boolean;
+}) {
   const { t } = useI18n();
   const radius = useRingRadius();
   const fundedCount = members.filter((m) => m.funded).length;
@@ -566,9 +570,7 @@ function EnvSetupScreen({ errors }: { errors: string[] }) {
             </li>
           ))}
         </ul>
-        <p className={styles.fineprint}>
-          {t("env.setupDetails")}
-        </p>
+        <p className={styles.fineprint}>{t("env.setupDetails")}</p>
       </div>
     </div>
   );
@@ -582,7 +584,13 @@ function LiveRegion({ message }: { message: string }) {
       aria-live="polite"
       aria-atomic="true"
       className="sr-only"
-      style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0,0,0,0)" }}
+      style={{
+        position: "absolute",
+        width: 1,
+        height: 1,
+        overflow: "hidden",
+        clip: "rect(0,0,0,0)",
+      }}
     >
       {message}
     </div>
@@ -599,9 +607,7 @@ function ClaimExplainer() {
       <div className={styles.claimExplainerBody}>
         <section>
           <h3>{t("explainer.sayingTitle")}</h3>
-          <p>
-            {t("explainer.sayingBody")}
-          </p>
+          <p>{t("explainer.sayingBody")}</p>
         </section>
         <section>
           <h3>{t("explainer.secretTitle")}</h3>
@@ -630,14 +636,8 @@ function ClaimExplainer() {
 export default function App() {
   const { t, locale } = useI18n();
   const online = useOnlineStatus();
-  const {
-    onEvent,
-    claimStage,
-    setClaimStage,
-    clearEvents,
-    resetClaimStage,
-    recentEvents,
-  } = useSdkEvents();
+  const { onEvent, claimStage, setClaimStage, clearEvents, resetClaimStage, recentEvents } =
+    useSdkEvents();
   const [failure, setFailure] = useState<Failure | null>(null);
 
   if (configError.length > 0) {
@@ -755,7 +755,7 @@ export default function App() {
             circle.contributors.includes(m.address) ||
             Boolean(m.freighterKey && circle.contributors.includes(m.freighterKey));
           return { ...m, funded: hasFunded, pending: false };
-        })
+        }),
       );
     } catch (e) {
       console.error("Failed to sync funding state:", e);
@@ -851,7 +851,13 @@ export default function App() {
           }),
         );
         if (!mounted) return;
-        setMembers((prev) => prev.map((m, i) => ({ ...m, ineligible: results[i], ineligibleReason: results[i] ? "Already claimed in this circle" : undefined })));
+        setMembers((prev) =>
+          prev.map((m, i) => ({
+            ...m,
+            ineligible: results[i],
+            ineligibleReason: results[i] ? "Already claimed in this circle" : undefined,
+          })),
+        );
       } catch (e) {
         setError(formatError(e, t));
       } finally {
@@ -859,7 +865,9 @@ export default function App() {
       }
     }
     checkEligibility();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, [fullyFunded, claimResult, circleId, round, admin]);
   // ────────────────────────────────────────────────────────────────────────
 
@@ -936,7 +944,7 @@ export default function App() {
 
     const newTree = MerkleTree.create(
       LEVELS,
-      loadedMembers.map((m: any) => m.identity.commitment)
+      loadedMembers.map((m: any) => m.identity.commitment),
     );
     setTree(newTree);
 
@@ -975,12 +983,16 @@ export default function App() {
       return;
     }
     setCirclePhase("loading");
-    setBusy(
-      "Generating a fresh admin + 5 member identities and funding via friendbot…",
-    );
+    setBusy("Generating a fresh admin + 5 member identities and funding via friendbot…");
     try {
       const client = await import("@sharibo/client");
-      const { generateIdentity, MerkleTree, verificationKeyToContractFormat, connect, createCircle } = client;
+      const {
+        generateIdentity,
+        MerkleTree,
+        verificationKeyToContractFormat,
+        connect,
+        createCircle,
+      } = client;
 
       setBusy(t("busy.generating"));
       const adminSigner = await createDemoSigner(NETWORK.networkPassphrase);
@@ -1006,9 +1018,7 @@ export default function App() {
       );
 
       setBusy(t("busy.creating"));
-      const vkJson = await fetch("/circuits/verification_key.json").then((r) =>
-        r.json(),
-      );
+      const vkJson = await fetch("/circuits/verification_key.json").then((r) => r.json());
       const vk = verificationKeyToContractFormat(vkJson);
       const adminClient = await connect({ ...NETWORK, onEvent }, adminKp);
       const { result: newCircleId } = await createCircle(adminClient, {
@@ -1066,11 +1076,7 @@ export default function App() {
       await fundWithFriendbot(m.keypair.publicKey());
 
       // Set optimistic pending state
-      setMembers((prev) =>
-        prev.map((mm, idx) =>
-          idx === i ? { ...mm, pending: true } : mm,
-        ),
-      );
+      setMembers((prev) => prev.map((mm, idx) => (idx === i ? { ...mm, pending: true } : mm)));
 
       const memberClient = await connect(NETWORK, m.keypair);
       const { hash } = await fund(memberClient, {
@@ -1082,18 +1088,10 @@ export default function App() {
       await syncFundingState();
 
       // Update fund hash for the successful transaction
-      setMembers((prev) =>
-        prev.map((mm, idx) =>
-          idx === i ? { ...mm, fundHash: hash } : mm,
-        ),
-      );
+      setMembers((prev) => prev.map((mm, idx) => (idx === i ? { ...mm, fundHash: hash } : mm)));
     } catch (e) {
       // Clear pending state on error
-      setMembers((prev) =>
-        prev.map((mm, idx) =>
-          idx === i ? { ...mm, pending: false } : mm,
-        ),
-      );
+      setMembers((prev) => prev.map((mm, idx) => (idx === i ? { ...mm, pending: false } : mm)));
       setError(formatError(e, t));
     } finally {
       setBusy(null);
@@ -1117,8 +1115,8 @@ export default function App() {
       if (mismatch) {
         throw new Error(
           `Your Freighter wallet is connected to ${mismatch.walletNetwork}, ` +
-          `but this app is configured for ${mismatch.appNetwork}. ` +
-          `Please open Freighter, click the network selector in the upper right, and switch to ${mismatch.appNetwork}.`
+            `but this app is configured for ${mismatch.appNetwork}. ` +
+            `Please open Freighter, click the network selector in the upper right, and switch to ${mismatch.appNetwork}.`,
         );
       }
 
@@ -1134,31 +1132,30 @@ export default function App() {
         signTransaction: async (txXdr: string, opts?: any) => {
           // Re-check network before signing to catch mid-session network switches
           const currentNetworkRes = await getNetworkDetails();
-          const currentMismatch = checkNetworkMatch(currentNetworkRes.network, NETWORK.networkPassphrase);
+          const currentMismatch = checkNetworkMatch(
+            currentNetworkRes.network,
+            NETWORK.networkPassphrase,
+          );
           if (currentMismatch) {
             throw new Error(
               `Your Freighter wallet is connected to ${currentMismatch.walletNetwork}, ` +
-              `but this app is configured for ${currentMismatch.appNetwork}. ` +
-              `Please open Freighter, click the network selector in the upper right, and switch to ${currentMismatch.appNetwork}.`
+                `but this app is configured for ${currentMismatch.appNetwork}. ` +
+                `Please open Freighter, click the network selector in the upper right, and switch to ${currentMismatch.appNetwork}.`,
             );
           }
 
           const signedRes = await freighterSignTx(txXdr, {
-            networkPassphrase: currentNetworkRes.networkPassphrase
+            networkPassphrase: currentNetworkRes.networkPassphrase,
           });
           if (signedRes.error) {
             throw new Error(signedRes.error.toString());
           }
           return signedRes.signedTxXdr;
-        }
+        },
       };
 
       // Set optimistic pending state
-      setMembers((prev) =>
-        prev.map((mm, idx) =>
-          idx === i ? { ...mm, pending: true } : mm,
-        ),
-      );
+      setMembers((prev) => prev.map((mm, idx) => (idx === i ? { ...mm, pending: true } : mm)));
 
       const { connect, fund } = await import("@sharibo/client");
       const memberClient = await connect(NETWORK, await toShariboSigner(signer));
@@ -1176,11 +1173,7 @@ export default function App() {
       );
     } catch (e) {
       // Clear pending state on error
-      setMembers((prev) =>
-        prev.map((mm, idx) =>
-          idx === i ? { ...mm, pending: false } : mm,
-        ),
-      );
+      setMembers((prev) => prev.map((mm, idx) => (idx === i ? { ...mm, pending: false } : mm)));
       setError(formatError(e, t));
     } finally {
       setBusy(null);
@@ -1201,7 +1194,11 @@ export default function App() {
     setRejection(null);
     setBusy(t("busy.claiming"));
     try {
-      const [{ Keypair }, { computeExternalNullifier, connect, claim, getCircle, hasClaimed }, { generateProof, verifyProofLocally }] = await Promise.all([
+      const [
+        { Keypair },
+        { computeExternalNullifier, connect, claim, getCircle, hasClaimed },
+        { generateProof, verifyProofLocally },
+      ] = await Promise.all([
         import("@stellar/stellar-sdk"),
         import("@sharibo/client"),
         import("@sharibo/client/prove"),
@@ -1265,7 +1262,10 @@ export default function App() {
 
       if (signal.aborted) return;
       setClaimStage("submitting");
-      const adminClient = await connect({ ...NETWORK, onEvent: (e) => setEvents(prev => [...prev, e]) }, admin);
+      const adminClient = await connect(
+        { ...NETWORK, onEvent: (e) => setEvents((prev) => [...prev, e]) },
+        admin,
+      );
       const { hash } = await claim(
         adminClient,
         {
@@ -1320,10 +1320,7 @@ export default function App() {
         const memberClient = await connect({ ...NETWORK, onEvent }, m.keypair);
         await fund(memberClient, { circleId, from: m.keypair.publicKey() });
       }
-      const freshExternalNullifier = await computeExternalNullifier(
-        circleId,
-        BigInt(round),
-      );
+      const freshExternalNullifier = await computeExternalNullifier(circleId, BigInt(round));
 
       setBusy(t("busy.replaying"));
       await claim(
@@ -1360,7 +1357,7 @@ export default function App() {
     const refundTotal = (Number(pot) / 1e7).toFixed(1);
 
     const confirmed = window.confirm(
-      t("cancel.confirmation", { count: refundCount, total: refundTotal })
+      t("cancel.confirmation", { count: refundCount, total: refundTotal }),
     );
 
     if (!confirmed) return;
@@ -1388,14 +1385,23 @@ export default function App() {
           <p className={styles.sub}>
             It looks like you refreshed the page while a circle was active. Do you want to resume?
           </p>
-          <div className={styles.row} style={{ marginTop: '2rem', justifyContent: 'center', gap: '1rem' }}>
-            <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => loadState(resumePrompt)}>
+          <div
+            className={styles.row}
+            style={{ marginTop: "2rem", justifyContent: "center", gap: "1rem" }}
+          >
+            <button
+              className={`${styles.btn} ${styles.btnPrimary}`}
+              onClick={() => loadState(resumePrompt)}
+            >
               Resume Circle
             </button>
-            <button className={`${styles.btn} ${styles.btnDanger}`} onClick={() => {
-              clearSession();
-              setResumePrompt(null);
-            }}>
+            <button
+              className={`${styles.btn} ${styles.btnDanger}`}
+              onClick={() => {
+                clearSession();
+                setResumePrompt(null);
+              }}
+            >
               {t("resume.discardButton")}
             </button>
           </div>
@@ -1424,18 +1430,15 @@ export default function App() {
           </div>
           <h1>SHARIBO</h1>
           <p className={styles.tagline}>
-            A private rotating savings circle — on Stellar, with real
-            zero-knowledge proofs.
+            A private rotating savings circle — on Stellar, with real zero-knowledge proofs.
           </p>
           <p className={styles.sub}>
-            Every round, everyone contributes. Every round, one member takes the
-            pot. Sharibo proves <em>who's entitled to claim</em> without ever
-            revealing <em>who</em> claimed.
+            Every round, everyone contributes. Every round, one member takes the pot. Sharibo proves{" "}
+            <em>who's entitled to claim</em> without ever revealing <em>who</em> claimed.
           </p>
           <p className={styles.sub}>
-            Every round, everyone contributes. Every round, one member takes the
-            pot. Sharibo proves <em>who's entitled to claim</em> without ever
-            revealing <em>who</em> claimed.
+            Every round, everyone contributes. Every round, one member takes the pot. Sharibo proves{" "}
+            <em>who's entitled to claim</em> without ever revealing <em>who</em> claimed.
           </p>
           <label className={styles.contributionField}>
             <span>{t("landing.contributionLabel")}</span>
@@ -1462,28 +1465,32 @@ export default function App() {
             {busy ?? t("landing.launch")}
           </button>
           {error && <p className={styles.error}>{error}</p>}
-          <Toaster failure={failure} busy={!!busy} online={online} onDismiss={() => setFailure(null)} />
+          <Toaster
+            failure={failure}
+            busy={!!busy}
+            online={online}
+            onDismiss={() => setFailure(null)}
+          />
           {previousCircleId !== null && (
             <p className={styles.fineprint}>
               Your previous circle lives on at{" "}
-              <a
-                className={styles.link}
-                href={explorerContract()}
-                target="_blank"
-                rel="noreferrer"
-              >
+              <a className={styles.link} href={explorerContract()} target="_blank" rel="noreferrer">
                 {t("landing.previousCircleLink", { id: previousCircleId.toString() })}
               </a>
             </p>
           )}
           <p className={styles.fineprint}>
-            Testnet only. Demo identities are generated fresh in your browser,
-            never reused.
+            Testnet only. Demo identities are generated fresh in your browser, never reused.
           </p>
           {prevCircle && (
             <p className={styles.fineprint}>
               Your previous circle #{prevCircle.id} lives on-chain —{" "}
-              <a className={styles.link} href={prevCircle.explorerUrl} target="_blank" rel="noreferrer">
+              <a
+                className={styles.link}
+                href={prevCircle.explorerUrl}
+                target="_blank"
+                rel="noreferrer"
+              >
                 view on explorer ↗
               </a>
             </p>
@@ -1546,17 +1553,17 @@ export default function App() {
           </>
         ) : (
           <>
-            <MemberRing members={members.map(m => ({ funded: m.funded, pending: m.pending }))} revealed={!!claimResult} />
+            <MemberRing
+              members={members.map((m) => ({ funded: m.funded, pending: m.pending }))}
+              revealed={!!claimResult}
+            />
 
             <div className={styles.potBarWrap}>
-              <div
-                className="pot-bar"
-                style={{ width: `${(fundedCount / CIRCLE_SIZE) * 100}%` }}
-              />
+              <div className="pot-bar" style={{ width: `${(fundedCount / CIRCLE_SIZE) * 100}%` }} />
             </div>
             <p className="pot-label">
-              pot: {formatXlmDisplay(pot, locale)} / {contributionXlm * CIRCLE_SIZE} XLM ·
-              round {round}
+              pot: {formatXlmDisplay(pot, locale)} / {contributionXlm * CIRCLE_SIZE} XLM · round{" "}
+              {round}
               {feeBps > 0 &&
                 ` · ${t("pot.fee", {
                   feePercent: (feeBps / 100).toString(),
@@ -1566,7 +1573,13 @@ export default function App() {
             </p>
 
             {cancelled && (
-              <div className="callout" style={{ backgroundColor: "var(--color-warning-bg)", color: "var(--color-warning-text)" }}>
+              <div
+                className="callout"
+                style={{
+                  backgroundColor: "var(--color-warning-bg)",
+                  color: "var(--color-warning-text)",
+                }}
+              >
                 <strong>{t("cancel.cancelled")}</strong>
                 <p>{t("cancel.cancelledMessage")}</p>
               </div>
@@ -1588,7 +1601,10 @@ export default function App() {
             <h2>Fund</h2>
             <div className={styles.members}>
               {members.map((m, i) => (
-                <div key={i} className={`member ${m.funded ? "funded" : ""} ${m.pending ? "pending" : ""}`}>
+                <div
+                  key={i}
+                  className={`member ${m.funded ? "funded" : ""} ${m.pending ? "pending" : ""}`}
+                >
                   <span className="member-addr">
                     {t("fund.memberLabel", { index: i + 1 })} · {short(m.keypair.publicKey())}
                     <CopyButton
@@ -1639,9 +1655,8 @@ export default function App() {
               {t("claim.heading")}
             </h2>
             <p className={styles.sub}>
-              Pick which member is claiming this round — the proof will show the
-              contract that they're a real member <em>without</em> revealing
-              which one.
+              Pick which member is claiming this round — the proof will show the contract that
+              they're a real member <em>without</em> revealing which one.
             </p>
             <div className="row">
               {members.map((m, i) => (
@@ -1651,9 +1666,10 @@ export default function App() {
                     checked={claimantIndex === i}
                     onChange={() => setClaimantIndex(i)}
                     disabled={!!busy || !!m.ineligible}
-                    title={m.ineligible ? m.ineligibleReason ?? "Ineligible to claim" : undefined}
+                    title={m.ineligible ? (m.ineligibleReason ?? "Ineligible to claim") : undefined}
                   />
-                  member {i + 1}{m.ineligible ? " (ineligible)" : ""}
+                  member {i + 1}
+                  {m.ineligible ? " (ineligible)" : ""}
                 </label>
               ))}
             </div>
@@ -1666,7 +1682,9 @@ export default function App() {
                 {/* Constraint count: update this AND circuits/README.md if the circuit changes. */}
                 Groth16 · BLS12-381 · 3,757 constraints · proving locally in your browser, nothing
                 sent anywhere until the proof is done
-                {isProving && proveElapsedSeconds !== null ? ` · proving… ${proveElapsedSeconds}s` : ""}
+                {isProving && proveElapsedSeconds !== null
+                  ? ` · proving… ${proveElapsedSeconds}s`
+                  : ""}
               </p>
             )}
           </>
@@ -1679,10 +1697,7 @@ export default function App() {
             </h2>
             <p>
               {t("result.recipientIntro")} <code>{short(claimResult.recipient)}</code>
-              <CopyButton
-                value={claimResult.recipient}
-                label={t("result.recipientLabel")}
-              />{" "}
+              <CopyButton value={claimResult.recipient} label={t("result.recipientLabel")} />{" "}
               <a href={explorerAccount(claimResult.recipient)} target="_blank" rel="noreferrer">
                 ↗
               </a>{" "}
@@ -1698,20 +1713,18 @@ export default function App() {
             </a>
             <CopyButton value={claimResult.hash} label="claim transaction hash" />
             <p className={styles.callout}>
-              Compare the 5 funding transactions above to this claim — same
-              contract, no shared address, no visible link.
+              Compare the 5 funding transactions above to this claim — same contract, no shared
+              address, no visible link.
             </p>
             <p className="techline">
-              proof generated in {(claimResult.proofDurationMs / 1000).toFixed(1)}s ·
-              local verify {claimResult.verifyTimeMs.toFixed(0)}ms ✓
+              proof generated in {(claimResult.proofDurationMs / 1000).toFixed(1)}s · local verify{" "}
+              {claimResult.verifyTimeMs.toFixed(0)}ms ✓
             </p>
             <button
               className={`${styles.btn} ${styles.btnDanger}`}
               disabled={!online || !!busy || (!!rejection && nullifierClaimed)}
               onClick={claimAgain}
-              title={
-                rejection && nullifierClaimed ? t("result.claimAgainTitle") : undefined
-              }
+              title={rejection && nullifierClaimed ? t("result.claimAgainTitle") : undefined}
             >
               {busy ?? t("result.claimAgainButton")}
             </button>
@@ -1746,7 +1759,12 @@ export default function App() {
                 </button>
                 <p className={styles.fineprint}>
                   Circle #{circleId?.toString()} stays on-chain forever —{" "}
-                  <a className={styles.link} href={explorerContract()} target="_blank" rel="noreferrer">
+                  <a
+                    className={styles.link}
+                    href={explorerContract()}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
                     view on explorer ↗
                   </a>
                   {t("result.newCircleOutro")}

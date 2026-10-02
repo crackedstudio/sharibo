@@ -190,9 +190,11 @@ describe("smoke test", () => {
 
   it("fails when SHARIBO_CONTRACT_ID is missing", async () => {
     const { stdout, exitCode } = await runSmoke(
-      [`STELLAR_RPC_URL=${baseUrl}`, `STELLAR_NETWORK_PASSPHRASE="${NETWORKS.testnet.passphrase}"`, ""].join(
-        "\n",
-      ),
+      [
+        `STELLAR_RPC_URL=${baseUrl}`,
+        `STELLAR_NETWORK_PASSPHRASE="${NETWORKS.testnet.passphrase}"`,
+        "",
+      ].join("\n"),
     );
     assert.match(stdout, /SHARIBO_CONTRACT_ID is not set/);
     assert.equal(exitCode, 1);
@@ -206,14 +208,13 @@ describe("smoke test", () => {
 
     assert.match(stdout, /\[OK\] Soroban RPC health: healthy/);
     assert.match(stdout, /\[OK\] Horizon root: Horizon v2\.27\.0/);
-    assert.ok(
-      requests.includes("/health"),
-      "the probe should have called the RPC health endpoint",
-    );
+    assert.ok(requests.includes("/health"), "the probe should have called the RPC health endpoint");
   });
 
   it("detects a bogus contract ID gracefully", async () => {
-    const { stdout, exitCode } = await runSmoke(localEnv([`SHARIBO_CONTRACT_ID=${BOGUS_CONTRACT_ID}`]));
+    const { stdout, exitCode } = await runSmoke(
+      localEnv([`SHARIBO_CONTRACT_ID=${BOGUS_CONTRACT_ID}`]),
+    );
 
     // Should fail gracefully (not crash) with a meaningful message
     assert.equal(exitCode, 1);

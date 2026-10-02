@@ -71,17 +71,17 @@ for a 20-level LeanIMT versus a fixed-depth-20 tree is approximately
 
 From `NOTES.md` and the compiled circuit:
 
-| | Value |
-|---|---|
+|                                                | Value         |
+| ---------------------------------------------- | ------------- |
 | Poseidon(2) constraint count (BLS12-381 field) | ~363 per call |
-| Merkle hash calls at depth 4 | 4 |
-| Commitment hash (leaf) | 1 |
-| Nullifier hash | 1 |
-| Total Poseidon calls | 6 |
-| Non-linear constraints | 1,470 |
-| Linear constraints | 1,644 |
-| R1CS constraints reported in UI | **1,452** |
-| Powers-of-Tau required | 2¹² |
+| Merkle hash calls at depth 4                   | 4             |
+| Commitment hash (leaf)                         | 1             |
+| Nullifier hash                                 | 1             |
+| Total Poseidon calls                           | 6             |
+| Non-linear constraints                         | 1,470         |
+| Linear constraints                             | 1,644         |
+| R1CS constraints reported in UI                | **1,452**     |
+| Powers-of-Tau required                         | 2¹²           |
 
 ### Fixed-depth tree at depth 20 (scaling to large groups)
 
@@ -89,20 +89,20 @@ Poseidon path verification constraints scale linearly with depth. From published
 ([Ethereum Research, 2020](https://ethresear.ch/t/gas-and-circuit-constraint-benchmarks-of-binary-and-quinary-incremental-merkle-trees-using-the-poseidon-hash-function/7446)):
 
 | Depth | Path verification constraints (Poseidon binary, BN254) |
-|---|---|
-| 4 | ~876 |
-| 10 | ~2,190 |
-| 20 | ~4,380 |
+| ----- | ------------------------------------------------------ |
+| 4     | ~876                                                   |
+| 10    | ~2,190                                                 |
+| 20    | ~4,380                                                 |
 
 These are BN254 numbers. Our Poseidon255 (BLS12-381 scalar field) uses a different
 round configuration (8 full + 56 partial rounds, x⁵ S-box) and produces a higher per-call
 constraint count (~363 vs ~219 on BN254). Scaling accordingly:
 
 | Depth | Estimated Sharibo circuit constraints (BLS12-381) |
-|---|---|
-| 4 | ~1,452 (measured) |
-| 10 | ~3,267 |
-| 20 | ~5,997 |
+| ----- | ------------------------------------------------- |
+| 4     | ~1,452 (measured)                                 |
+| 10    | ~3,267                                            |
+| 20    | ~5,997                                            |
 
 ### LeanIMT at MAX_DEPTH 20, actual depth 3 (5 members, 2³ = 8 ≥ 5)
 
@@ -114,12 +114,12 @@ A 5-member circle fits in a tree of depth 3 (8 leaves). With `BinaryMerkleRoot(2
 
 Compared to the current fixed-depth-3 tree the 5-member circle actually needs:
 
-| Configuration | R1CS constraints (est.) | Δ vs current depth 4 |
-|---|---|---|
-| Fixed depth 4 (current) | 1,452 | — |
-| Fixed depth 3 (optimal for 5 members) | ~1,089 | −363 (−25 %) |
-| LeanIMT MAX_DEPTH 20 | ~6,057 | +4,605 (+317 %) |
-| LeanIMT MAX_DEPTH 10 | ~3,327 | +1,875 (+129 %) |
+| Configuration                         | R1CS constraints (est.) | Δ vs current depth 4 |
+| ------------------------------------- | ----------------------- | -------------------- |
+| Fixed depth 4 (current)               | 1,452                   | —                    |
+| Fixed depth 3 (optimal for 5 members) | ~1,089                  | −363 (−25 %)         |
+| LeanIMT MAX_DEPTH 20                  | ~6,057                  | +4,605 (+317 %)      |
+| LeanIMT MAX_DEPTH 10                  | ~3,327                  | +1,875 (+129 %)      |
 
 ### Proving-time implication
 
@@ -135,8 +135,8 @@ ratios above are well-established and the inference is direct:
 - The depth-20 overhead arises entirely from the 17 extra (no-op but still constrained)
   Poseidon instances that LeanIMT cannot avoid in a Groth16 R1CS.
 
-Semaphore's own benchmark page notes that v4 (LeanIMT) is faster than v3 for *proof
-generation* — but that improvement is primarily due to their new identity schema and a
+Semaphore's own benchmark page notes that v4 (LeanIMT) is faster than v3 for _proof
+generation_ — but that improvement is primarily due to their new identity schema and a
 move to BabyJubJub + EdDSA. Their tree depths start at 16 in v3; a depth-3 group in v4
 with LeanIMT at MAX_DEPTH=20 is still slower than a fixed-depth-3 circuit.
 
@@ -191,16 +191,16 @@ template or different `MAX_DEPTH`) requires a new trusted setup and a new VK com
 **Reject LeanIMT for now. The framing of the issue contains a false premise.**
 
 The issue states "a five-member circle at depth 4 pays for 16 leaves' worth of hashing."
-This is true of the *off-chain tree construction* (which hashes 11 zero-padded nodes), but
-not of the *circuit*: the circuit pays for exactly `levels` Poseidon calls regardless of
+This is true of the _off-chain tree construction_ (which hashes 11 zero-padded nodes), but
+not of the _circuit_: the circuit pays for exactly `levels` Poseidon calls regardless of
 how many leaves are occupied. Depth 4 already means 4 hashes, not 16.
 
 More importantly, replacing the fixed-depth circuit with a LeanIMT circuit compiled at
-`MAX_DEPTH=20` makes the 5-member proving *slower*, not faster — by approximately 4×,
+`MAX_DEPTH=20` makes the 5-member proving _slower_, not faster — by approximately 4×,
 because the circuit must still instantiate and constrain all 20 levels.
 
 The only way LeanIMT delivers a proving-time saving for small groups is if `MAX_DEPTH` is
-set to the *actual depth needed* — which is identical to just using a fixed-depth circuit
+set to the _actual depth needed_ — which is identical to just using a fixed-depth circuit
 at that depth. The "dynamism" of LeanIMT is entirely in the off-chain tree data structure
 and the on-chain root accumulation (cheaper insertions). Inside the Groth16 constraint
 system, depth is fixed at compile time.

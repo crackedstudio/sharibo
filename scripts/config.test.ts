@@ -101,10 +101,7 @@ describe("config loader", () => {
   });
 
   it("fails when STELLAR_RPC_URL is empty", async () => {
-    const env = validEnv.replace(
-      /STELLAR_RPC_URL=.+/,
-      "STELLAR_RPC_URL=   ",
-    );
+    const env = validEnv.replace(/STELLAR_RPC_URL=.+/, "STELLAR_RPC_URL=   ");
     const { stderr, exitCode } = await loadConfigSubprocess(env);
     assert.equal(exitCode, 1);
     assert.match(stderr, /STELLAR_RPC_URL.*missing or empty/);
@@ -125,10 +122,7 @@ describe("config loader", () => {
   });
 
   it("fails when STELLAR_NETWORK_PASSPHRASE is empty", async () => {
-    const env = validEnv.replace(
-      /STELLAR_NETWORK_PASSPHRASE=.+/,
-      "STELLAR_NETWORK_PASSPHRASE=",
-    );
+    const env = validEnv.replace(/STELLAR_NETWORK_PASSPHRASE=.+/, "STELLAR_NETWORK_PASSPHRASE=");
     const { stderr, exitCode } = await loadConfigSubprocess(env);
     assert.equal(exitCode, 1);
     assert.match(stderr, /STELLAR_NETWORK_PASSPHRASE.*missing or empty/);
@@ -165,10 +159,7 @@ describe("config loader", () => {
     const env = validEnv.replace(/TEST_TOKEN_CONTRACT_ID=.+/, "TEST_TOKEN_CONTRACT_ID=C123");
     const { stderr, exitCode } = await loadConfigSubprocess(env);
     assert.equal(exitCode, 1);
-    assert.match(
-      stderr,
-      /TEST_TOKEN_CONTRACT_ID.*not a valid Stellar contract ID.*56 characters/,
-    );
+    assert.match(stderr, /TEST_TOKEN_CONTRACT_ID.*not a valid Stellar contract ID.*56 characters/);
   });
 
   it("fails when SHARIBO_CONTRACT_ID is missing", async () => {
@@ -202,10 +193,7 @@ describe("config loader", () => {
     const env = validEnv.replace(/SHARIBO_CONTRACT_ID=.+/, "SHARIBO_CONTRACT_ID=CSHORT");
     const { stderr, exitCode } = await loadConfigSubprocess(env);
     assert.equal(exitCode, 1);
-    assert.match(
-      stderr,
-      /SHARIBO_CONTRACT_ID.*not a valid Stellar contract ID.*56 characters/,
-    );
+    assert.match(stderr, /SHARIBO_CONTRACT_ID.*not a valid Stellar contract ID.*56 characters/);
   });
 
   it("fails when ADMIN_SECRET_KEY is missing", async () => {
@@ -229,20 +217,14 @@ describe("config loader", () => {
     );
     const { stderr, exitCode } = await loadConfigSubprocess(env);
     assert.equal(exitCode, 1);
-    assert.match(
-      stderr,
-      /ADMIN_SECRET_KEY.*not a valid Stellar secret key.*should start with 'S'/,
-    );
+    assert.match(stderr, /ADMIN_SECRET_KEY.*not a valid Stellar secret key.*should start with 'S'/);
   });
 
   it("validates ADMIN_SECRET_KEY is 56 characters long", async () => {
     const env = validEnv.replace(/ADMIN_SECRET_KEY=.+/, "ADMIN_SECRET_KEY=SSHORT");
     const { stderr, exitCode } = await loadConfigSubprocess(env);
     assert.equal(exitCode, 1);
-    assert.match(
-      stderr,
-      /ADMIN_SECRET_KEY.*not a valid Stellar secret key.*56 characters/,
-    );
+    assert.match(stderr, /ADMIN_SECRET_KEY.*not a valid Stellar secret key.*56 characters/);
   });
 
   it("CRITICAL: secret key never appears in error message when missing", async () => {

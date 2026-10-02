@@ -34,7 +34,7 @@ what groundwork already exists, as opposed to being silent about it:
 
 ## 2. Contract
 
-- [ ] **Independent third-party audit of the Soroban contract** (`contracts/sharibo/src/lib.rs`). 🔒 **Hard prerequisite, not a nice-to-have**, alongside the circuit audit above. *Not yet filed.*
+- [ ] **Independent third-party audit of the Soroban contract** (`contracts/sharibo/src/lib.rs`). 🔒 **Hard prerequisite, not a nice-to-have**, alongside the circuit audit above. _Not yet filed._
 - [ ] **Reentrancy.** `claim` transfers the pot before zeroing it — a reentrancy window via a hostile token (#247). Regression test via a hostile token during `claim`: #317.
 - [ ] **Input validation.** `create_circle` accepts `size = 0` and negative contributions with no validation (#248); a circle `size` larger than the circuit's Merkle tree capacity is not rejected (#249); regression test for the zero-size free-claim case: #316.
 - [ ] **Storage archival — the nullifier double-claim fence.** Full analysis in [ADR 004](adr/004-storage-archival.md): a nullifier's TTL is extended once, never again, so an archived-and-unrestored nullifier can be replayed. Fix tracked in #254. Supporting work: document/justify the TTL constants as a single pair (#255), extract the repeated TTL-extension boilerplate (#236), add tests that advance the ledger past TTL expiry (#85).
@@ -46,16 +46,16 @@ what groundwork already exists, as opposed to being silent about it:
 ## 3. Operational
 
 - [ ] **Observability.** Emit contract events from every state-changing entrypoint (#250) — a prerequisite for any monitoring at all; today there is nothing to alert on.
-- [ ] **Monitoring/alerting** on the deployed mainnet contract(s) — dormant circles, unusual claim patterns, RPC health. *Not yet filed.*
-- [ ] **Incident response plan** — who can act if a bug is found or a key is suspected compromised, and what "act" means given the contract has no upgrade path (see [ADR 001](adr/001-upgradeability.md): the answer today is "migrate," not "patch"). *Not yet filed.*
-- [ ] **Key custody.** Decide and document how mainnet admin key(s) (and any future `fee_recipient`, see Product below) are held and rotated. Contract-level prerequisite: there is currently no way to rotate a circle's admin at all — add an `admin_transfer` entrypoint (#257). Per ADR 001, admin becomes load-bearing (and thus rotation becomes urgent) the moment any admin-gated operation — like fees — ships. *Operational custody plan itself: not yet filed.*
+- [ ] **Monitoring/alerting** on the deployed mainnet contract(s) — dormant circles, unusual claim patterns, RPC health. _Not yet filed._
+- [ ] **Incident response plan** — who can act if a bug is found or a key is suspected compromised, and what "act" means given the contract has no upgrade path (see [ADR 001](adr/001-upgradeability.md): the answer today is "migrate," not "patch"). _Not yet filed._
+- [ ] **Key custody.** Decide and document how mainnet admin key(s) (and any future `fee_recipient`, see Product below) are held and rotated. Contract-level prerequisite: there is currently no way to rotate a circle's admin at all — add an `admin_transfer` entrypoint (#257). Per ADR 001, admin becomes load-bearing (and thus rotation becomes urgent) the moment any admin-gated operation — like fees — ships. _Operational custody plan itself: not yet filed._
 - [ ] **Dependency update cadence and lockfile policy** documented (#338) — supply-chain hygiene ahead of holding real funds.
 
 ## 4. Product
 
-- [ ] **Enforced turn ordering.** [ADR 002](adr/002-multi-round-turn-ordering.md) (status: **Proposed**) documents that today the same identity can claim every round of a cycle back to back — nothing on-chain enforces "one claim per member per cycle." The design issue (#91) is closed; there is no open issue for actually implementing the enforcement it specifies. *Not yet filed.*
+- [ ] **Enforced turn ordering.** [ADR 002](adr/002-multi-round-turn-ordering.md) (status: **Proposed**) documents that today the same identity can claim every round of a cycle back to back — nothing on-chain enforces "one claim per member per cycle." The design issue (#91) is closed; there is no open issue for actually implementing the enforcement it specifies. _Not yet filed._
 - [x] **Fees.** Shipped in [#252](https://github.com/crackedstudio/sharibo/issues/252): `apply_fee` wired into `claim`, `fee_bps`/`fee_recipient` added to `Circle` (immutable at creation) with the protocol-fee ADR ([007](adr/007-protocol-fees.md)), and a `fee_bps > 10_000` guard (`MAX_FEE_BASIS_POINTS` → `InvalidFeeParams`).
-- [ ] **A way out of a stuck circle beyond admin-only cancel.** Add a round deadline so a stalled circle can be force-cancelled without depending on the admin key being available (#258). A fuller dispute-handling path (contested claims, partial rounds) beyond "cancel and refund" — *not yet filed.*
+- [ ] **A way out of a stuck circle beyond admin-only cancel.** Add a round deadline so a stalled circle can be force-cancelled without depending on the admin key being available (#258). A fuller dispute-handling path (contested claims, partial rounds) beyond "cancel and refund" — _not yet filed._
 
 ---
 

@@ -20,9 +20,7 @@ test("every generated Merkle proof verifies for depths 1 through 6", () => {
         const leaves = generatedLeaves.slice(0, 2 ** levels);
         const tree = MerkleTree.create(levels, leaves);
 
-        return leaves.every((leaf, index) =>
-          referenceVerify(leaf, tree.proof(index)),
-        );
+        return leaves.every((leaf, index) => referenceVerify(leaf, tree.proof(index)));
       },
     ),
     { seed: 490049, numRuns: 100 },

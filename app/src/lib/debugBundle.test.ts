@@ -39,7 +39,11 @@ const CLEAN_INPUT: BundleInput = {
   timings: { artifacts: 1100, proving: 34200, submitting: 2900 },
   recentEvents: [
     { type: "rpc:attempt", at: "2026-01-01T00:00:00.000Z" },
-    { type: "rpc:retry", at: "2026-01-01T00:00:00.100Z", detail: { attempt: 1, delay: 500, error: "429" } },
+    {
+      type: "rpc:retry",
+      at: "2026-01-01T00:00:00.100Z",
+      detail: { attempt: 1, delay: 500, error: "429" },
+    },
   ],
   userAgent: "Mozilla/5.0 (test)",
 };
@@ -75,9 +79,7 @@ describe("findLeakedSecret", () => {
   });
 
   it("does not false-positive on a contract ID starting with C", () => {
-    expect(
-      findLeakedSecret("CB64IZIBBSPUY63UMIVACKWDKRFNH6WJ2EPAOLM7QR4ZI6IJOT4N2LCF"),
-    ).toBeNull();
+    expect(findLeakedSecret("CB64IZIBBSPUY63UMIVACKWDKRFNH6WJ2EPAOLM7QR4ZI6IJOT4N2LCF")).toBeNull();
   });
 });
 

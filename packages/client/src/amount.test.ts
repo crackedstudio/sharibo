@@ -41,8 +41,7 @@ test("xlmToStroops and formatXlm handle negative values consistently", () => {
 function expectCause(raw: string | number, cause: string, size = 5) {
   assert.throws(
     () => validateContributionAmount(raw, { size }),
-    (err: unknown) =>
-      err instanceof ContributionValidationError && err.causeCode === cause,
+    (err: unknown) => err instanceof ContributionValidationError && err.causeCode === cause,
   );
 }
 
