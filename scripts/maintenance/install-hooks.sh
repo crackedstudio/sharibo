@@ -13,7 +13,7 @@
 
 set -euo pipefail
 
-HOOK_SRC="$(cd "$(dirname "$0")" && pwd)/check-secrets.mjs"
+HOOK_SRC="$(cd "$(dirname "$0")" && pwd)/pre-commit.sh"
 HOOK_DST="$(git rev-parse --git-dir)/hooks/pre-commit"
 
 if [ ! -f "$HOOK_SRC" ]; then
@@ -31,4 +31,4 @@ ln -sf "$HOOK_SRC" "$HOOK_DST"
 chmod +x "$HOOK_DST"
 
 echo "Installed pre-commit hook: $HOOK_DST -> $HOOK_SRC"
-echo "The hook will check for Stellar secret keys on every commit."
+echo "The hook will check for Stellar secret keys and formatting on every commit."

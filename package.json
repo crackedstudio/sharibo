@@ -16,6 +16,8 @@
     "check:adrs": "node scripts/maintenance/check-adrs.mjs",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "lint:dead": "knip",
     "typecheck": "npm run typecheck --workspace=packages/client",
     "check:stellar-sdk": "node scripts/maintenance/check-stellar-sdk-version.mjs",
@@ -24,14 +26,16 @@
     "clean": "node scripts/maintenance/clean.mjs"
   },
   "devDependencies": {
+    "@sharibo/client": "*",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
     "eslint": "^9.0.0",
+    "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-react-hooks": "^7.1.1",
     "globals": "^17.11.0",
     "knip": "6.33.0",
+    "prettier": "^3.9.9",
     "typescript-eslint": "^8.0.0",
-    "vitest": "^4.1.10",
-    "@sharibo/client": "*"
+    "vitest": "^4.1.10"
   }
 }

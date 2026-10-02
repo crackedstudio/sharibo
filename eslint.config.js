@@ -1,6 +1,7 @@
 import tseslint from "typescript-eslint";
 import reactHooks from "eslint-plugin-react-hooks";
 import globals from "globals";
+import eslintConfigPrettier from "eslint-config-prettier";
 
 // Deep-import patterns into packages/client/src/. app/ and scripts/ must only
 // consume @sharibo/client via its published entry point — never internal paths.
@@ -136,4 +137,7 @@ export default tseslint.config(
       globals: globals.node,
     },
   },
+
+  // Turn off formatting rules that conflict with Prettier
+  eslintConfigPrettier,
 );

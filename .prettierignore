@@ -3,7 +3,14 @@ app/public/circuits/
 target/
 dist/
 package-lock.json
+contracts/Cargo.lock
+circuits/membership.circom
+contracts/sharibo/test_snapshots/
+packages/client/api-surface.json
 test_snapshots/
 
 # snarkjs output; its exact bytes are hash-pinned in circuits/SETUP_TRANSCRIPT.md
 circuits/verification_key.json
+
+# Intentional malformed JSON for tests
+circuits/test/fixtures/artifacts/tampered/
