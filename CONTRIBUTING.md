@@ -97,6 +97,14 @@ screen readers, so keyboard reachability, visible focus, and the polite live
 region are load-bearing. A change that makes the UI quieter for sighted users
 is a regression even when it looks like a cleanup.
 
+## Code Formatting
+
+This repository uses Prettier for formatting. The baseline was established in a single bulk commit (`388bcd83218b7385edef30ec0e30a729583b4dcc`) to avoid obscuring real diffs. You can configure your local git to skip this commit in `git blame` output:
+
+```bash
+git config blame.ignoreRevsFile .git-blame-ignore-revs
+```
+
 ## Filing an issue
 
 Use the templates in `.github/ISSUE_TEMPLATE/`: **Bug Report** for defects, **Feature Request** for new capabilities, and **Refactor / Architecture Proposal** for restructuring work — when there is no bug and no new feature, but there is a current shape, a proposed shape, a blast radius, and a migration path (e.g. moving code between packages, changing the contract's storage layout, changing the circuit's public signals). The refactor template requires the "where" (current state with file paths) and a behaviour-preservation plan, because those are the two things a refactor issue most often leaves out.
