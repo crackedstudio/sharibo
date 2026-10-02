@@ -6,6 +6,7 @@ export interface Member {
   identity: Identity;
   funded: boolean;
   fundHash?: string;
+  /** Set when this member's contribution was signed by Freighter rather than a demo key. */
   freighterKey?: string;
   ineligible?: boolean;
   ineligibleReason?: string;

@@ -1,7 +1,11 @@
-import { explorerContract } from "../lib/explorer.js";
-import styles from "./Landing.module.css";
-import { useI18n } from "../i18n.js";
+import { networkOf } from "@sharibo/client";
 import type { CircleId } from "@sharibo/client";
+import { config } from "../config.js";
+import { explorerContract } from "../lib/explorer.js";
+import { useI18n } from "../i18n.js";
+import type { Failure } from "../state/circleMachine.js";
+import { Toaster } from "./Toaster.js";
+import styles from "./Landing.module.css";
 
 const NAMES = [
   "ajo",
@@ -18,22 +22,36 @@ const NAMES = [
   "chit fund",
 ];
 
-interface NetworkBannerProps {
-  networkPassphrase: string;
+const README_URL = "https://github.com/glorious21-coder/sharibo#honest-limitations";
+
+export function LocaleSelect({ className = "" }: { className?: string }) {
+  const { locale, locales, setLocale, t } = useI18n();
+  return (
+    <div className={`language-switcher ${className}`}>
+      <select
+        value={locale}
+        onChange={(e) => setLocale(e.target.value)}
+        aria-label={t("lang.label")}
+      >
+        {locales.map((code) => (
+          <option key={code} value={code}>
+            {code}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
 }
 
-export function NetworkBanner({ networkPassphrase }: NetworkBannerProps) {
-  const isTestnet = networkPassphrase.toLowerCase().includes("test");
+export function NetworkBanner() {
+  const { t } = useI18n();
+  const isTestnet = networkOf(config.networkPassphrase) !== "mainnet";
   if (!isTestnet) return null;
   return (
     <div className="network-banner">
-      Stellar testnet — no real funds ·{" "}
-      <a
-        href="https://github.com/crackedstudio/sharibo#honest-limitations"
-        target="_blank"
-        rel="noreferrer"
-      >
-        limitations ↗
+      {t("banner.testnet")} ·{" "}
+      <a href={README_URL} target="_blank" rel="noreferrer">
+        {t("banner.limitationsShort")}
       </a>
     </div>
   );
@@ -42,18 +60,33 @@ export function NetworkBanner({ networkPassphrase }: NetworkBannerProps) {
 export function Landing({
   busy,
   error,
+  online,
   previousCircleId,
+  prevCircle,
+  failure,
+  onDismissFailure,
   onLaunch,
 }: {
   busy: string | null;
   error: string | null;
+  online: boolean;
   previousCircleId: CircleId | null;
+  prevCircle: { id: string; explorerUrl: string } | null;
+  failure: Failure | null;
+  onDismissFailure: () => void;
   onLaunch: () => void;
 }) {
   const { t } = useI18n();
   return (
-    <div className={styles.page}>
-      <div className={`${styles.card} ${styles.hero}`}>
+    <div className="page">
+      <NetworkBanner />
+      {!online && (
+        <div className="offline-banner" role="status">
+          You are offline. Network actions are paused — reconnect to start or retry a circle.
+        </div>
+      )}
+      <div className={`card ${styles.hero}`}>
+        <LocaleSelect className="language-switcher-hero" />
         <div className={styles.namewall}>
           {NAMES.map((n) => (
             <span key={n} className={styles.namewallItem}>
@@ -62,12 +95,10 @@ export function Landing({
           ))}
         </div>
         <h1>SHARIBO</h1>
-        <p className={styles.tagline}>
-          A private rotating savings circle — on Stellar, with real zero-knowledge proofs.
-        </p>
+        <p className={styles.tagline}>{t("landing.tagline")}</p>
         <p className={styles.sub}>
-          Every round, everyone contributes. Every round, one member takes the pot. Sharibo proves{" "}
-          <em>who's entitled to claim</em> without ever revealing <em>who</em> claimed.
+          {t("landing.sub.before")} <em>{t("landing.sub.em1")}</em> {t("landing.sub.middle")}{" "}
+          <em>{t("landing.sub.em2")}</em> {t("landing.sub.after")}
         </p>
         <button
           className={`${styles.btn} ${styles.btnPrimary}`}
@@ -77,17 +108,24 @@ export function Landing({
           {busy ?? "Launch a 5-member circle on testnet"}
         </button>
         {error && <p className={styles.error}>{error}</p>}
+        <Toaster failure={failure} busy={!!busy} online={online} onDismiss={onDismissFailure} />
         {previousCircleId !== null && (
           <p className={styles.fineprint}>
-            Your previous circle lives on at{" "}
+            {t("landing.previousCirclePrefix")}{" "}
             <a className={styles.link} href={explorerContract()} target="_blank" rel="noreferrer">
-              circle #{previousCircleId.toString()} ↗
+              {t("landing.previousCircleLink", { id: previousCircleId.toString() })}
             </a>
           </p>
         )}
-        <p className={styles.fineprint}>
-          Testnet only. Demo identities are generated fresh in your browser, never reused.
-        </p>
+        <p className={styles.fineprint}>{t("landing.testnetFineprint")}</p>
+        {prevCircle && (
+          <p className={styles.fineprint}>
+            {t("landing.previousCircleLivesOn", { id: prevCircle.id })}{" "}
+            <a className={styles.link} href={prevCircle.explorerUrl} target="_blank" rel="noreferrer">
+              {t("landing.viewExplorer")}
+            </a>
+          </p>
+        )}
       </div>
     </div>
   );

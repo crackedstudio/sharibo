@@ -1,10 +1,34 @@
-import type { Member } from "../types.js";
+import { useEffect, useState } from "react";
 import { useI18n } from "../i18n.js";
 import styles from "./MemberRing.module.css";
 
-// Purely presentational: after a claim, none of the nodes are highlighted
+// Reads --ring-radius from CSS custom properties so the ring scales with
+// responsive breakpoints without JS hard-coding.
+export function useRingRadius(): number {
+  const [radius, setRadius] = useState(100);
+
+  useEffect(() => {
+    const read = () => {
+      const value = getComputedStyle(document.documentElement).getPropertyValue("--ring-radius");
+      setRadius(parseFloat(value) || 100);
+    };
+    read();
+    window.addEventListener("resize", read);
+    return () => window.removeEventListener("resize", read);
+  }, []);
+
+  return radius;
+}
+
+export interface RingMember {
+  funded: boolean;
+  pending?: boolean;
+  ineligible?: boolean;
+}
+
+// Purely presentational: after a claim, none of the 5 nodes are highlighted
 // as "the one that claimed" — that's the point. From outside the ring, all
-// members remain equally plausible; only the demo operator (via the radio
+// five remain equally plausible; only the demo operator (via the radio
 // picker below) ever knows which one actually did.
 import type { Member } from "../types.js";
 import { useI18n } from "../i18n.js";
@@ -12,17 +36,22 @@ import styles from "./MemberRing.module.css";
 
 export function MemberRing({ members, revealed }: { members: Member[]; revealed: boolean }) {
   const { t } = useI18n();
-  const radius = 100;
-  const center = 170;
+  const radius = useRingRadius();
+  const fundedCount = members.filter((m) => m.funded).length;
+
+  const ringLabel = revealed
+    ? t("ring.label.revealed", { count: members.length })
+    : t("ring.label.loading", { count: members.length, funded: fundedCount });
+
+  const captionId = "ring-caption";
 
   return (
     <div className={styles.ringWrap}>
-      <svg
+      <div
         className={styles.ring}
-        viewBox="0 0 340 340"
-        width="100%"
         role="img"
-        aria-label={revealed ? t("ring.label.revealed") : t("ring.label.loading")}
+        aria-label={ringLabel}
+        {...(revealed ? { "aria-describedby": captionId } : {})}
       >
         <circle cx={center} cy={center} r={radius} fill="none" className={styles.ringCircle} />
 
@@ -38,14 +67,14 @@ export function MemberRing({ members, revealed }: { members: Member[]; revealed:
 
         {members.map((m, i) => {
           const angle = (i / members.length) * 2 * Math.PI - Math.PI / 2;
-          const x = center + Math.cos(angle) * radius;
-          const y = center + Math.sin(angle) * radius;
-
+          const x = Math.round(Math.cos(angle) * radius);
+          const y = Math.round(Math.sin(angle) * radius);
           return (
-            <g
+            <div
               key={i}
-              className={`${styles.ringNode} ${m.funded ? styles.funded : ""} ${m.ineligible ? styles.ineligible : ""}`}
-              aria-label={`member ${i + 1}${m.ineligible ? ", ineligible: already claimed" : ""}`}
+              aria-hidden="true"
+              className={`${styles.ringNode} ${m.funded ? styles.funded : ""} ${m.pending ? styles.pending : ""}`}
+              style={{ transform: `translate(${x}px, ${y}px)` }}
             >
               <circle cx={x} cy={y} r="20" />
               <text x={x} y={y} textAnchor="middle" dominantBaseline="middle">
@@ -54,7 +83,6 @@ export function MemberRing({ members, revealed }: { members: Member[]; revealed:
             </g>
           );
         })}
-
         {revealed && (
           <g className={`${styles.ringNode} ${styles.ringRecipient}`}>
             <circle cx={center} cy="0" r="20" />
@@ -63,8 +91,7 @@ export function MemberRing({ members, revealed }: { members: Member[]; revealed:
             </text>
           </g>
         )}
-      </svg>
-
+      </div>
       {revealed && (
         <p className={styles.ringCaption}>
           Payout landed on the address above — cryptographically, it could be tied to <em>any</em>{" "}
@@ -78,9 +105,9 @@ export function MemberRing({ members, revealed }: { members: Member[]; revealed:
 export function MemberRingSkeleton() {
   const radius = 100;
   return (
-    <div className={styles.ringWrap} aria-hidden="true">
-      <div className={styles.ring}>
-        <div className={`${styles.skeleton} ${styles.skeletonRingCenter}`} />
+    <div className="ring-wrap" aria-hidden="true">
+      <div className="ring">
+        <div className="skeleton skeleton-ring-center" />
         {Array.from({ length: 5 }, (_, i) => {
           const angle = (i / 5) * 2 * Math.PI - Math.PI / 2;
           const x = Math.round(Math.cos(angle) * radius);
@@ -88,7 +115,7 @@ export function MemberRingSkeleton() {
           return (
             <div
               key={i}
-              className={`${styles.skeleton} ${styles.skeletonRingNode}`}
+              className="skeleton skeleton-ring-node"
               style={{ transform: `translate(${x}px, ${y}px)` }}
             />
           );

@@ -1,12 +1,18 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
-import MemberRing, { type Member } from "./MemberRing";
+import { beforeEach, describe, expect, it } from "vitest";
+import { I18nProvider } from "../i18n";
+import { MemberRing } from "./MemberRing";
 
-const members: Member[] = [
-  { id: "1", name: "Ada", initials: "AD", amount: 120 },
-  { id: "2", name: "Grace", initials: "GR", amount: 80 },
-  { id: "3", name: "Linus", initials: "LI", amount: 40, ineligible: true },
-];
+function renderRing(revealed: boolean) {
+  return render(
+    <I18nProvider>
+      <MemberRing
+        revealed={revealed}
+        members={[{ funded: true }, { funded: true }, { funded: false }, { funded: false }, { funded: false }]}
+      />
+    </I18nProvider>,
+  );
+}
 
 describe("MemberRing", () => {
   it("renders an SVG that scales via viewBox", () => {
@@ -28,11 +34,14 @@ describe("MemberRing", () => {
     expect(screen.getByLabelText(/already claimed/i)).toBeInTheDocument();
   });
 
-  it("does not mark eligible members as ineligible", () => {
-    render(<MemberRing members={members} />);
-    expect(screen.queryByLabelText(/Ada.*already claimed/i)).toBeNull();
+  it("describes funding progress and hides the unlinkability caption until payout", () => {
+    renderRing(false);
+    expect(screen.getByRole("img")).toHaveAttribute(
+      "aria-label",
+      "5-member circle, 2 of 5 funded, pot not yet claimed.",
+    );
+    expect(screen.queryByRole("note")).not.toBeInTheDocument();
   });
-});
 
 describe("component stylesheets", () => {
   it("imports every sibling *.module.css from a .tsx component", async () => {

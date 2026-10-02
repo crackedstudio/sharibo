@@ -78,6 +78,20 @@
 .ring-node.funded {
   background: var(--accent2);
 }
+.ring-node.pending {
+  background: #ffefd5;
+  border-color: #ffcf3f;
+  animation: ring-pulse 1.5s ease-in-out infinite;
+}
+@keyframes ring-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
 .ring-node.ring-recipient {
   background: var(--accent);
   border-style: dashed;
@@ -120,5 +134,6 @@
 @media (prefers-reduced-motion: reduce) {
   .ring-node {
     transition: none !important;
+    animation: none !important;
   }
 }

@@ -2,6 +2,7 @@ import { explorerTx, short } from "../lib/explorer.js";
 import { useI18n } from "../i18n.js";
 import type { Member } from "../types.js";
 import { CIRCLE_SIZE } from "../config.js";
+import { CopyButton } from "./CopyButton.js";
 import styles from "./FundingList.module.css";
 
 export function FundingList({
@@ -9,27 +10,33 @@ export function FundingList({
   busy,
   round,
   contributionXlm,
+  online,
+  hasFreighter,
   onFund,
+  onFundWithFreighter,
   showRefundInfo = false,
 }: {
   members: Member[];
   busy: string | null;
   round: number;
   contributionXlm: number;
+  online: boolean;
+  hasFreighter: boolean;
   onFund: (i: number) => void;
+  onFundWithFreighter: (i: number) => void;
   showRefundInfo?: boolean;
 }) {
   const { t } = useI18n();
 
   return (
     <>
-      <h2>Fund</h2>
+      <h2>{t("fund.heading")}</h2>
       {showRefundInfo && (
         <p className="sub" style={{ marginBottom: "1rem" }}>
           {t("cancel.refundInfo")}
         </p>
       )}
-      <div className="members">
+      <div className={styles.members}>
         {members.map((m, i) => (
           <div
             key={i}
@@ -37,13 +44,17 @@ export function FundingList({
           >
             <span className="member-addr">
               {t("fund.memberLabel", { index: i + 1 })} · {short(m.keypair.publicKey())}
+              <CopyButton
+                value={m.keypair.publicKey()}
+                label={t("fund.memberAddressLabel", { index: i + 1 })}
+              />
             </span>
             {m.pending ? (
               <span className="pending-indicator">⟳ submitting…</span>
             ) : m.funded ? (
               <>
-                <a className="link" href={explorerTx(m.fundHash!)} target="_blank" rel="noreferrer">
-                  ✓ funded ↗
+                <a className={styles.link} href={explorerTx(m.fundHash!)} target="_blank" rel="noreferrer">
+                  {t("fund.fundedLink")}
                 </a>
                 {showRefundInfo && (
                   <span
@@ -55,13 +66,24 @@ export function FundingList({
                 )}
               </>
             ) : (
-              <button
-                className={`${styles.btn} ${styles.btnSmall}`}
-                disabled={!!busy || round > 0}
-                onClick={() => onFund(i)}
-              >
-                {t("fund.demoButton", { amount: contributionXlm })}
-              </button>
+              <div className="row">
+                <button
+                  className={`${styles.btn} ${styles.btnSmall}`}
+                  disabled={!online || !!busy || round > 0}
+                  onClick={() => onFund(i)}
+                >
+                  {t("fund.demoButton", { amount: contributionXlm })}
+                </button>
+                {hasFreighter && (
+                  <button
+                    className={`${styles.btn} ${styles.btnSmall}`}
+                    disabled={!online || !!busy || round > 0}
+                    onClick={() => onFundWithFreighter(i)}
+                  >
+                    {t("fund.freighterButton")}
+                  </button>
+                )}
+              </div>
             )}
           </div>
         ))}

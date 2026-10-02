@@ -142,6 +142,8 @@ describe("axe-core — WCAG 2.1 AA, zero violations", () => {
             busy="Claiming…"
             claimStage={claimStage}
             proveElapsedSeconds={3}
+            isProving={claimStage === "proving"}
+            online
             onClaim={() => {}}
           />,
         ),
