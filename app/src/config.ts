@@ -8,6 +8,12 @@ import { MAX_CIRCLE_SIZE, NETWORKS, TREE_LEVELS } from "@sharibo/client";
  * system forces callers to check `configError` (or `config !== null`) before
  * dereferencing it — there is no fake empty object that silently surfaces
  * `undefined` fields at runtime.
+ *
+ * This module deliberately imports nothing from `@sharibo/client`. It is part
+ * of the landing bundle, and the SDK brings snarkjs, Poseidon and the Stellar
+ * SDK with it — importing the SDK here would put all of that back on the
+ * critical path for a screen that never proves anything (issue #300).
+ * `scripts/check-bundle-budget.mjs` fails the build if that ever regresses.
  */
 
 /** Fixed demo circle size, constrained by the circuit's Merkle-tree capacity. */
@@ -45,6 +51,10 @@ export function validate(
 ): ValidationResult {
   const errors: string[] = [];
 
+  const contractId = import.meta.env.VITE_SHARIBO_CONTRACT_ID as string | undefined;
+  const rpcUrl = import.meta.env.VITE_STELLAR_RPC_URL as string | undefined;
+  const networkPassphrase = import.meta.env.VITE_STELLAR_NETWORK_PASSPHRASE as string | undefined;
+  const testTokenContractId = import.meta.env.VITE_TEST_TOKEN_CONTRACT_ID as string | undefined;
   const contractId = env.VITE_SHARIBO_CONTRACT_ID;
   const rpcUrl = env.VITE_STELLAR_RPC_URL ?? NETWORKS.testnet.rpcUrl;
   const networkPassphrase = env.VITE_STELLAR_NETWORK_PASSPHRASE ?? NETWORKS.testnet.passphrase;
@@ -58,12 +68,18 @@ export function validate(
     );
   }
 
+  if (!rpcUrl) {
   if (!rpcUrl || rpcUrl.trim().length === 0) {
     errors.push("VITE_STELLAR_RPC_URL — missing or empty");
   } else if (!isHttpUrl(rpcUrl)) {
     errors.push(`VITE_STELLAR_RPC_URL — invalid URL (got "${rpcUrl}"; expected an http/https URL)`);
   }
 
+  if (!networkPassphrase) {
+    errors.push("VITE_STELLAR_NETWORK_PASSPHRASE — missing or empty");
+  }
+
+  if (!testTokenContractId) {
   if (!networkPassphrase || networkPassphrase.trim().length === 0) {
     errors.push("VITE_STELLAR_NETWORK_PASSPHRASE — missing or empty");
   }
@@ -89,8 +105,8 @@ export function validate(
   return {
     config: {
       contractId: contractId!,
-      rpcUrl,
-      networkPassphrase,
+      rpcUrl: rpcUrl!,
+      networkPassphrase: networkPassphrase!,
       testTokenContractId: testTokenContractId!,
     },
     errors: [],
@@ -108,14 +124,14 @@ export const configError: string[] = result.errors;
  * an actual runtime error to use it before checking the gate — the type
  * system enforces the setup-screen check instead of pretending.
  */
-export const config: AppConfig = result.config ?? ({} as AppConfig);
+export const config: AppConfig | null = result.config;
 
 /** Network connection parameters shared by every SDK call. */
 export const NETWORK = {
-  contractId: config.contractId,
-  rpcUrl: config.rpcUrl,
-  networkPassphrase: config.networkPassphrase,
+  contractId: config?.contractId ?? "",
+  rpcUrl: config?.rpcUrl ?? "",
+  networkPassphrase: config?.networkPassphrase ?? "",
 };
 
 /** Token contract that funds each round's pot. */
-export const TOKEN = config.testTokenContractId;
+export const TOKEN = config?.testTokenContractId ?? "";

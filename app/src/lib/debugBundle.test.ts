@@ -52,6 +52,11 @@ const CLEAN_INPUT: BundleInput = {
   userAgent: "Mozilla/5.0 (test)",
 };
 
+// Real-shaped Stellar secret seed — base-32, starts with S, 56 chars
+// ("S" plus a 55-char payload). The fixture used to be 55 characters, which
+// made the S[A-Z2-7]{55} detector here and in debugBundle.ts look broken: the
+// pattern was right, the sample was one character short.
+const STELLAR_SECRET = "SCECFBGD3WTYXZPFG6BHZWLZJSB7BXPX4VHDOZFXVLGHXCV5GFQABCD2";
 // Real-shaped Stellar secret seed — base-32, starts with S, 56 chars.
 // Derived from a generated keypair so it is 56 chars by construction and
 // cannot drift out of sync with the REDACT_PATTERNS[0] shape.
