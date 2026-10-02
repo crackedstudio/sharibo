@@ -64,18 +64,14 @@ export class MerkleTree {
     // all of which would otherwise produce a nonsensical capacity (e.g.
     // 2 ** 0.5 === 1.414…, 2 ** Infinity === Infinity).
     if (!Number.isInteger(levels) || levels < 1) {
-      throw new RangeError(
-        `levels must be an integer >= 1, got ${levels}`,
-      );
+      throw new RangeError(`levels must be an integer >= 1, got ${levels}`);
     }
     // Cap at 32 — even 2**32 leaves (4.3 billion bigints) would require
     // > 100 GB of memory on its own, far past anything practical for a
     // browser wallet.  This is a generous limit; real deployments use
     // depth 20 or 32 at most.
     if (levels > 32) {
-      throw new RangeError(
-        `levels must be <= 32, got ${levels}`,
-      );
+      throw new RangeError(`levels must be <= 32, got ${levels}`);
     }
 
     // Validate every leaf is a well-formed field element in [0, FR_MODULUS)
@@ -84,9 +80,7 @@ export class MerkleTree {
     for (let i = 0; i < leaves.length; i++) {
       const leaf = leaves[i];
       if (leaf < 0n || leaf >= FR_MODULUS) {
-        throw new RangeError(
-          `leaf at index ${i} must satisfy 0 <= leaf < FR_MODULUS, got ${leaf}`,
-        );
+        throw new RangeError(`leaf at index ${i} must satisfy 0 <= leaf < FR_MODULUS, got ${leaf}`);
       }
     }
 
@@ -178,5 +172,4 @@ export class MerkleTree {
 
     return { root: this.root, pathElements, pathIndices };
   }
-
 }

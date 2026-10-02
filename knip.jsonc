@@ -29,6 +29,10 @@
   // entry points for each workspace.
 
   "workspaces": {
+    "root": {
+      "entry": ["__mocks__/**/*.ts"],
+      "project": ["__mocks__/**/*.ts"],
+    },
     // ── app workspace ───────────────────────────────────────────────────────
     "app": {
       "entry": [
@@ -37,39 +41,43 @@
         "src/setupTests.ts",
         "vitest.config.ts",
         "vite.config.ts",
-        "scripts/sync-circuit.mjs"
+        "scripts/sync-circuit.mjs",
+        // Browser e2e suite. client.mock.ts is only reached through the alias
+        // in vite.mock.config.ts (a string path, not an import), so it must
+        // be listed here or knip reports it as unused.
+        "e2e/playwright.config.ts",
+        "e2e/global-setup.ts",
+        "e2e/vite.mock.config.ts",
+        "e2e/mock/client.mock.ts",
+        "e2e/*.e2e.ts",
       ],
-      "project": ["src/**/*.{ts,tsx}", "scripts/**/*.mjs", "vitest.config.ts", "vite.config.ts"],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "scripts/**/*.mjs",
+        "e2e/**/*.ts",
+        "vitest.config.ts",
+        "vite.config.ts",
+      ],
       // @testing-library/jest-dom types are imported for side-effects only
       // (augmenting the expect interface); knip sees no explicit usage.
-      "ignoreDependencies": ["@testing-library/jest-dom"]
+      "ignoreDependencies": ["@testing-library/jest-dom"],
     },
 
     // ── packages/client workspace ───────────────────────────────────────────
     "packages/client": {
       // index.ts is the public API barrel — all its re-exports are intentional.
-      "entry": [
-        "src/index.ts",
-        "src/*.test.ts",
-        "vitest.config.ts"
-      ],
+      "entry": ["src/index.ts", "src/*.test.ts", "vitest.config.ts"],
       "project": ["src/**/*.ts", "vitest.config.ts"],
       // The barrel (index.ts) re-exports everything; suppress unused-export
       // noise for symbols that are exported from index.ts but only consumed
       // by external packages (they appear unused within the workspace).
-      "includeEntryExports": false
+      "includeEntryExports": false,
     },
 
     // ── scripts workspace ───────────────────────────────────────────────────
     "scripts": {
-      "entry": [
-        "e2e.ts",
-        "smoke.ts",
-        "testnet-health.ts",
-        "config.ts",
-        "*.test.ts"
-      ],
-      "project": ["**/*.ts"]
+      "entry": ["e2e.ts", "smoke.ts", "testnet-health.ts", "config.ts", "*.test.ts"],
+      "project": ["**/*.ts"],
     },
 
     // ── circuits workspace ──────────────────────────────────────────────────
@@ -81,8 +89,14 @@
       "project": ["scripts/**/*.{cjs,mjs,js}", "test/**/*.js"],
       // snarkjs ships without type declarations; the binary is used in shell
       // scripts, not imported as a module.
-      "ignoreDependencies": ["snarkjs"]
-    }
+      "ignoreDependencies": ["snarkjs"],
+    },
+
+    // ── test-vectors workspace ──────────────────────────────────────────────
+    "test-vectors": {
+      "entry": ["generate.mjs"],
+      "project": ["generate.mjs"],
+    },
   },
 
   // ── Intentional exceptions ─────────────────────────────────────────────────
@@ -97,6 +111,6 @@
   // export both the function and its test).
   "ignoreExportsUsedInFile": {
     "interface": true,
-    "type": true
-  }
+    "type": true,
+  },
 }

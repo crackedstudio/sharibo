@@ -40,7 +40,7 @@ test("API surface snapshot matches committed snapshot", () => {
       constants[name] = typeOf;
     } else if (name in snapshotJson.errors) {
       errors[name] = "class";
-    } else if (name === "MerkleTree") {
+    } else if (name === "MerkleTree" || name === "SdkEventEmitter" || name === "ShariboSDK") {
       types[name] = "class";
     } else if (typeOf === "function") {
       functions[name] = typeOf;
@@ -56,6 +56,8 @@ test("API surface snapshot matches committed snapshot", () => {
     "config.ts",
     "errors.ts",
     "artifacts.ts",
+    "brand.ts",
+    "sdk.ts",
   ];
   const srcContent = srcFiles
     .map((f) => fs.readFileSync(path.join(__dirname, f), "utf8"))
@@ -97,4 +99,3 @@ test("API surface snapshot matches committed snapshot", () => {
     throw error;
   }
 });
-

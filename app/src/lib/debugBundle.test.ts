@@ -5,8 +5,12 @@
  *   "A test asserts no S... secret seed can appear in the bundle."
  *
  * Additional tests: field-element scalars, markdown formatting, clean bundles.
+ *
+ * Issue #503: hardened redaction — hex scalars, lowercase Strkeys, muxed
+ * addresses, and redact-rather-than-throw for runtime fields.
  */
 import { describe, it, expect } from "vitest";
+import { Keypair } from "@stellar/stellar-sdk";
 import {
   buildDebugBundle,
   formatBundleAsMarkdown,
@@ -37,6 +41,14 @@ const CLEAN_INPUT: BundleInput = {
     zkey: "sha256:def456",
   },
   timings: { artifacts: 1100, proving: 34200, submitting: 2900 },
+  recentEvents: [
+    { type: "rpc:attempt", at: "2026-01-01T00:00:00.000Z" },
+    {
+      type: "rpc:retry",
+      at: "2026-01-01T00:00:00.100Z",
+      detail: { attempt: 1, delay: 500, error: "429" },
+    },
+  ],
   userAgent: "Mozilla/5.0 (test)",
 };
 
@@ -45,10 +57,50 @@ const CLEAN_INPUT: BundleInput = {
 // made the S[A-Z2-7]{55} detector here and in debugBundle.ts look broken: the
 // pattern was right, the sample was one character short.
 const STELLAR_SECRET = "SCECFBGD3WTYXZPFG6BHZWLZJSB7BXPX4VHDOZFXVLGHXCV5GFQABCD2";
+// Real-shaped Stellar secret seed — base-32, starts with S, 56 chars.
+// Derived from a generated keypair so it is 56 chars by construction and
+// cannot drift out of sync with the REDACT_PATTERNS[0] shape.
+const STELLAR_SECRET = Keypair.random().secret();
 
 // A 77-digit decimal field element (BLS12-381 scalar field, just under r).
 const FIELD_ELEMENT_SCALAR =
   "52435875175126190479447740508185965837690552500527637822603658699938581184512";
+
+// A 64-hex-char field element (BLS12-381 scalar rendered as hex).
+const FIELD_ELEMENT_HEX = "0x1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7f809";
+
+// A 64-hex-char transaction hash — legitimate, must NOT be flagged.
+const TX_HASH = "a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90";
+
+// A muxed account Strkey (M + 68 base-32 chars, 69 total).
+const MUXED_ACCOUNT = "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVAAAAAAAAAAAAAJLK";
+
+// ─── fixture sanity ──────────────────────────────────────────────────────────
+
+describe("test fixtures", () => {
+  it("STELLAR_SECRET is a 56-char Strkey seed (S + 55 base-32 chars)", () => {
+    expect(STELLAR_SECRET.length).toBe(56);
+    expect(STELLAR_SECRET).toMatch(/^S[A-Z2-7]{55}$/);
+  });
+
+  it("FIELD_ELEMENT_SCALAR is a 77-digit decimal", () => {
+    expect(FIELD_ELEMENT_SCALAR.length).toBe(77);
+    expect(FIELD_ELEMENT_SCALAR).toMatch(/^\d{77}$/);
+  });
+
+  it("FIELD_ELEMENT_HEX is a 0x-prefixed 64-hex-char scalar", () => {
+    expect(FIELD_ELEMENT_HEX).toMatch(/^0x[0-9a-f]{64}$/);
+  });
+
+  it("TX_HASH is a 64-hex-char transaction hash", () => {
+    expect(TX_HASH).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it("MUXED_ACCOUNT is a 69-char Strkey muxed account (M + 68 base-32 chars)", () => {
+    expect(MUXED_ACCOUNT.length).toBe(69);
+    expect(MUXED_ACCOUNT).toMatch(/^M[A-Z2-7]{68}$/);
+  });
+});
 
 // ─── findLeakedSecret ────────────────────────────────────────────────────────
 
@@ -63,10 +115,29 @@ describe("findLeakedSecret", () => {
     expect(result).toBe(REDACT_PATTERNS[0]);
   });
 
+  it("detects a lowercase Stellar secret seed", () => {
+    const result = findLeakedSecret(`key is ${STELLAR_SECRET.toLowerCase()}`);
+    expect(result).not.toBeNull();
+  });
+
   it("detects a 77-digit field-element scalar", () => {
     const result = findLeakedSecret(`nullifier: ${FIELD_ELEMENT_SCALAR}`);
     expect(result).not.toBeNull();
     expect(result).toBe(REDACT_PATTERNS[1]);
+  });
+
+  it("detects a 76-digit field-element scalar (below the old floor)", () => {
+    const scalar = FIELD_ELEMENT_SCALAR.slice(1);
+    expect(scalar.length).toBe(76);
+    expect(findLeakedSecret(`nullifier: ${scalar}`)).not.toBeNull();
+  });
+
+  it("detects a hex field-element scalar", () => {
+    expect(findLeakedSecret(`identitySecret=${FIELD_ELEMENT_HEX}`)).not.toBeNull();
+  });
+
+  it("detects a muxed account Strkey", () => {
+    expect(findLeakedSecret(`muxed: ${MUXED_ACCOUNT}`)).not.toBeNull();
   });
 
   it("does not false-positive on a short decimal number", () => {
@@ -74,9 +145,15 @@ describe("findLeakedSecret", () => {
   });
 
   it("does not false-positive on a contract ID starting with C", () => {
-    expect(
-      findLeakedSecret("CB64IZIBBSPUY63UMIVACKWDKRFNH6WJ2EPAOLM7QR4ZI6IJOT4N2LCF"),
-    ).toBeNull();
+    expect(findLeakedSecret("CB64IZIBBSPUY63UMIVACKWDKRFNH6WJ2EPAOLM7QR4ZI6IJOT4N2LCF")).toBeNull();
+  });
+
+  it("does not false-positive on a 64-hex-char transaction hash", () => {
+    expect(findLeakedSecret(`tx: ${TX_HASH}`)).toBeNull();
+  });
+
+  it("does not false-positive on a sha256: artifact hash", () => {
+    expect(findLeakedSecret("wasm: sha256:abc123")).toBeNull();
   });
 });
 
@@ -99,21 +176,35 @@ describe("buildDebugBundle — no secrets in bundle", () => {
     expect(serialised).not.toMatch(/\b\d{77,}\b/);
   });
 
-  it("throws when a Stellar secret seed is injected into a field", () => {
+  it("redacts a Stellar secret seed injected into a runtime field", () => {
     // Simulate an accidental inclusion — e.g. lastError surfacing a secret.
     const poisoned: BundleInput = {
       ...CLEAN_INPUT,
       lastError: `Failed: key is ${STELLAR_SECRET}`,
     };
-    expect(() => buildDebugBundle(poisoned)).toThrow(/Secret material leaked/);
+    const bundle = buildDebugBundle(poisoned);
+    expect(bundle.lastError).not.toContain(STELLAR_SECRET);
+    expect(bundle.lastError).toContain("[REDACTED]");
   });
 
-  it("throws when a field-element scalar is injected into a field", () => {
+  it("redacts a field-element scalar injected into a runtime field", () => {
     const poisoned: BundleInput = {
       ...CLEAN_INPUT,
       lastError: `identityNullifier=${FIELD_ELEMENT_SCALAR}`,
     };
-    expect(() => buildDebugBundle(poisoned)).toThrow(/Secret material leaked/);
+    const bundle = buildDebugBundle(poisoned);
+    expect(bundle.lastError).not.toContain(FIELD_ELEMENT_SCALAR);
+    expect(bundle.lastError).toContain("[REDACTED]");
+  });
+
+  it("redacts a hex scalar injected into a runtime field", () => {
+    const poisoned: BundleInput = {
+      ...CLEAN_INPUT,
+      lastError: `identitySecret=${FIELD_ELEMENT_HEX}`,
+    };
+    const bundle = buildDebugBundle(poisoned);
+    expect(bundle.lastError).not.toContain(FIELD_ELEMENT_HEX);
+    expect(bundle.lastError).toContain("[REDACTED]");
   });
 
   it("pot is serialised as a string, not a raw bigint", () => {
@@ -240,5 +331,12 @@ describe("formatBundleAsMarkdown", () => {
     const bundle = buildDebugBundle(CLEAN_INPUT);
     const md = formatBundleAsMarkdown(bundle);
     expect(md).not.toMatch(/S[A-Z2-7]{55}/);
+  });
+
+  it("includes recent SDK events in the markdown", () => {
+    const bundle = buildDebugBundle(CLEAN_INPUT);
+    const md = formatBundleAsMarkdown(bundle);
+    expect(md).toContain("#### Recent SDK events");
+    expect(md).toContain("rpc:retry");
   });
 });

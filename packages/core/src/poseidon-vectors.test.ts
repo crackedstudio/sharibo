@@ -43,7 +43,7 @@ test("full circuit example: externalNullifier, merkle path, and nullifierHash al
   // Walk the committed Merkle path from the leaf and confirm it reaches root.
   let node = poseidon(BigInt(input.identityNullifier), BigInt(input.identitySecret));
   for (let i = 0; i < input.pathElements.length; i++) {
-    const sibling = BigInt(input.pathElements[i]);
+    const sibling = BigInt(input.pathElements[i]!);
     node = input.pathIndices[i] === 1 ? poseidon(sibling, node) : poseidon(node, sibling);
   }
   assert.equal(node.toString(), expectedPublicSignals.root);

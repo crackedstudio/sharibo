@@ -60,18 +60,28 @@ function readDocumentedNames(readme: string, header: string): string[] {
   if (!fence) {
     throw new Error(`README "### ${header}" section has no \`\`\`ts code block`);
   }
-  return fence[1]
-    .split("\n")
-    .map((line) => line.trim())
-    // Keep only bare identifiers; ignore blanks and prose.
-    .filter((line) => /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(line))
-    .sort();
+  return (
+    fence[1]
+      .split("\n")
+      .map((line) => line.trim())
+      // Keep only bare identifiers; ignore blanks and prose.
+      .filter((line) => /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(line))
+      .sort()
+  );
 }
 
 describe("@sharibo/client barrel vs README", () => {
   const readme = readFileSync(readmePath, "utf8");
   const documentedValues = readDocumentedNames(readme, "Values");
   const documentedTypes = readDocumentedNames(readme, "Types");
+
+  const apiSurface = JSON.parse(readFileSync(join(__dirname, "..", "api-surface.json"), "utf8"));
+  const apiSurfaceValues = [
+    ...Object.keys(apiSurface.constants || {}),
+    ...Object.keys(apiSurface.errors || {}),
+    ...Object.keys(apiSurface.functions || {}),
+    ...Object.keys(apiSurface.types || {}).filter((k) => apiSurface.types[k] === "class"),
+  ].sort();
 
   it("contains no `export *` in index.ts", () => {
     const indexSrc = readFileSync(join(__dirname, "index.ts"), "utf8");
@@ -82,9 +92,15 @@ describe("@sharibo/client barrel vs README", () => {
     expect(documentedTypes.some((t) => documentedValues.includes(t))).toBe(false);
   });
 
-  it("the barrel's value exports exactly match the README 'Values' list", () => {
+  it("the barrel's value exports exactly match the README 'Values' list and api-surface.json", () => {
     const exportedValues = Object.keys(client).sort();
-    expect(exportedValues).toEqual(documentedValues);
+    expect(exportedValues, "The barrel exports should match api-surface.json").toEqual(
+      apiSurfaceValues,
+    );
+    expect(
+      documentedValues,
+      "The README appendix drifted. Please regenerate the README appendix from api-surface.json",
+    ).toEqual(apiSurfaceValues);
   });
 
   it("the README 'Types' list matches the canonical public type set", () => {

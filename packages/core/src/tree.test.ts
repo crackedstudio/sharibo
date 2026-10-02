@@ -20,7 +20,6 @@ function expectThrows(fn: () => unknown, predicate: (err: Error) => boolean): vo
   expect(predicate(err), `error message did not match: ${err.message}`).toBe(true);
 }
 
-
 const LEVELS = TREE_LEVELS;
 
 // ---- proofOf (find a proof by leaf value) ----
@@ -31,12 +30,12 @@ describe("MerkleTree.proofOf", () => {
     const leaves = identities.map((id) => id.commitment);
     const tree = MerkleTree.create(LEVELS, leaves);
 
-    const proof = tree.proofOf(leaves[2]);
+    const proof = tree.proofOf(leaves[2]!);
     expect(proof.root).toBe(tree.root);
     expect(proof.pathElements).toHaveLength(LEVELS);
     expect(proof.pathIndices).toHaveLength(LEVELS);
 
-    const expected = tree.proof(tree.indexOf(leaves[2]));
+    const expected = tree.proof(tree.indexOf(leaves[2]!));
     expect(proof.pathElements).toEqual(expected.pathElements);
     expect(proof.pathIndices).toEqual(expected.pathIndices);
     expect(proof.root).toBe(expected.root);
@@ -47,7 +46,7 @@ describe("MerkleTree.proofOf", () => {
     const leaves = identities.map((id) => id.commitment);
     const tree = MerkleTree.create(LEVELS, leaves);
 
-    for (const leaf of [leaves[0], leaves[identities.length - 1]]) {
+    for (const leaf of [leaves[0]!, leaves[identities.length - 1]!]) {
       const proof = tree.proofOf(leaf);
       expect(proof.root).toBe(tree.root);
       expect(proof.pathElements).toHaveLength(LEVELS);
@@ -62,9 +61,13 @@ describe("MerkleTree.proofOf", () => {
     const unknownLeaf = generateIdentity().commitment;
     expect(tree.indexOf(unknownLeaf)).toBe(-1);
 
-    expectThrows(() => tree.proofOf(unknownLeaf), (err: Error) => err.message.includes("not found in this tree") &&
+    expectThrows(
+      () => tree.proofOf(unknownLeaf),
+      (err: Error) =>
+        err.message.includes("not found in this tree") &&
         err.message.includes("16 slots") &&
-        err.message.includes("5 occupied"));
+        err.message.includes("5 occupied"),
+    );
   });
 
   it("error message includes a shortened hex representation of the leaf", () => {
@@ -72,15 +75,15 @@ describe("MerkleTree.proofOf", () => {
     const leaves = identities.map((id) => id.commitment);
     const tree = MerkleTree.create(LEVELS, leaves);
 
-  const unknownLeaf = generateIdentity().commitment;
-  assert.throws(
-    () => tree.proofOf(unknownLeaf),
-    (err: Error) => {
-      // The error should mention "0x" (the hex prefix) and "not found".
-      return err.message.startsWith("leaf 0x") && err.message.includes("not found");
-    },
-  );
-});
+    const unknownLeaf = generateIdentity().commitment;
+    assert.throws(
+      () => tree.proofOf(unknownLeaf),
+      (err: Error) => {
+        // The error should mention "0x" (the hex prefix) and "not found".
+        return err.message.startsWith("leaf 0x") && err.message.includes("not found");
+      },
+    );
+  });
 
   it("works for a tree with a single leaf", () => {
     const identity = generateIdentity();
@@ -95,8 +98,11 @@ describe("MerkleTree.proofOf", () => {
     const tree = MerkleTree.create(LEVELS, []);
     const unknownLeaf = generateIdentity().commitment;
 
-    expectThrows(() => tree.proofOf(unknownLeaf), (err: Error) => err.message.includes("not found in this tree") &&
-        err.message.includes("0 occupied"));
+    expectThrows(
+      () => tree.proofOf(unknownLeaf),
+      (err: Error) =>
+        err.message.includes("not found in this tree") && err.message.includes("0 occupied"),
+    );
   });
 });
 
@@ -165,10 +171,13 @@ describe("MerkleTree.create — leaf validation", () => {
   });
 
   it("reports the correct index for a rejected leaf", () => {
-    expectThrows(() => MerkleTree.create(4, [42n, 1n, FR_MODULUS, 7n]), (err: unknown) => {
+    expectThrows(
+      () => MerkleTree.create(4, [42n, 1n, FR_MODULUS, 7n]),
+      (err: unknown) => {
         if (!(err instanceof RangeError)) return false;
         return err.message.includes("index 2") && err.message.includes(String(FR_MODULUS));
-      });
+      },
+    );
   });
 
   it("with zero leaves produces a padded tree", () => {
@@ -247,149 +256,143 @@ describe("MerkleTree differential — production vs naive reference", () => {
   );
 });
 
-  /**
-   * Property 2 — Proof agreement.
-   *
-   * For every leaf in the tree, both implementations must produce the same
-   * pathElements and pathIndices.  A mismatch here is exactly the class of
-   * off-by-one or sibling-order bug that produces a valid-looking proof that
-   * the circuit silently rejects.
-   */
-  it(
-    "pathElements and pathIndices are identical for every leaf, all depths 1–8 (≥200 cases)",
-    { timeout: 60_000 },
-    () => {
-      fc.assert(
-        fc.property(arbTreeInput, ({ levels, leaves }) => {
-          const prodTree = MerkleTree.create(levels, leaves);
+/**
+ * Property 2 — Proof agreement.
+ *
+ * For every leaf in the tree, both implementations must produce the same
+ * pathElements and pathIndices.  A mismatch here is exactly the class of
+ * off-by-one or sibling-order bug that produces a valid-looking proof that
+ * the circuit silently rejects.
+ */
+it(
+  "pathElements and pathIndices are identical for every leaf, all depths 1–8 (≥200 cases)",
+  { timeout: 60_000 },
+  () => {
+    fc.assert(
+      fc.property(arbTreeInput, ({ levels, leaves }) => {
+        const prodTree = MerkleTree.create(levels, leaves);
 
-          for (let i = 0; i < leaves.length; i++) {
-            const prod = prodTree.proof(i);
-            const ref = referenceProof(levels, leaves, i);
+        for (let i = 0; i < leaves.length; i++) {
+          const prod = prodTree.proof(i);
+          const ref = referenceProof(levels, leaves, i);
 
-            expect(prod.root).toBe(ref.root);
-            expect(prod.pathElements).toEqual(ref.pathElements);
-            expect(prod.pathIndices).toEqual(ref.pathIndices);
-          }
-        }),
-        { numRuns: 200, seed: 0xdeadbeef, verbose: true },
-      );
-    },
+          expect(prod.root).toBe(ref.root);
+          expect(prod.pathElements).toEqual(ref.pathElements);
+          expect(prod.pathIndices).toEqual(ref.pathIndices);
+        }
+      }),
+      { numRuns: 200, seed: 0xdeadbeef, verbose: true },
+    );
+  },
+);
+
+/**
+ * Property 3 — Proof self-consistency (reference verifier).
+ *
+ * Every proof produced by either implementation must pass referenceVerify
+ * when hashed from its own leaf back to the root.  This checks that the
+ * (left, right) convention inside referenceVerify matches MerkleTreeChecker
+ * — without needing to run the circuit.
+ */
+it(
+  "every proof verifies against its own root via referenceVerify (≥200 cases)",
+  { timeout: 60_000 },
+  () => {
+    fc.assert(
+      fc.property(arbTreeInput, ({ levels, leaves }) => {
+        for (let i = 0; i < leaves.length; i++) {
+          const proof = referenceProof(levels, leaves, i);
+          expect(referenceVerify(leaves[i]!, proof)).toBe(true);
+        }
+      }),
+      { numRuns: 200, seed: 0xdeadbeef, verbose: true },
+    );
+  },
+);
+
+/**
+ * Property 4 — Cross-verification.
+ *
+ * Proofs from the *production* tree must also pass the *reference*
+ * verifier.  This is an independent cross-check direction from Property 2.
+ */
+it("production-tree proofs pass referenceVerify (≥200 cases)", { timeout: 60_000 }, () => {
+  fc.assert(
+    fc.property(arbTreeInput, ({ levels, leaves }) => {
+      const prodTree = MerkleTree.create(levels, leaves);
+
+      for (let i = 0; i < leaves.length; i++) {
+        const proof = prodTree.proof(i);
+        expect(referenceVerify(leaves[i]!, proof)).toBe(true);
+      }
+    }),
+    { numRuns: 200, seed: 0xdeadbeef, verbose: true },
   );
+});
 
-  /**
-   * Property 3 — Proof self-consistency (reference verifier).
-   *
-   * Every proof produced by either implementation must pass referenceVerify
-   * when hashed from its own leaf back to the root.  This checks that the
-   * (left, right) convention inside referenceVerify matches MerkleTreeChecker
-   * — without needing to run the circuit.
-   */
-  it(
-    "every proof verifies against its own root via referenceVerify (≥200 cases)",
-    { timeout: 60_000 },
-    () => {
-      fc.assert(
-        fc.property(arbTreeInput, ({ levels, leaves }) => {
-          for (let i = 0; i < leaves.length; i++) {
-            const proof = referenceProof(levels, leaves, i);
-            expect(referenceVerify(leaves[i], proof)).toBe(true);
-          }
-        }),
-        { numRuns: 200, seed: 0xdeadbeef, verbose: true },
-      );
-    },
-  );
+/**
+ * Property 5 — Tampered-proof rejection.
+ *
+ * Flipping any single pathElement must cause referenceVerify to return
+ * false.  This guards against a vacuously-true verifier.
+ */
+it(
+  "referenceVerify rejects proofs with a tampered pathElement (≥100 cases)",
+  { timeout: 30_000 },
+  () => {
+    fc.assert(
+      fc.property(
+        // Fix levels at 3 for speed; depth correctness is covered above.
+        fc
+          .array(arbFieldElement, { minLength: 1, maxLength: 8 })
+          .map((leaves) => ({ levels: 3, leaves })),
+        fc.integer({ min: 0 }),
+        ({ levels, leaves }, seed) => {
+          const i = seed % leaves.length;
+          const proof = referenceProof(levels, leaves, i);
 
-  /**
-   * Property 4 — Cross-verification.
-   *
-   * Proofs from the *production* tree must also pass the *reference*
-   * verifier.  This is an independent cross-check direction from Property 2.
-   */
-  it(
-    "production-tree proofs pass referenceVerify (≥200 cases)",
-    { timeout: 60_000 },
-    () => {
-      fc.assert(
-        fc.property(arbTreeInput, ({ levels, leaves }) => {
-          const prodTree = MerkleTree.create(levels, leaves);
+          const tampered = {
+            ...proof,
+            pathElements: proof.pathElements.map((e, j) => (j === 0 ? e + 1n : e)),
+          };
 
-          for (let i = 0; i < leaves.length; i++) {
-            const proof = prodTree.proof(i);
-            expect(referenceVerify(leaves[i], proof)).toBe(true);
-          }
-        }),
-        { numRuns: 200, seed: 0xdeadbeef, verbose: true },
-      );
-    },
-  );
+          expect(referenceVerify(leaves[i]!, tampered)).toBe(false);
+        },
+      ),
+      { numRuns: 100, seed: 0xdeadbeef },
+    );
+  },
+);
 
-  /**
-   * Property 5 — Tampered-proof rejection.
-   *
-   * Flipping any single pathElement must cause referenceVerify to return
-   * false.  This guards against a vacuously-true verifier.
-   */
-  it(
-    "referenceVerify rejects proofs with a tampered pathElement (≥100 cases)",
-    { timeout: 30_000 },
-    () => {
-      fc.assert(
-        fc.property(
-          // Fix levels at 3 for speed; depth correctness is covered above.
-          fc
-            .array(arbFieldElement, { minLength: 1, maxLength: 8 })
-            .map((leaves) => ({ levels: 3, leaves })),
-          fc.integer({ min: 0 }),
-          ({ levels, leaves }, seed) => {
-            const i = seed % leaves.length;
-            const proof = referenceProof(levels, leaves, i);
+/**
+ * Property 6 — Padding isolation.
+ *
+ * Explicitly appending ZERO_VALUE to a leaf set must produce the same root
+ * as leaving that slot implicitly padded.  Validates that the production
+ * tree's padding rule is consistent.
+ */
+it(
+  "explicit ZERO_VALUE padding produces the same root as implicit padding (≥100 cases)",
+  { timeout: 30_000 },
+  () => {
+    fc.assert(
+      fc.property(
+        fc.integer({ min: 1, max: 6 }),
+        fc.integer({ min: 1, max: 8 }),
+        (levels, leafCount) => {
+          const capacity = 2 ** levels;
+          const count = Math.min(leafCount, capacity - 1); // leave at least one empty slot
+          const leaves = Array.from({ length: count }, (_, i) => BigInt(i + 1));
 
-            const tampered = {
-              ...proof,
-              pathElements: proof.pathElements.map((e, j) =>
-                j === 0 ? e + 1n : e,
-              ),
-            };
-
-            expect(referenceVerify(leaves[i], tampered)).toBe(false);
-          },
-        ),
-        { numRuns: 100, seed: 0xdeadbeef },
-      );
-    },
-  );
-
-  /**
-   * Property 6 — Padding isolation.
-   *
-   * Explicitly appending ZERO_VALUE to a leaf set must produce the same root
-   * as leaving that slot implicitly padded.  Validates that the production
-   * tree's padding rule is consistent.
-   */
-  it(
-    "explicit ZERO_VALUE padding produces the same root as implicit padding (≥100 cases)",
-    { timeout: 30_000 },
-    () => {
-      fc.assert(
-        fc.property(
-          fc.integer({ min: 1, max: 6 }),
-          fc.integer({ min: 1, max: 8 }),
-          (levels, leafCount) => {
-            const capacity = 2 ** levels;
-            const count = Math.min(leafCount, capacity - 1); // leave at least one empty slot
-            const leaves = Array.from({ length: count }, (_, i) => BigInt(i + 1));
-
-            const implicit = MerkleTree.create(levels, leaves).root;
-            const explicit = MerkleTree.create(levels, [...leaves, ZERO_VALUE]).root;
-            expect(implicit).toBe(explicit);
-          },
-        ),
-        { numRuns: 100, seed: 0xdeadbeef },
-      );
-    },
-  );
+          const implicit = MerkleTree.create(levels, leaves).root;
+          const explicit = MerkleTree.create(levels, [...leaves, ZERO_VALUE]).root;
+          expect(implicit).toBe(explicit);
+        },
+      ),
+      { numRuns: 100, seed: 0xdeadbeef },
+    );
+  },
+);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Pinned depth-coverage checks
@@ -425,7 +428,7 @@ describe("MerkleTree differential — pinned depth coverage", () => {
         expect(prod.root).toBe(ref.root);
         expect(prod.pathElements).toEqual(ref.pathElements);
         expect(prod.pathIndices).toEqual(ref.pathIndices);
-        expect(referenceVerify(leaves[i], prod)).toBe(true);
+        expect(referenceVerify(leaves[i]!, prod)).toBe(true);
       }
     });
   }

@@ -1,5 +1,22 @@
 # Sharibo — Full Product Breakdown
 
+> **How to read this file.** Narrative history and early discovery notes are
+> **point-in-time** (they describe what was true when a section was written).
+> Current reference numbers and ownership live elsewhere — prefer those links
+> over copying figures from this document:
+>
+> | Topic                              | Source of truth                                                                     |
+> | ---------------------------------- | ----------------------------------------------------------------------------------- |
+> | CPU instruction measurements       | [`contracts/BENCHMARKS.md`](contracts/BENCHMARKS.md) (regen: `just bench-contract`) |
+> | Repository / package ownership     | [`docs/architecture.md`](docs/architecture.md)                                      |
+> | Curve choice & BN254 impossibility | [`contracts/BENCHMARKS.md`](contracts/BENCHMARKS.md) §1 · [`NOTES.md`](NOTES.md)    |
+> | Honest limitations (current)       | [`README.md` §Honest limitations](README.md#honest-limitations)                     |
+> | Public signal order                | [`test-vectors/public-signals.json`](test-vectors/public-signals.json)              |
+> | SDK observability events           | [`docs/observability.md`](docs/observability.md)                                    |
+>
+> Prefer editing the source of truth, then linking here — do not restate
+> measurements that will drift.
+
 A complete, detailed account of what this project is, how every layer works, why it's built the way it is, and exactly what's been verified to be true versus what's an honest gap. This is the deep-dive companion to `README.md` (the pitch) and `NOTES.md` (the raw build log) — read this if you want to understand or defend every decision in the system.
 
 ## Table of contents
@@ -10,17 +27,21 @@ A complete, detailed account of what this project is, how every layer works, why
 4. [Live deployment (verified on-chain evidence)](#4-live-deployment-verified-on-chain-evidence)
 5. [System architecture](#5-system-architecture)
 6. [Deep dive: the ZK circuit](#6-deep-dive-the-zk-circuit)
-  - [What it proves](#what-it-proves)
-  - [Concrete numbers](#concrete-numbers)
-  - [The curve: BLS12-381, not BN254 — and why that's the single most important engineering decision in this project](#the-curve-bls12-381-not-bn254--and-why-thats-the-single-most-important-engineering-decision-in-this-project)
-  - [Poseidon over BLS12-381 — provenance](#poseidon-over-bls12-381--provenance)
-  - [Circuit interface (as implemented)](#circuit-interface-as-implemented)
+
+- [What it proves](#what-it-proves)
+- [Concrete numbers](#concrete-numbers)
+- [The curve: BLS12-381, not BN254 — and why that's the single most important engineering decision in this project](#the-curve-bls12-381-not-bn254--and-why-thats-the-single-most-important-engineering-decision-in-this-project)
+- [Poseidon over BLS12-381 — provenance](#poseidon-over-bls12-381--provenance)
+- [Circuit interface (as implemented)](#circuit-interface-as-implemented)
+
 7. [Deep dive: the smart contract](#7-deep-dive-the-smart-contract)
-  - [Storage](#storage)
-  - [Functions](#functions)
-  - [The real verifier](#the-real-verifier)
-  - [compute_external_nullifier — SHA-256, not Poseidon, and why that's fine](#compute_external_nullifier--sha-256-not-poseidon-and-why-thats-fine)
-  - [Error codes](#error-codes)
+
+- [Storage](#storage)
+- [Functions](#functions)
+- [The real verifier](#the-real-verifier)
+- [compute_external_nullifier — SHA-256, not Poseidon, and why that's fine](#compute_external_nullifier--sha-256-not-poseidon-and-why-thats-fine)
+- [Error codes](#error-codes)
+
 8. [Deep dive: the client SDK](#8-deep-dive-the-client-sdk)
 9. [Deep dive: the frontend](#9-deep-dive-the-frontend)
 10. [Cross-cutting invariants](#10-cross-cutting-invariants)
@@ -131,13 +152,9 @@ The circuit proves:
 
 ### The curve: BLS12-381, not BN254 — and why that's the single most important engineering decision in this project
 
-The obvious default for a Circom + Groth16 stack is BN254 (bn128) — it's circom's default field, circomlib's constants target it, and it's what most ZK tutorials assume. Sharibo does **not** use it. Here's why, in the order it was actually discovered:
+The obvious default for a Circom + Groth16 stack is BN254 (bn128). Sharibo does **not** use it: Soroban only accelerates **BLS12-381**, and a pure-Rust BN254 pairing blows the 100M instruction cap (~560M for a single pairing in Stellar's `import_ark_bn254` example).
 
-1. Soroban's host crypto module (`soroban_sdk::crypto::bls12_381`) only exposes accelerated pairing/EC operations for **BLS12-381**. There is no BN254 host acceleration at all.
-2. To check whether a _pure-Rust_ BN254 pairing check (no host acceleration, just the `ark-bn254` crate compiled to wasm) could still work, Stellar's own `stellar/soroban-examples/import_ark_bn254` reference example was run and its budget measured: **a single BN254 pairing costs ~560 million CPU instructions**, against Soroban's standard 100 million instruction budget. Groth16 verification needs several pairings' worth of work (structured as one batched product-of-pairings check), so this isn't "expensive," it's flatly impossible within the protocol's per-transaction ceiling — no amount of extra transaction fee buys past a hard instruction cap.
-3. Stellar's own `groth16_verifier` reference example (the one the original build spec itself links) verifies over BLS12-381, using `env.crypto().bls12_381().pairing_check(...)` — confirming this is the intended, and only computationally viable, path.
-
-So the entire circuit, trusted setup, and contract were built for BLS12-381 from the start. The measured cost of a **real** `claim()` call with a real proof and 3 public signals: **48,066,196 out of 100,000,000 CPU instructions (~48%)** — comfortable margin, dominated by `Bls12381Pairing` (~30.3M) and two `Bls12381G1Mul` calls (~7.4M, one per non-fixed public signal in the verification key's linear combination).
+**Do not copy instruction counts from this paragraph.** Current measured costs for a real `claim()` (four public signals, including `recipientHash`) and the pairing / `g1_mul` breakdown live in [`contracts/BENCHMARKS.md`](contracts/BENCHMARKS.md), regenerated by `just bench-contract`. Narrative discovery notes for the curve pivot are in [`NOTES.md`](NOTES.md).
 
 ### Poseidon over BLS12-381 — provenance
 
@@ -163,11 +180,14 @@ template Sharibo(levels) {
 
     signal input root;                          // public
     signal input externalNullifier;             // public
+    signal input recipientHash;                 // public (payout binding)
 
     signal output nullifierHash;                // public (output)
 }
-component main { public [root, externalNullifier] } = Sharibo(4);
+component main { public [root, externalNullifier, recipientHash] } = Sharibo(4);
 ```
+
+Public signal order emitted by snarkjs: `[nullifierHash, root, externalNullifier, recipientHash]` — see [`test-vectors/public-signals.json`](test-vectors/public-signals.json).
 
 ## 7. Deep dive: the smart contract
 
@@ -288,8 +308,10 @@ These must agree, byte-for-byte or value-for-value, across circuit, contract, an
 - **Commitment:** `leaf = Poseidon(identityNullifier, identitySecret)`.
 - **Nullifier:** `nullifierHash = Poseidon(identityNullifier, externalNullifier)`.
 - **Round tag:** `externalNullifier = SHA256(circle_id, round) mod r` — SHA-256, specifically _not_ Poseidon (see §7).
-- **Public signal order:** `[nullifierHash, root, externalNullifier]` — this is what circom/snarkjs actually emit (circuit _output_ first, then declared public _inputs_, in source order), not the more intuitive-looking `[root, externalNullifier, nullifierHash]` a naive reading of the spec would produce. This was discovered empirically by inspecting a real `public.json`, not assumed.
-- **Wire format:** `G1Affine` = 96 bytes (`be(X) || be(Y)`), `G2Affine` = 192 bytes (`be(X_c1) || be(X_c0) || be(Y_c1) || be(Y_c0)`) — Soroban's documented format, which happens to match the widely-standardized ("ZCash-style") BLS12-381 serialization used across the ecosystem.
+- **Public signal order:** `[nullifierHash, root, externalNullifier, recipientHash]` — four signals; see [docs/wire-format.md](docs/wire-format.md) (circuit _output_ first, then public _inputs_ in source order). Discovered empirically by inspecting a real `public.json`, not assumed.
+- **Wire format:** `G1Affine` = 96 bytes (`be(X) || be(Y)`), `G2Affine` = 192 bytes (`be(X_c1) || be(X_c0) || be(Y_c1) || be(Y_c0)`) — authoritative detail in [docs/wire-format.md](docs/wire-format.md) (Soroban's documented format, matching ZCash-style BLS12-381 serialization).
+
+> **Single source of truth:** The complete specification of all cross-implementation encodings — public signal order, external nullifier derivation, G1/G2 byte encoding, and vk.ic length rules — lives in [`docs/wire-format.md`](docs/wire-format.md), validated by committed test vectors in `test-vectors/wire-format.json`. Each implementation points there instead of describing the format inline.
 
 ## 11. Security properties
 
@@ -316,13 +338,17 @@ These must agree, byte-for-byte or value-for-value, across circuit, contract, an
 
 ## 13. Testing and verification matrix
 
-| Level                | Where                                                                                                                       | Result                                                                                                                                                                                                                                                          |
-| -------------------- | --------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Circuit unit tests   | `circuits/test/membership.test.js` (`circom_tester` + mocha + chai)                                                         | 5/5 — valid proof with correct `nullifierHash`, wrong root rejected, tampered Merkle path rejected, nullifier determinism (same identity+round ⇒ same hash, next round ⇒ different hash), non-boolean `pathIndices` rejected                                    |
-| Contract unit tests  | `contracts/sharibo/src/test.rs` (`soroban-sdk` test env)                                                                    | 8/8 — happy path _with a real proof_, underfunded reverts, double-claim (nullifier reuse across rounds) reverts, stale round-tag reverts, tampered public input reverts (real pairing check failing for real), CPU budget assertion, both `require_auth` checks |
-| On-chain integration | manual `stellar contract invoke` against deployed testnet contract                                                          | Real proof accepted (tx confirmed via Horizon); tampered proof rejected with `InvalidProof`                                                                                                                                                                     |
-| End-to-end           | `scripts/e2e.ts` against real testnet                                                                                       | Full round: create → 5× fund → real proof → claim to fresh recipient → balance/pot/round assertions → fund round 2 → nullifier replay → `AlreadyClaimed` assertion — all passing                                                                                |
-| Frontend             | `tsc --noEmit`, `vite build`, and a Node-side exploit of `fetch()` to exercise the exact browser proof-generation code path | Clean typecheck, clean build, real proof generated and verified via the same `fetch()`-based loading the browser uses. **Not** click-tested in an actual browser this session — see §18                                                                         |
+| Level                | Where                                                                                                                       | Result                                                                                                                                                                                                                      |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Circuit unit tests   | `circuits/test/membership.test.js` (`circom_tester` + mocha + chai)                                                         | See the suite itself for the live case count — covers valid proof, wrong root, tampered path, nullifier determinism, path index checks, and four-signal pinning including `recipientHash`.                                  |
+| Contract unit tests  | `contracts/sharibo/src/test/` (`soroban-sdk` test env)                                                                      | See the suite itself for the live case count (far beyond the original happy-path handful) — real proof, underfunded, double-claim, stale round-tag, tampered public input, CPU budget, `require_auth`, fees, archival, etc. |
+| Core unit tests      | `packages/core/`                                                                                                            | See the suite itself for the live case count — cryptography primitives, poseidon hashes, merkle tree logic.                                                                                                                 |
+| Client unit tests    | `packages/client/`                                                                                                          | See the suite itself for the live case count — identity generation, tree construction, proof generation, typed contract calls.                                                                                              |
+| App unit tests       | `app/`                                                                                                                      | See the suite itself for the live case count — browser UI, identity state, funding flow, proof generation in-browser.                                                                                                       |
+| Scripts tests        | `scripts/`                                                                                                                  | See the suite itself for the live case count — maintenance checkers, config parsing.                                                                                                                                        |
+| On-chain integration | manual `stellar contract invoke` against deployed testnet contract                                                          | Real proof accepted (tx confirmed via Horizon); tampered proof rejected with `InvalidProof`                                                                                                                                 |
+| End-to-end           | `scripts/e2e.ts` against real testnet                                                                                       | Full round: create → 5× fund → real proof → claim to fresh recipient → balance/pot/round assertions → fund round 2 → nullifier replay → `AlreadyClaimed` assertion — all passing                                            |
+| Frontend             | `tsc --noEmit`, `vite build`, and a Node-side exploit of `fetch()` to exercise the exact browser proof-generation code path | Clean typecheck, clean build, real proof generated and verified via the same `fetch()`-based loading the browser uses. **Not** click-tested in an actual browser this session — see README limitations.                     |
 
 ## 14. Key engineering decisions and deviations
 
@@ -331,7 +357,7 @@ The original build spec assumed a fairly standard BN254 + Poseidon-everywhere ZK
 1. **BN254 → BLS12-381** (§6) — the single biggest pivot, driven by a hard CPU-budget wall, not a preference.
 2. **Poseidon constants sourced from a third party** (§6) — a direct consequence of #1; circomlib doesn't have BLS12-381 constants.
 3. **`compute_external_nullifier` uses SHA-256 permanently, not Poseidon** (§7) — a deliberate simplification once it was clear there's no native Poseidon host function to make matching hash choices worthwhile outside the circuit.
-4. **Public signal order is `[nullifierHash, root, externalNullifier]`**, discovered empirically, not `[root, externalNullifier, nullifierHash]` as a first reading of the spec might suggest (§10).
+4. **Public signal order** is `[nullifierHash, root, externalNullifier, recipientHash]` (#266); full order in [docs/wire-format.md](docs/wire-format.md) (§10) — discovered empirically, not `[root, externalNullifier, nullifierHash]`.
 5. **`stellar-sdk`'s `TokenInterface::transfer` takes a `MuxedAddress`, not `Address`**, in the currently-installed SDK version — handled via the standard `From<Address> for MuxedAddress` conversion, transparent at call sites.
 6. **Two browser-runtime-only bugs** (`Buffer`/`global` and `process.browser`) found by reading dependency source rather than by click-testing (§9, §18).
 
@@ -360,37 +386,32 @@ Every one of these is also logged, with more raw detail and the exact commands u
 sharibo/
 ├── circuits/            membership.circom, compile/setup/prove scripts, circuit tests, verification_key.json
 ├── contracts/sharibo/   the Soroban contract (lib.rs) + its test suite (test.rs)
+├── packages/core/       shared crypto primitives
 ├── packages/client/     isomorphic TS SDK: identity.ts, tree.ts, prove.ts, contract.ts
-├── scripts/e2e.ts       full-round Node script against live testnet
+├── scripts/             e2e/smoke helpers + maintenance checkers
 ├── app/                 React + Vite browser demo
+├── docs/                long-form docs + docs/hackathon/ (point-in-time archive)
 ├── README.md            the pitch: what it does, architecture, run steps, honest limitations
 ├── NOTES.md             the raw build/decision log — what was discovered, when, and why
-├── docs/hackathon/hackathon_demo_script.md   60-second demo video script (motion + voiceover)
 └── full_product_breakdown.md  this file
 ```
 
 ## 17. How to run it
 
-Full fresh-machine steps are in `README.md`'s "Run it" section. Short version, assuming dependencies are already installed and `.env`/`app/.env` are populated:
+Full fresh-machine steps are in `README.md`'s "Run it" section. App-specific setup (SDK build, `dev:full`, env validation screen): [`app/README.md`](app/README.md). Short version, assuming dependencies are already installed and `.env`/`app/.env` are populated:
 
 ```bash
 npm install
+npm run build --workspace=packages/client
 cd circuits && npm run compile && npm run setup && npm run prove && npm test && cd ..
 cd contracts && cargo test && cd ..
 npm run e2e                 # full round against real testnet, from Node
-cd app && npm run dev        # same flow, in-browser
+cd app && npm run dev:full  # same flow, in-browser
 ```
 
 ## 18. Honest limitations
 
-- **One round demoed, not multi-round.** No on-chain turn-ordering enforcement across rounds.
-- **Claim-side privacy only** — funding is fully visible; see §12.
-- **Testnet + test token only** — native testnet XLM stands in for a real stablecoin.
-- **Single-contributor trusted setup ceremony**, not a real multi-party one — fine for a demo, not for anything real.
-- **Third-party, unaudited Poseidon-over-BLS12-381 constants** — cross-checked against Soroban's own field constant, structurally reviewed, but not independently audited (§6).
-- **`compute_external_nullifier` uses SHA-256, not Poseidon** — a deliberate, disclosed, permanent choice (§7), not an oversight.
-- **The browser app was not click-tested in an actual browser this session** — the browser automation tool was unavailable throughout. What _was_ verified: clean typecheck, clean production build, correct static-asset serving, and the real snarkjs `fetch()`-based proof-generation path exercised end-to-end from Node (forcing the same `process.browser` code branch a real browser takes), producing a proof that verified successfully. Real DOM rendering and click interactions were reviewed by reading the code, not by observing them run. **Verify the click-through yourself before demoing live.**
-- Every `// DEMO MOCK:`-flavored decision is disclosed inline in code comments and cross-referenced in `NOTES.md` — nothing is silently faked.
+Canonical, maintained list: [`README.md` §Honest limitations](README.md#honest-limitations). Historical session notes that used to live here (browser not click-tested that day, etc.) belong in [`NOTES.md`](NOTES.md), not as a second competing limitations list.
 
 ## 19. Roadmap
 

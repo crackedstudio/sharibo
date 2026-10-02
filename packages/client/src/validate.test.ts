@@ -5,20 +5,25 @@ import {
   type ContractProof,
   type ContractVerificationKey,
 } from "./prove.js";
-import { validateContractProof, validateContractVerificationKey } from "./validate.js";
+import {
+  validateContractProof,
+  validateContractVerificationKey,
+  assertInField,
+} from "./validate.js";
 import { InvalidInputError } from "./errors.js";
+import { FR_MODULUS } from "./identity.js";
 
 function makeG1(x: bigint, y: bigint): Uint8Array {
   const bytes = new Uint8Array(96);
-  const xBytes = new Uint8Array(32);
-  const yBytes = new Uint8Array(32);
+  const xBytes = new Uint8Array(48);
+  const yBytes = new Uint8Array(48);
   let v = x;
-  for (let i = 31; i >= 0; i--) {
+  for (let i = 47; i >= 0; i--) {
     xBytes[i] = Number(v & 0xffn);
     v = v >> 8n;
   }
   v = y;
-  for (let i = 31; i >= 0; i--) {
+  for (let i = 47; i >= 0; i--) {
     yBytes[i] = Number(v & 0xffn);
     v = v >> 8n;
   }
@@ -27,21 +32,19 @@ function makeG1(x: bigint, y: bigint): Uint8Array {
   return bytes;
 }
 
-function makeG2(
-  x1: bigint, x0: bigint, y1: bigint, y0: bigint,
-): Uint8Array {
+function makeG2(x1: bigint, x0: bigint, y1: bigint, y0: bigint): Uint8Array {
   const bytes = new Uint8Array(192);
-  const buf = new Uint8Array(32);
+  const buf = new Uint8Array(48);
   let v: bigint;
   let offset = 0;
   for (const coord of [x1, x0, y1, y0]) {
     v = coord;
-    for (let i = 31; i >= 0; i--) {
+    for (let i = 47; i >= 0; i--) {
       buf[i] = Number(v & 0xffn);
       v = v >> 8n;
     }
     bytes.set(buf, offset);
-    offset += 32;
+    offset += 48;
   }
   return bytes;
 }
@@ -169,9 +172,21 @@ test("converts a minimal valid VK JSON", () => {
   const vkJson = {
     nPublic: 1,
     vk_alpha_1: ["0", "0", "1"],
-    vk_beta_2: [["0", "0"], ["0", "0"], ["1", "0"]],
-    vk_gamma_2: [["0", "0"], ["0", "0"], ["1", "0"]],
-    vk_delta_2: [["0", "0"], ["0", "0"], ["1", "0"]],
+    vk_beta_2: [
+      ["0", "0"],
+      ["0", "0"],
+      ["1", "0"],
+    ],
+    vk_gamma_2: [
+      ["0", "0"],
+      ["0", "0"],
+      ["1", "0"],
+    ],
+    vk_delta_2: [
+      ["0", "0"],
+      ["0", "0"],
+      ["1", "0"],
+    ],
     IC: [
       ["0", "0", "1"],
       ["0", "0", "1"],
@@ -187,12 +202,22 @@ test("rejects VK JSON with IC length not equal to nPublic + 1", () => {
   const vkJson = {
     nPublic: 2,
     vk_alpha_1: ["0", "0", "1"],
-    vk_beta_2: [["0", "0"], ["0", "0"], ["1", "0"]],
-    vk_gamma_2: [["0", "0"], ["0", "0"], ["1", "0"]],
-    vk_delta_2: [["0", "0"], ["0", "0"], ["1", "0"]],
-    IC: [
-      ["0", "0", "1"],
+    vk_beta_2: [
+      ["0", "0"],
+      ["0", "0"],
+      ["1", "0"],
     ],
+    vk_gamma_2: [
+      ["0", "0"],
+      ["0", "0"],
+      ["1", "0"],
+    ],
+    vk_delta_2: [
+      ["0", "0"],
+      ["0", "0"],
+      ["1", "0"],
+    ],
+    IC: [["0", "0", "1"]],
   };
   assert.throws(
     () => verificationKeyToContractFormat(vkJson),
@@ -203,13 +228,70 @@ test("rejects VK JSON with IC length not equal to nPublic + 1", () => {
 test("rejects VK JSON missing nPublic", () => {
   const vkJson = {
     vk_alpha_1: ["0", "0", "1"],
-    vk_beta_2: [["0", "0"], ["0", "0"], ["1", "0"]],
-    vk_gamma_2: [["0", "0"], ["0", "0"], ["1", "0"]],
-    vk_delta_2: [["0", "0"], ["0", "0"], ["1", "0"]],
+    vk_beta_2: [
+      ["0", "0"],
+      ["0", "0"],
+      ["1", "0"],
+    ],
+    vk_gamma_2: [
+      ["0", "0"],
+      ["0", "0"],
+      ["1", "0"],
+    ],
+    vk_delta_2: [
+      ["0", "0"],
+      ["0", "0"],
+      ["1", "0"],
+    ],
     IC: [["0", "0", "1"]],
   };
   assert.throws(
     () => verificationKeyToContractFormat(vkJson),
     (err: Error) => err.message.includes("missing nPublic"),
+  );
+});
+
+// ── Scalar range validation (assertInField) ──────────────────────────
+
+const MAX_U256 = 2n ** 256n - 1n;
+
+test("assertInField accepts valid scalars", () => {
+  assertInField(0n, "test");
+  assertInField(FR_MODULUS - 1n, "test");
+});
+
+test("assertInField rejects scalars out of range", () => {
+  assert.throws(
+    () => assertInField(FR_MODULUS, "test"),
+    (err: Error) => err.message.includes("test: must be in [0, FR_MODULUS)"),
+  );
+  assert.throws(
+    () => assertInField(FR_MODULUS + 1n, "test"),
+    (err: Error) => err.message.includes("test: must be in [0, FR_MODULUS)"),
+  );
+  assert.throws(
+    () => assertInField(MAX_U256, "test"),
+    (err: Error) => err.message.includes("test: must be in [0, FR_MODULUS)"),
+  );
+});
+
+// ── Coordinate range validation ──────────────────────────────────────
+
+const FP_MODULUS =
+  0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaabn;
+
+test("rejects G1 coordinate >= p", () => {
+  const invalidA = makeG1(FP_MODULUS, 2n);
+  assert.throws(
+    () => validateContractProof(makeProof(invalidA, ZERO_192, ZERO_96)),
+    (err: Error) => err.message.includes("proof.a[0]: must be < Fp modulus"),
+  );
+});
+
+test("rejects G2 coordinate >= p", () => {
+  const invalidB = makeG2(FP_MODULUS, 4n, 5n, 6n);
+  assert.throws(
+    () => validateContractProof(makeProof(ZERO_96, invalidB, ZERO_96)),
+    (err: Error) => err.message.includes("proof.b[0]: must be < Fp modulus"),
   );
 });

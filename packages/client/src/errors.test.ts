@@ -37,7 +37,14 @@ test("describeContractError returns undefined for unknown codes", () => {
   assert.equal(describeContractError(6), undefined); // RoundFull — real code, out of Issue #53's scope
   assert.equal(describeContractError(7), undefined); // Overflow
   assert.equal(describeContractError(8), undefined); // CircleCancelled
+  assert.equal(describeContractError(9), undefined); // InvalidFeeParams
   assert.equal(describeContractError(999), undefined);
+});
+
+test("describeContractError(10) documents InvalidCircleParams", () => {
+  const description = describeContractError(10);
+  assert.equal(description?.name, "InvalidCircleParams");
+  assert.match(description!.message, /contribution|size|verification/i);
 });
 
 // The exact shape signAndSend()'s underlying @stellar/stellar-sdk throws:

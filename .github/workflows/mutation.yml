@@ -1,0 +1,41 @@
+name: Mutation Testing
+
+on:
+  schedule:
+    - cron: "0 3 * * *" # Run nightly at 3 AM
+  workflow_dispatch:
+
+jobs:
+  mutate:
+    name: Stryker Mutation Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 20
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run mutation testing
+        run: npm run mutate --workspace=packages/client
+
+      - name: Open Issue on Failure
+        if: failure()
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const issueTitle = '🚨 Mutation Testing Failed';
+            const issueBody = `The scheduled mutation testing run failed. This could indicate a regression in mutation score below the required \`break\` threshold.\n\nSee run here: https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: issueTitle,
+              body: issueBody,
+              labels: ['bug', 'automated']
+            });

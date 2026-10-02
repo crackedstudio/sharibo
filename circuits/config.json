@@ -1,3 +1,4 @@
 {
-  "levels": 4
+  "levels": 4,
+  "circomVersion": "2.2.3"
 }

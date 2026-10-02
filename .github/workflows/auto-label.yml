@@ -1,0 +1,56 @@
+# Auto-label issues from the Area dropdown (issue #543).
+#
+# GitHub issue forms cannot set labels from a dropdown value directly, so the
+# Area dropdown in bug_report.yml / feature_request.yml / refactor.yml is
+# triage metadata. This workflow maps the selected option(s) to the
+# CONTRIBUTING.md topic taxonomy and applies them, plus `good first issue`
+# when the reporter ticked the newcomer checkbox.
+name: auto-label
+
+on:
+  issues:
+    types: [opened, edited]
+
+permissions:
+  issues: write
+
+jobs:
+  area-labels:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Apply area labels from issue body
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const body = context.payload.issue.body ?? '';
+            const addLabels = new Set();
+
+            // Map Area dropdown selections to topic labels.
+            const areaMap = [
+              [/frontend \(app\/\)/i, 'frontend'],
+              [/sdk \(packages\/client\)/i, 'sdk'],
+              [/core \(packages\/core\)/i, 'sdk'],
+              [/^contracts$/im, 'contracts'],
+              [/^circuits$/im, 'circuits'],
+              [/scripts\/e2e/i, 'e2e'],
+              [/^docs$/im, 'documentation'],
+              [/tooling\/dx/i, 'dx'],
+              [/^testing$/im, 'testing'],
+              [/^security$/im, 'security'],
+              [/^performance$/im, 'performance'],
+              [/^architecture$/im, 'architecture'],
+            ];
+            for (const [pattern, label] of areaMap) {
+              if (pattern.test(body)) addLabels.add(label);
+            }
+
+            // Newcomer hint -> good first issue.
+            if (/good first issue/i.test(body)) addLabels.add('good first issue');
+
+            if (addLabels.size === 0) return;
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              labels: [...addLabels],
+            });

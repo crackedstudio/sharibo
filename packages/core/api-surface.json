@@ -1,0 +1,23 @@
+{
+  "constants": {
+    "FR_MODULUS": "bigint",
+    "ZERO_VALUE": "bigint"
+  },
+  "functions": {
+    "computeExternalNullifier": "function",
+    "computeNullifierHash": "function",
+    "computeRecipientHash": "function",
+    "generateIdentity": "function",
+    "poseidon": "function",
+    "randomFieldElement": "function"
+  },
+  "types": {
+    "Identity": "interface",
+    "MerkleProof": "interface",
+    "MerkleTree": "class"
+  },
+  "errors": {
+    "InvalidInputError": "class",
+    "ShariboError": "class"
+  }
+}

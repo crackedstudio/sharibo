@@ -2,6 +2,13 @@ const en = {
   "lang.label": "Language",
   "lang.en": "English",
   "lang.es": "Spanish",
+  "lang.ar": "Arabic",
+  "lang.fr": "French",
+  "lang.hi": "Hindi",
+  "lang.pt": "Portuguese",
+  "lang.tl": "Tagalog",
+  "lang.yo": "Yoruba",
+  "lang.zh": "Chinese",
 
   "banner.testnet": "Stellar testnet — no real funds",
   "banner.limitations": "honest limitations ↗",
@@ -31,6 +38,7 @@ const en = {
   "landing.sub.em2": "who",
   "landing.sub.after": "claimed.",
   "landing.launch": "Launch a 5-member circle on testnet",
+  "landing.contributionLabel": "Contribution per member (XLM)",
   "landing.previousCirclePrefix": "Your previous circle lives on at",
   "landing.previousCircleLink": "circle #{id} ↗",
   "landing.testnetFineprint":
@@ -41,28 +49,34 @@ const en = {
   "circle.onChainLink": "circle #{id} on-chain ↗",
   "common.startNewCircle": "Start a new circle",
   "browser.unsupportedTitle": "Browser support required",
-  "browser.unsupportedIntro": "Sharibo generates the proof in your browser, so JavaScript is required.",
-  "browser.unsupportedDetails": "This browser is missing one or more features needed for the zero-knowledge proof flow.",
+  "browser.unsupportedIntro":
+    "Sharibo generates the proof in your browser, so JavaScript is required.",
+  "browser.unsupportedDetails":
+    "This browser is missing one or more features needed for the zero-knowledge proof flow.",
   "browser.unsupportedMissing": "Missing browser support:",
-  "browser.unsupportedSecureContext": "Open this app over HTTPS or localhost. Plain HTTP on a LAN IP is not supported.",
-  "browser.unsupportedFooter": "Use a modern browser that supports WebAssembly, BigInt, and Web Crypto.",
+  "browser.unsupportedSecureContext":
+    "Open this app over HTTPS or localhost. Plain HTTP on a LAN IP is not supported.",
+  "browser.unsupportedFooter":
+    "Use a modern browser that supports WebAssembly, BigInt, and Web Crypto.",
   "browser.capability.webassembly": "WebAssembly",
   "browser.capability.bigint": "BigInt",
   "browser.capability.cryptoSubtle": "Web Crypto (crypto.subtle)",
   "browser.capability.secureContext": "Secure context (HTTPS or localhost)",
   "cancel.title": "Cancel Circle",
-  "cancel.confirmation": "Cancel this circle?\n\nThis will refund {count} contributor(s) a total of {total} XLM.\n\nThis action is irreversible. The circle will be permanently closed.",
+  "cancel.confirmation":
+    "Cancel this circle?\n\nThis will refund {count} contributor(s) a total of {total} XLM.\n\nThis action is irreversible. The circle will be permanently closed.",
   "cancel.busy": "Cancelling circle and refunding contributors…",
   "cancel.cancelled": "Circle Cancelled",
-  "cancel.cancelledMessage": "This circle has been cancelled and all contributors have been refunded.",
+  "cancel.cancelledMessage":
+    "This circle has been cancelled and all contributors have been refunded.",
   "cancel.refundInfo": "The following contributors will be refunded if the circle is cancelled:",
   "cancel.willBeRefunded": "→ will be refunded",
-  "wallet.networkMismatch": "Network mismatch: Your Freighter wallet is on {walletNetwork} but this app expects {appNetwork}. Please open Freighter, click the network selector in the upper right, and switch to {appNetwork}.",
+  "wallet.networkMismatch":
+    "Network mismatch: Your Freighter wallet is on {walletNetwork} but this app expects {appNetwork}. Please open Freighter, click the network selector in the upper right, and switch to {appNetwork}.",
   "wallet.unknownNetwork": "Unknown network configuration. Please verify your Freighter settings.",
   "ring.label.revealed":
     "{count}-member circle — pot claimed. Payout recipient is unlinkable to any member.",
-  "ring.label.loading":
-    "{count}-member circle, {funded} of {count} funded, pot not yet claimed.",
+  "ring.label.loading": "{count}-member circle, {funded} of {count} funded, pot not yet claimed.",
   "ring.caption":
     "Payout landed on the address above — cryptographically, it could be tied to any of the {count} members in the ring. An outside observer cannot tell which.",
   "ring.pot": "pot",
@@ -92,7 +106,7 @@ const en = {
   "claim.stage.funding": "Funding a fresh, unlinked recipient…",
   "claim.stage.submitting": "Submitting the claim…",
   "claim.techline":
-    "Groth16 · BLS12-381 · 1,452 constraints · proving locally in your browser, nothing sent anywhere until the proof is done",
+    "Groth16 · BLS12-381 · 3,757 constraints · proving locally in your browser, nothing sent anywhere until the proof is done",
   "claim.techlineProving": "· proving… {seconds}s",
   "claim.elapsed": "{seconds}s elapsed",
 
@@ -114,8 +128,7 @@ const en = {
 
   "result.heading": "Payout landed",
   "result.recipientIntro": "Fresh recipient",
-  "result.recipientOutro":
-    "received the pot. It has never appeared anywhere else on this circle.",
+  "result.recipientOutro": "received the pot. It has never appeared anywhere else on this circle.",
   "result.recipientLabel": "recipient address",
   "result.viewClaimTx": "view claim transaction ↗",
   "result.hashLabel": "claim transaction hash",
@@ -137,16 +150,27 @@ const en = {
   "copy.title": "Copy {label}",
 
   "busy.generating":
-    "Generating a fresh admin + 5 member identities and funding via friendbot…",
+    "Generating a fresh admin + {count} member identities and funding via friendbot…",
   "busy.creating": "Creating the circle on testnet…",
   "busy.claiming": "Claiming…",
   "busy.refunding": "Refunding a new round, then replaying the same proof's nullifier…",
   "busy.replaying": "Replaying the used nullifier…",
 
-  "rejection.unexpected":
-    "Unexpected: the replayed claim was accepted (this should never happen).",
+  "rejection.unexpected": "Unexpected: the replayed claim was accepted (this should never happen).",
 
   "error.generic": "Something went wrong. Please retry.",
+  "error.invalidCircleParams":
+    "Circle parameters were rejected. Check the contribution amount, circle size, and verification key.",
+  "error.contribution.empty": "Enter a contribution amount.",
+  "error.contribution.not_a_number": "Contribution must be a decimal number (e.g. 10 or 0.5).",
+  "error.contribution.not_positive": "Contribution must be greater than zero.",
+  "error.contribution.too_many_decimals":
+    "Contribution supports at most 7 decimal places (1 stroop).",
+  "error.contribution.out_of_range": "Contribution is outside the supported range.",
+  "error.contribution.pot_overflow":
+    "Contribution × circle size overflows the on-chain pot target.",
+  "error.contribution.unaffordable":
+    "Friendbot funds only ~10000 XLM per account; choose a smaller contribution so every member can fund.",
   "error.freighterNotTestnet":
     "Freighter is not set to Testnet. Please switch your network in Freighter.",
   "error.getAddress": "Could not get address from Freighter.",
@@ -165,10 +189,8 @@ const en = {
   "resume.resumeButton": "Resume Circle",
   "resume.discardButton": "Discard",
 
-
   "errorBoundary.heading": "Something broke",
-  "errorBoundary.body":
-    "The demo hit an unexpected error and can't continue safely from here.",
+  "errorBoundary.body": "The demo hit an unexpected error and can't continue safely from here.",
   "errorBoundary.reload": "Start over",
   "errorBoundary.fineprint": "If this keeps happening,",
   "errorBoundary.issueLink": "file a GitHub issue ↗",

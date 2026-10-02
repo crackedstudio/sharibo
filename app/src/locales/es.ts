@@ -2,6 +2,13 @@ const es = {
   "lang.label": "Idioma",
   "lang.en": "Ingl\u00e9s",
   "lang.es": "Espa\u00f1ol",
+  "lang.ar": "\u00c1rabe",
+  "lang.fr": "Franc\u00e9s",
+  "lang.hi": "Hindi",
+  "lang.pt": "Portugu\u00e9s",
+  "lang.tl": "Tagalo",
+  "lang.yo": "Yoruba",
+  "lang.zh": "Chino",
 
   "banner.testnet": "Stellar testnet: sin fondos reales",
   "banner.limitations": "limitaciones honestas ↗",
@@ -31,6 +38,7 @@ const es = {
   "landing.sub.em2": "qui\u00e9n",
   "landing.sub.after": "reclam\u00f3.",
   "landing.launch": "Lanzar una tanda de 5 miembros en testnet",
+  "landing.contributionLabel": "Aporte por miembro (XLM)",
   "landing.previousCirclePrefix": "Tu tanda anterior sigue activa en",
   "landing.previousCircleLink": "tanda #{id} ↗",
   "landing.testnetFineprint":
@@ -41,24 +49,32 @@ const es = {
   "circle.onChainLink": "tanda #{id} en cadena ↗",
   "common.startNewCircle": "Iniciar una nueva tanda",
   "browser.unsupportedTitle": "Se requiere compatibilidad del navegador",
-  "browser.unsupportedIntro": "Sharibo genera la prueba en tu navegador, por lo que JavaScript es obligatorio.",
-  "browser.unsupportedDetails": "Este navegador falta una o m\u00e1s funciones necesarias para el flujo de prueba de conocimiento cero.",
+  "browser.unsupportedIntro":
+    "Sharibo genera la prueba en tu navegador, por lo que JavaScript es obligatorio.",
+  "browser.unsupportedDetails":
+    "Este navegador falta una o m\u00e1s funciones necesarias para el flujo de prueba de conocimiento cero.",
   "browser.unsupportedMissing": "Compatibilidad faltante:",
-  "browser.unsupportedSecureContext": "Abre esta app en HTTPS o localhost. HTTP normal en una IP de LAN no es compatible.",
-  "browser.unsupportedFooter": "Usa un navegador moderno que admita WebAssembly, BigInt y Web Crypto.",
+  "browser.unsupportedSecureContext":
+    "Abre esta app en HTTPS o localhost. HTTP normal en una IP de LAN no es compatible.",
+  "browser.unsupportedFooter":
+    "Usa un navegador moderno que admita WebAssembly, BigInt y Web Crypto.",
   "browser.capability.webassembly": "WebAssembly",
   "browser.capability.bigint": "BigInt",
   "browser.capability.cryptoSubtle": "Web Crypto (crypto.subtle)",
   "browser.capability.secureContext": "Contexto seguro (HTTPS o localhost)",
   "cancel.title": "Cancelar Tanda",
-  "cancel.confirmation": "¿Cancelar esta tanda?\n\nEsto reembolsará {count} contribuidor(es) un total de {total} XLM.\n\nEsta acción es irreversible. La tanda se cerrará permanentemente.",
+  "cancel.confirmation":
+    "¿Cancelar esta tanda?\n\nEsto reembolsará {count} contribuidor(es) un total de {total} XLM.\n\nEsta acción es irreversible. La tanda se cerrará permanentemente.",
   "cancel.busy": "Cancelando tanda y reembolsando contribuidores…",
   "cancel.cancelled": "Tanda Cancelada",
-  "cancel.cancelledMessage": "Esta tanda ha sido cancelada y todos los contribuidores han sido reembolsados.",
+  "cancel.cancelledMessage":
+    "Esta tanda ha sido cancelada y todos los contribuidores han sido reembolsados.",
   "cancel.refundInfo": "Los siguientes contribuidores serán reembolsados si la tanda es cancelada:",
   "cancel.willBeRefunded": "→ será reembolsado",
-  "wallet.networkMismatch": "Desajuste de red: Tu billetera Freighter está en {walletNetwork} pero esta app espera {appNetwork}. Por favor abre Freighter, haz clic en el selector de red en la esquina superior derecha, y cambia a {appNetwork}.",
-  "wallet.unknownNetwork": "Configuración de red desconocida. Por favor verifica tu configuración de Freighter.",
+  "wallet.networkMismatch":
+    "Desajuste de red: Tu billetera Freighter está en {walletNetwork} pero esta app espera {appNetwork}. Por favor abre Freighter, haz clic en el selector de red en la esquina superior derecha, y cambia a {appNetwork}.",
+  "wallet.unknownNetwork":
+    "Configuración de red desconocida. Por favor verifica tu configuración de Freighter.",
   "ring.label.revealed":
     "Tanda de {count} miembros: fondo reclamado. El destinatario del pago no es vinculable a ning\u00fan miembro.",
   "ring.label.loading":
@@ -92,7 +108,7 @@ const es = {
   "claim.stage.funding": "Financiando un destinatario nuevo, no vinculado\u2026",
   "claim.stage.submitting": "Enviando la reclamaci\u00f3n\u2026",
   "claim.techline":
-    "Groth16 \u00b7 BLS12-381 \u00b7 1,452 restricciones \u00b7 probando localmente en tu navegador; no se env\u00eda nada hasta que la prueba est\u00e9 lista",
+    "Groth16 \u00b7 BLS12-381 \u00b7 3,757 restricciones \u00b7 probando localmente en tu navegador; no se env\u00eda nada hasta que la prueba est\u00e9 lista",
   "claim.techlineProving": "· probando… {seconds}s",
   "claim.elapsed": "{seconds}s transcurridos",
 
@@ -104,7 +120,8 @@ const es = {
   "explainer.secretBody":
     "Qu\u00e9 miembro gener\u00f3 la prueba se mantiene privado. La transacci\u00f3n demuestra una membres\u00eda v\u00e1lida sin revelar cu\u00e1l de los 5 miembros reclam\u00f3.",
   "explainer.checksTitle": "Qu\u00e9 comprueba el contrato (en orden)",
-  "explainer.check1": "La ronda est\u00e1 totalmente financiada: el fondo es igual a aportaci\u00f3n \u00d7 tama\u00f1o.",
+  "explainer.check1":
+    "La ronda est\u00e1 totalmente financiada: el fondo es igual a aportaci\u00f3n \u00d7 tama\u00f1o.",
   "explainer.check2": "La etiqueta de ronda coincide con esta tanda y ronda exactas.",
   "explainer.check3": "Este anulador nunca ha reclamado antes en esta tanda.",
   "explainer.check4": "La prueba Groth16 se verifica contra la ra\u00edz comprometida de la tanda.",
@@ -137,7 +154,7 @@ const es = {
   "copy.title": "Copiar {label}",
 
   "busy.generating":
-    "Generando un administrador nuevo y 5 identidades de miembro y financiando con friendbot\u2026",
+    "Generando un administrador nuevo y {count} identidades de miembro y financiando con friendbot\u2026",
   "busy.creating": "Creando la tanda en testnet\u2026",
   "busy.claiming": "Reclamando\u2026",
   "busy.refunding":
@@ -148,8 +165,7 @@ const es = {
     "Inesperado: la reclamaci\u00f3n reproducida fue aceptada (esto nunca deber\u00eda ocurrir).",
 
   "error.generic": "Algo sali\u00f3 mal. Int\u00e9ntalo de nuevo.",
-  "error.freighterNotTestnet":
-    "Freighter no est\u00e1 en Testnet. Cambia la red en Freighter.",
+  "error.freighterNotTestnet": "Freighter no est\u00e1 en Testnet. Cambia la red en Freighter.",
   "error.getAddress": "No se pudo obtener la direcci\u00f3n de Freighter.",
 
   "reset.confirm":
@@ -157,8 +173,10 @@ const es = {
 
   "liveRegion.help": "Ayuda: {message}",
   "liveRegion.error": "Error: {message}",
-  "liveRegion.claimResultReady": "Actualizaci\u00f3n completada. El resultado de la reclamaci\u00f3n est\u00e1 listo.",
-  "liveRegion.claimStepReady": "Actualizaci\u00f3n completada. El paso de reclamaci\u00f3n est\u00e1 listo.",
+  "liveRegion.claimResultReady":
+    "Actualizaci\u00f3n completada. El resultado de la reclamaci\u00f3n est\u00e1 listo.",
+  "liveRegion.claimStepReady":
+    "Actualizaci\u00f3n completada. El paso de reclamaci\u00f3n est\u00e1 listo.",
 
   "resume.heading": "\u00bfReanudar la tanda #{id}?",
   "resume.subtitle":
@@ -166,13 +184,22 @@ const es = {
   "resume.resumeButton": "Reanudar tanda",
   "resume.discardButton": "Descartar",
 
-
   "errorBoundary.heading": "Algo se rompió",
   "errorBoundary.body":
     "La demo encontró un error inesperado y no puede continuar de forma segura desde aquí.",
   "errorBoundary.reload": "Empezar de nuevo",
   "errorBoundary.fineprint": "Si esto sigue ocurriendo,",
   "errorBoundary.issueLink": "abre un issue en GitHub ↗",
+  "error.invalidCircleParams":
+    "Se rechazaron los parámetros del círculo. Revisa el aporte, el tamaño y la clave de verificación.",
+  "error.contribution.empty": "Introduce un monto de aporte.",
+  "error.contribution.not_a_number": "El aporte debe ser un número decimal (p. ej. 10 o 0.5).",
+  "error.contribution.not_positive": "El aporte debe ser mayor que cero.",
+  "error.contribution.too_many_decimals": "El aporte admite como máximo 7 decimales (1 stroop).",
+  "error.contribution.out_of_range": "El aporte está fuera del rango admitido.",
+  "error.contribution.pot_overflow": "Aporte × tamaño del círculo desborda el pot on-chain.",
+  "error.contribution.unaffordable":
+    "Friendbot solo fondea ~10000 XLM por cuenta; elige un aporte menor para que todos puedan aportar.",
 } as const;
 
 export default es;

@@ -6,7 +6,7 @@
 **Cause:** Stellar testnet is wiped periodically (roughly quarterly). Every deployed contract,
 every SAC (including the native-XLM test token this repo uses), and every account's funded
 state disappears with it. The keypairs themselves (`admin`, `member`, ...) are still valid —
-they're just generated locally by `stellar keys` — but the *accounts* they name no longer exist
+they're just generated locally by `stellar keys` — but the _accounts_ they name no longer exist
 on the new ledger, and `SHARIBO_CONTRACT_ID` / `TEST_TOKEN_CONTRACT_ID` in `.env` now point at
 nothing.
 
@@ -123,15 +123,15 @@ cd ..
 If the `vercel` CLI isn't linked to the project yet on this machine, run `vercel link` first and
 select the existing project rather than creating a new one — the live demo URL must stay the same.
 
-## 8. Update the README's on-chain evidence
+## 8. Update the deployments table
 
-The following claims in `README.md`'s "On-chain evidence" table are now stale and must be
+The evidence in the **[Deployments Table](../docs/deployments.md)** is now stale and must be
 re-verified against the new deployment, using the ids/hashes from steps 2, 3, and 6:
 
 - `Sharibo contract` — new contract id.
 - `Test token (native XLM SAC)` — new token id.
 - `create_circle (circle 0)` tx hash — from the `npm run e2e` output in step 6.
-- `Real Groth16 proof accepted on-chain` tx hash + ledger — from the same `npm run e2e` run.
+- `Real Groth16 proof accepted on-chain` tx hash — from the same `npm run e2e` run.
 - The "Tampered proof rejected" / "Nullifier replay rejected" rows don't need new hashes (they cite
   error codes, not specific transactions), but re-confirm they still reproduce — `npm run e2e`
   exercising the replay-rejection path in step 6 is that confirmation.

@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import {
   subscribeToArtifactPrefetch,
-  prefetchMembershipArtifacts,
+  startArtifactPrefetch,
   type ArtifactPrefetchProgress,
-} from "@sharibo/client";
+} from "@sharibo/client/internal";
 
 const IDLE = "idle";
 const READY = "ready";
@@ -32,11 +32,7 @@ function filledPercent(progress: ArtifactPrefetchProgress): number {
   return Math.round(progress.fraction * 100);
 }
 
-export function ArtifactProgress({
-  announce,
-}: {
-  announce: (message: string) => void;
-}) {
+export function ArtifactProgress({ announce }: { announce: (message: string) => void }) {
   const [progress, setProgress] = useState<ArtifactPrefetchProgress>({
     status: IDLE,
     loaded: 0,
@@ -49,7 +45,7 @@ export function ArtifactProgress({
     // kick it off here and rely on the subscription below for updates.
     // Failures are delivered via a publish() of status "error"; swallowing
     // the rejection here avoids an unhandled promise rejection.
-    prefetchMembershipArtifacts().catch(() => {});
+    startArtifactPrefetch().catch(() => {});
     return subscribeToArtifactPrefetch(setProgress);
   }, []);
 

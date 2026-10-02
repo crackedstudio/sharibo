@@ -9,13 +9,15 @@
 import { parseArgs } from "node:util";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import fs from "node:fs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-process.loadEnvFile(path.join(__dirname, "..", ".env"));
+// SHARIBO_ENV_FILE lets the test suite point at a throwaway fixture instead of
+// racing on the developer's real repo-root .env. Unset in normal use.
+process.loadEnvFile(process.env.SHARIBO_ENV_FILE || path.join(__dirname, "..", ".env"));
 
 const RPC_URL = process.env.STELLAR_RPC_URL;
-const HORIZON_URL =
-  process.env.STELLAR_HORIZON_URL || "https://horizon-testnet.stellar.org";
+const HORIZON_URL = process.env.STELLAR_HORIZON_URL || "https://horizon-testnet.stellar.org";
 const NETWORK_PASSPHRASE = process.env.STELLAR_NETWORK_PASSPHRASE;
 const CONTRACT_ID = process.env.SHARIBO_CONTRACT_ID;
 
@@ -37,7 +39,8 @@ Options:
   process.exit(0);
 }
 
-const circleId = BigInt(values["circle-id"]!);
+const { makeCircleId } = await import("@sharibo/client");
+const circleId = makeCircleId(BigInt(values["circle-id"]!));
 
 // --- diagnostics ---
 
@@ -53,14 +56,10 @@ async function checkRpcHealth(): Promise<DiagResult> {
     return { name, ok: false, detail: "STELLAR_RPC_URL is not set in .env" };
   }
   try {
-    const res = await fetch(`${RPC_URL}/health`, {
-      signal: AbortSignal.timeout(10_000),
+    const body = await httpGetJson<{ status?: string }>(`${RPC_URL}/health`, {
+      timeoutMs: 10_000,
     });
-    if (!res.ok) {
-      return { name, ok: false, detail: `HTTP ${res.status} from ${RPC_URL}/health` };
-    }
-    const body = await res.json();
-    const status = (body as { status?: string }).status;
+    const status = body.status;
     if (status !== "healthy") {
       return { name, ok: false, detail: `RPC status: "${status}" (expected "healthy")` };
     }
@@ -73,15 +72,10 @@ async function checkRpcHealth(): Promise<DiagResult> {
 async function checkHorizon(): Promise<DiagResult> {
   const name = "Horizon root";
   try {
-    const res = await fetch(HORIZON_URL, {
-      signal: AbortSignal.timeout(10_000),
+    const body = await httpGetJson<{ horizon_version?: string }>(HORIZON_URL, {
+      timeoutMs: 10_000,
     });
-    if (!res.ok) {
-      return { name, ok: false, detail: `HTTP ${res.status} from ${HORIZON_URL}` };
-    }
-    const body = await res.json();
-    const version = (body as { horizon_version?: string }).horizon_version;
-    return { name, ok: true, detail: `Horizon v${version} (${HORIZON_URL})` };
+    return { name, ok: true, detail: `Horizon v${body.horizon_version} (${HORIZON_URL})` };
   } catch (err) {
     return { name, ok: false, detail: `Horizon unreachable: ${(err as Error).message}` };
   }
@@ -147,6 +141,36 @@ async function checkCircle(): Promise<DiagResult> {
   }
 }
 
+async function checkEvidenceFreshness(): Promise<DiagResult> {
+  const name = "Evidence freshness";
+  try {
+    const deploymentsPath = path.join(__dirname, "..", "docs", "deployments.md");
+    if (!fs.existsSync(deploymentsPath)) {
+      return { name, ok: true, detail: "docs/deployments.md not found, skipping" };
+    }
+    const md = fs.readFileSync(deploymentsPath, "utf8");
+    const match = md.match(/\|\s*Current[^|]*\|[^|]*\|[^|]*\|[^|]*\|[^|]*\|\s*`([a-f0-9]+)`\s*\|/i);
+    if (!match) {
+      return { name, ok: true, detail: "No current TX hash found in deployments.md" };
+    }
+    const txHash = match[1];
+
+    const res = await fetch(`${HORIZON_URL}/transactions/${txHash}`, {
+      signal: AbortSignal.timeout(10_000),
+    });
+
+    if (res.status === 404) {
+      return { name, ok: false, detail: `Transaction ${txHash} not found (testnet likely reset)` };
+    }
+    if (!res.ok) {
+      return { name, ok: false, detail: `HTTP ${res.status} from Horizon` };
+    }
+    return { name, ok: true, detail: `Transaction ${txHash} is retrievable` };
+  } catch (err) {
+    return { name, ok: false, detail: `Check failed: ${(err as Error).message}` };
+  }
+}
+
 // --- main ---
 
 async function main() {
@@ -156,6 +180,7 @@ async function main() {
     checkRpcHealth(),
     checkHorizon(),
     checkCircle(),
+    checkEvidenceFreshness(),
   ]);
 
   let allOk = true;

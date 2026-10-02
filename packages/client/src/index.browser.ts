@@ -13,5 +13,8 @@
  * The `browser` condition in package.json is kept so bundlers that resolve it
  * (Vite, webpack, etc.) still get a browser-safe entry — this file just no
  * longer has browser-only side effects.
+ * This module has no import-time side effects. The app starts artifact
+ * prefetch explicitly in `app/src/main.tsx`, so browser bundlers may resolve
+ * here without the SDK making network calls on import.
  */
 export * from "./index.js";

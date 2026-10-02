@@ -1,0 +1,61 @@
+name: App
+
+on:
+  push:
+    paths:
+      - "app/**"
+      - "packages/client/**"
+      - "__mocks__/**"
+      - "test-vectors/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/app.yml"
+  pull_request:
+    paths:
+      - "app/**"
+      - "packages/client/**"
+      - "__mocks__/**"
+      - "test-vectors/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/app.yml"
+
+jobs:
+  a11y-and-unit:
+    name: app unit + accessibility tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      # The app resolves @sharibo/client through its package `exports` map,
+      # which points at dist/. Without a build the import fails to resolve and
+      # every component test dies at import time with "Failed to resolve
+      # import @sharibo/client" — the state issue #458 was filed about. dist/ is
+      # not committed, so this step is what makes the app suite loadable.
+      - name: Build the client SDK
+        run: npm run build --workspace=packages/client
+
+      # Includes the WCAG 2.1 AA guards (issue #538): axe-core against every
+      # screen, keyboard focus order, live-region announcements, locale/lang,
+      # colour-token contrast, and the prefers-reduced-motion /
+      # prefers-color-scheme media queries.
+      #
+      # NOTE: this runs the whole app suite, not just the a11y files, so it is
+      # currently red on 13 pre-existing failures that have nothing to do with
+      # accessibility — a secret-pattern regex in lib/debugBundle, ten
+      # config-validation cases in config.test.ts, and one hardcoded English
+      # tagline at App.tsx:1401 that App.test.tsx correctly flags. They are
+      # left visible rather than filtered out of the job: narrowing CI to dodge
+      # known failures is the same silent-decay pattern issue #538 exists to
+      # stop. See issue #458.
+      - name: App test suite
+        working-directory: app
+        run: npm test

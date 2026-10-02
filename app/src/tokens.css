@@ -1,0 +1,2 @@
+/* Global design tokens and theme behavior remain outside CSS modules. */
+@import "./style.css";

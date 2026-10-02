@@ -1,3 +1,4 @@
+import { MAX_CIRCLE_SIZE, NETWORKS, TREE_LEVELS } from "@sharibo/client";
 /**
  * Reads and validates all required VITE_* environment variables at module
  * load time.  Import `config` wherever you need the values; import
@@ -14,6 +15,9 @@
  * critical path for a screen that never proves anything (issue #300).
  * `scripts/check-bundle-budget.mjs` fails the build if that ever regresses.
  */
+
+/** Fixed demo circle size, constrained by the circuit's Merkle-tree capacity. */
+export const CIRCLE_SIZE = 5;
 
 export interface AppConfig {
   contractId: string;
@@ -42,15 +46,21 @@ function isHttpUrl(value: string): boolean {
   }
 }
 
-export function validate(): ValidationResult {
+export function validate(
+  env: Record<string, string | undefined> = import.meta.env as Record<string, string | undefined>,
+): ValidationResult {
   const errors: string[] = [];
 
   const contractId = import.meta.env.VITE_SHARIBO_CONTRACT_ID as string | undefined;
   const rpcUrl = import.meta.env.VITE_STELLAR_RPC_URL as string | undefined;
   const networkPassphrase = import.meta.env.VITE_STELLAR_NETWORK_PASSPHRASE as string | undefined;
   const testTokenContractId = import.meta.env.VITE_TEST_TOKEN_CONTRACT_ID as string | undefined;
+  const contractId = env.VITE_SHARIBO_CONTRACT_ID;
+  const rpcUrl = env.VITE_STELLAR_RPC_URL ?? NETWORKS.testnet.rpcUrl;
+  const networkPassphrase = env.VITE_STELLAR_NETWORK_PASSPHRASE ?? NETWORKS.testnet.passphrase;
+  const testTokenContractId = env.VITE_TEST_TOKEN_CONTRACT_ID;
 
-  if (!contractId) {
+  if (!contractId || contractId.trim().length === 0) {
     errors.push("VITE_SHARIBO_CONTRACT_ID — missing or empty");
   } else if (!isContractId(contractId)) {
     errors.push(
@@ -59,6 +69,7 @@ export function validate(): ValidationResult {
   }
 
   if (!rpcUrl) {
+  if (!rpcUrl || rpcUrl.trim().length === 0) {
     errors.push("VITE_STELLAR_RPC_URL — missing or empty");
   } else if (!isHttpUrl(rpcUrl)) {
     errors.push(`VITE_STELLAR_RPC_URL — invalid URL (got "${rpcUrl}"; expected an http/https URL)`);
@@ -69,10 +80,21 @@ export function validate(): ValidationResult {
   }
 
   if (!testTokenContractId) {
+  if (!networkPassphrase || networkPassphrase.trim().length === 0) {
+    errors.push("VITE_STELLAR_NETWORK_PASSPHRASE — missing or empty");
+  }
+
+  if (!testTokenContractId || testTokenContractId.trim().length === 0) {
     errors.push("VITE_TEST_TOKEN_CONTRACT_ID — missing or empty");
   } else if (!isContractId(testTokenContractId)) {
     errors.push(
       `VITE_TEST_TOKEN_CONTRACT_ID — invalid shape (got "${testTokenContractId}"; expected a 56-character Stellar contract ID starting with 'C')`,
+    );
+  }
+
+  if (CIRCLE_SIZE > MAX_CIRCLE_SIZE) {
+    errors.push(
+      `CIRCLE_SIZE — ${CIRCLE_SIZE} exceeds MAX_CIRCLE_SIZE (${MAX_CIRCLE_SIZE}) for TREE_LEVELS=${TREE_LEVELS}`,
     );
   }
 

@@ -8,38 +8,35 @@ dependency update breaks proof encoding. Scheduling it nightly turns that
 into an early warning instead of a surprise the next time someone runs it
 by hand.
 
-## The foreground-run constraint
+## The foreground-run constraint (authoritative)
 
-`NOTES.md` documents that `scripts/e2e.ts` must be run in the foreground,
-not backgrounded — in that investigation, backgrounding the script (via an
-agent tool's own background-process wrapper) caused its `curl` subprocess
-calls to hang past their own `--max-time`, while foreground runs and
-isolated repros with identical code consistently succeeded.
+**Run `npm run e2e` / `scripts/e2e.ts` in the foreground** when debugging or
+when validating a new canary schedule. Do not wrap the script in tooling that
+backgrounds the Node process in a way that leaves child HTTP clients stuck
+without progress — that failure mode was hit once during the original build
+(investigation recorded historically in [NOTES.md](../NOTES.md) Phase 4).
 
-That finding was specific to how one particular tool backgrounds child
-processes, not to "no controlling terminal" in general — a quick check in
-this environment confirms the two aren't the same thing:
+What we know from that investigation:
 
-```bash
-nohup curl -s --max-time 15 "https://friendbot.stellar.org?addr=<test-address>" \
-  < /dev/null > out.txt 2>&1 &
-disown
-```
-
-A `curl` call fully detached from the terminal (no tty, stdin from
-`/dev/null`, backgrounded and disowned) completed normally and got a real
-response from friendbot — it did not hang. cron, `launchd`, and systemd
-timers all run their jobs this same way: no controlling terminal, stdin
-from `/dev/null` or a pipe, stdout/stderr redirected to a log. None of them
-use the specific backgrounding mechanism the NOTES.md hang was tied to.
+- Backgrounding via **one particular agent tool's process wrapper** caused
+  friendbot/Horizon HTTP calls to hang past their timeouts, while identical
+  **foreground** runs succeeded.
+- That is **not** the same as "no controlling terminal." A fully detached
+  `curl` (nohup, stdin from `/dev/null`, disowned) completed normally in the
+  same environment — cron, `launchd`, and systemd timers typically match
+  that detached pattern, not the problematic wrapper.
 
 **Still: verify on your own machine before trusting a nightly schedule.**
 Run the recipe manually once (`launchctl start` / `run-parts` equivalent /
 `systemctl start --wait`) and confirm the log looks like a normal run, not
-a hang. If your run *does* hang under the scheduler, do not add a timeout
+a hang. If your run _does_ hang under the scheduler, do not add a timeout
 that silently backgrounds the script further — instead compare against a
 plain foreground `npm run e2e` and report the difference; something about
 your scheduler's process environment differs from both cases above.
+
+For HTTP client choice in `e2e.ts` (native `fetch` vs `curl`), see the
+historical note in NOTES.md Phase 4; the canary constraint is about **process
+backgrounding**, not which HTTP API the script uses.
 
 ## macOS: `launchd`
 

@@ -64,29 +64,23 @@ export class MerkleTree {
     // all of which would otherwise produce a nonsensical capacity (e.g.
     // 2 ** 0.5 === 1.414…, 2 ** Infinity === Infinity).
     if (!Number.isInteger(levels) || levels < 1) {
-      throw new RangeError(
-        `levels must be an integer >= 1, got ${levels}`,
-      );
+      throw new RangeError(`levels must be an integer >= 1, got ${levels}`);
     }
     // Cap at 32 — even 2**32 leaves (4.3 billion bigints) would require
     // > 100 GB of memory on its own, far past anything practical for a
     // browser wallet.  This is a generous limit; real deployments use
     // depth 20 or 32 at most.
     if (levels > 32) {
-      throw new RangeError(
-        `levels must be <= 32, got ${levels}`,
-      );
+      throw new RangeError(`levels must be <= 32, got ${levels}`);
     }
 
     // Validate every leaf is a well-formed field element in [0, FR_MODULUS)
     // before hashing — otherwise Poseidon or the circuit will fail with
     // confusing errors deep in the stack.
     for (let i = 0; i < leaves.length; i++) {
-      const leaf = leaves[i];
+      const leaf = leaves[i]!;
       if (leaf < 0n || leaf >= FR_MODULUS) {
-        throw new RangeError(
-          `leaf at index ${i} must satisfy 0 <= leaf < FR_MODULUS, got ${leaf}`,
-        );
+        throw new RangeError(`leaf at index ${i} must satisfy 0 <= leaf < FR_MODULUS, got ${leaf}`);
       }
     }
 
@@ -105,7 +99,7 @@ export class MerkleTree {
     for (let level = 0; level < levels; level++) {
       const next: bigint[] = [];
       for (let i = 0; i < current.length; i += 2) {
-        next.push(poseidon(current[i], current[i + 1]));
+        next.push(poseidon(current[i]!, current[i + 1]!));
       }
       layers.push(next);
       current = next;
@@ -118,7 +112,7 @@ export class MerkleTree {
    * The root of the Merkle tree.
    */
   get root(): bigint {
-    return this.layers[this.levels][0];
+    return this.layers[this.levels]![0]!;
   }
 
   /**
@@ -142,7 +136,7 @@ export class MerkleTree {
   proofOf(leaf: bigint): MerkleProof {
     const index = this.indexOf(leaf);
     if (index === -1) {
-      const slots = this.layers[0].length;
+      const slots = this.layers[0]!.length;
       const occupied = this.leaves.length;
       throw new InvalidInputError(
         `leaf 0x${leaf.toString(16)} not found in this tree (${slots} slots, ${occupied} occupied)`,
@@ -159,7 +153,7 @@ export class MerkleTree {
    * @throws {InvalidInputError} If the leaf index is out of range.
    */
   proof(leafIndex: number): MerkleProof {
-    if (leafIndex < 0 || leafIndex >= this.layers[0].length) {
+    if (leafIndex < 0 || leafIndex >= this.layers[0]!.length) {
       throw new InvalidInputError("leaf index out of range");
     }
 
@@ -168,15 +162,14 @@ export class MerkleTree {
     let index = leafIndex;
 
     for (let level = 0; level < this.levels; level++) {
-      const layer = this.layers[level];
+      const layer = this.layers[level]!;
       const isRightNode = index % 2 === 1;
       const siblingIndex = isRightNode ? index - 1 : index + 1;
-      pathElements.push(layer[siblingIndex]);
+      pathElements.push(layer[siblingIndex]!);
       pathIndices.push(isRightNode ? 1 : 0);
       index = Math.floor(index / 2);
     }
 
     return { root: this.root, pathElements, pathIndices };
   }
-
 }

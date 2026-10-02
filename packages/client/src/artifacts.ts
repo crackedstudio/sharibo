@@ -1,10 +1,15 @@
+import type { OnEventFn } from "./events.js";
+
 export const MEMBERSHIP_WASM_URL = "/circuits/membership.wasm";
 export const MEMBERSHIP_ZKEY_URL = "/circuits/membership_final.zkey";
 
 export interface ArtifactsConfig {
   wasmUrl?: string;
   zkeyUrl?: string;
-  fetchImpl?: typeof fetch | ((input: string | URL | Request, init?: RequestInit) => Promise<Response>);
+  fetchImpl?:
+    typeof fetch | ((input: string | URL | Request, init?: RequestInit) => Promise<Response>);
+  /** Optional observability hook; also receives artifact:* SdkEvents. */
+  onEvent?: OnEventFn;
 }
 
 let configuredWasmUrl = MEMBERSHIP_WASM_URL;
@@ -13,12 +18,9 @@ let configuredFetchImpl:
   | typeof fetch
   | ((input: string | URL | Request, init?: RequestInit) => Promise<Response>)
   | undefined;
+let configuredOnEvent: OnEventFn | undefined;
 
-export type ArtifactPrefetchStatus =
-  | "idle"
-  | "loading"
-  | "ready"
-  | "error";
+export type ArtifactPrefetchStatus = "idle" | "loading" | "ready" | "error";
 
 export interface ArtifactPrefetchProgress {
   status: ArtifactPrefetchStatus;
@@ -43,7 +45,8 @@ let currentProgress: ArtifactPrefetchProgress = {
   fraction: null,
 };
 const listeners = new Set<Listener>();
-
+/** Last status we emitted as an SdkEvent, to avoid flooding on byte progress. */
+let lastEmittedStatus: ArtifactPrefetchStatus | "idle" = "idle";
 /**
  * Configures the circuit artifact locations and optional custom fetch implementation.
  *
@@ -59,7 +62,11 @@ export function configureArtifacts(config: ArtifactsConfig): void {
   if (config.fetchImpl !== undefined) {
     configuredFetchImpl = config.fetchImpl;
   }
+  if (config.onEvent !== undefined) {
+    configuredOnEvent = config.onEvent;
+  }
   prefetchPromise = undefined;
+  lastEmittedStatus = "idle";
   publish({
     status: "idle",
     loaded: 0,
@@ -68,13 +75,18 @@ export function configureArtifacts(config: ArtifactsConfig): void {
   });
 }
 
+/** Register (or clear) the SdkEvent sink for artifact prefetch without resetting cache. */
+export function setArtifactOnEvent(onEvent?: OnEventFn): void {
+  configuredOnEvent = onEvent;
+}
 /**
  * Returns the currently active artifact configuration.
  */
 export function getArtifactsConfig(): {
   wasmUrl: string;
   zkeyUrl: string;
-  fetchImpl?: typeof fetch | ((input: string | URL | Request, init?: RequestInit) => Promise<Response>);
+  fetchImpl?:
+    typeof fetch | ((input: string | URL | Request, init?: RequestInit) => Promise<Response>);
 } {
   return {
     wasmUrl: configuredWasmUrl,
@@ -90,7 +102,9 @@ export function resetArtifactsConfig(): void {
   configuredWasmUrl = MEMBERSHIP_WASM_URL;
   configuredZkeyUrl = MEMBERSHIP_ZKEY_URL;
   configuredFetchImpl = undefined;
+  configuredOnEvent = undefined;
   prefetchPromise = undefined;
+  lastEmittedStatus = "idle";
   publish({
     status: "idle",
     loaded: 0,
@@ -104,8 +118,37 @@ function publish(progress: ArtifactPrefetchProgress): void {
   for (const listener of listeners) {
     listener(progress);
   }
+  emitArtifactSdkEvent(progress);
 }
 
+function emitArtifactSdkEvent(progress: ArtifactPrefetchProgress): void {
+  if (!configuredOnEvent) return;
+  if (progress.status === "loading" && lastEmittedStatus !== "loading") {
+    lastEmittedStatus = "loading";
+    configuredOnEvent({ type: "artifact:started" });
+    return;
+  }
+  if (progress.status === "ready" && lastEmittedStatus !== "ready") {
+    lastEmittedStatus = "ready";
+    configuredOnEvent({
+      type: "artifact:ready",
+      loaded: progress.loaded,
+      total: progress.total ?? progress.loaded,
+    });
+    return;
+  }
+  if (progress.status === "error" && lastEmittedStatus !== "error") {
+    lastEmittedStatus = "error";
+    configuredOnEvent({
+      type: "artifact:error",
+      message: progress.error?.message ?? "Unable to download circuit artifact",
+    });
+    return;
+  }
+  if (progress.status === "idle") {
+    lastEmittedStatus = "idle";
+  }
+}
 async function readResponse(
   response: Response,
   onProgress: (loaded: number, total: number | null) => void,
@@ -117,7 +160,8 @@ async function readResponse(
 
   const contentLengthHeader = response.headers?.get?.("content-length");
   const total = contentLengthHeader ? Number(contentLengthHeader) : null;
-  const reader = typeof response.body?.getReader === "function" ? response.body.getReader() : undefined;
+  const reader =
+    typeof response.body?.getReader === "function" ? response.body.getReader() : undefined;
 
   if (!reader) {
     signal?.throwIfAborted();
@@ -177,22 +221,20 @@ async function fetchArtifacts(signal?: AbortSignal): Promise<ProverArtifacts> {
     fraction: null,
   });
 
+  const fetchImpl = configuredFetchImpl ?? globalThis.fetch.bind(globalThis);
+
   const [wasmResponse, zkeyResponse] = await Promise.all([
-    fetch(MEMBERSHIP_WASM_URL, { signal }),
-    fetch(MEMBERSHIP_ZKEY_URL, { signal }),
+    fetchImpl(configuredWasmUrl, { signal }),
+    fetchImpl(configuredZkeyUrl, { signal }),
   ]);
 
   let wasmLoaded = 0;
   let zkeyLoaded = 0;
   const wasmTotal = wasmResponse.headers?.get?.("content-length");
   const zkeyTotal = zkeyResponse.headers?.get?.("content-length");
-  const knownTotal =
-    wasmTotal && zkeyTotal ? Number(wasmTotal) + Number(zkeyTotal) : null;
+  const knownTotal = wasmTotal && zkeyTotal ? Number(wasmTotal) + Number(zkeyTotal) : null;
 
-  const read = async (
-    response: Response,
-    index: 0 | 1,
-  ): Promise<Uint8Array> => {
+  const read = async (response: Response, index: 0 | 1): Promise<Uint8Array> => {
     return readResponse(
       response,
       (value) => {
@@ -203,20 +245,14 @@ async function fetchArtifacts(signal?: AbortSignal): Promise<ProverArtifacts> {
           status: "loading",
           loaded: currentLoaded,
           total: knownTotal,
-          fraction:
-            knownTotal && knownTotal > 0
-              ? Math.min(currentLoaded / knownTotal, 1)
-              : null,
+          fraction: knownTotal && knownTotal > 0 ? Math.min(currentLoaded / knownTotal, 1) : null,
         });
       },
       signal,
     );
   };
 
-  const [wasm, zkey] = await Promise.all([
-    read(wasmResponse, 0),
-    read(zkeyResponse, 1),
-  ]);
+  const [wasm, zkey] = await Promise.all([read(wasmResponse, 0), read(zkeyResponse, 1)]);
 
   const loaded = wasm.byteLength + zkey.byteLength;
   const total = knownTotal ?? loaded;
@@ -225,10 +261,18 @@ async function fetchArtifacts(signal?: AbortSignal): Promise<ProverArtifacts> {
 }
 
 /**
- * Background prefetch — called once at module load with no signal so the
- * artifacts are ready by the time the user clicks "Claim". The returned
- * promise is memoised; callers that only need "give me the cached bytes"
- * should call this with no argument.
+ * Explicitly start the background artifact prefetch. This is the public API
+ * the app calls when it wants to warm the prover ahead of the user clicking
+ * "Claim". It intentionally has no side effects at import time.
+ */
+export function startArtifactPrefetch(signal?: AbortSignal): Promise<ProverArtifacts> {
+  return prefetchMembershipArtifacts(signal);
+}
+
+/**
+ * Background prefetch — called explicitly by the app or by the proving path
+ * when we need the bytes cached. The returned promise is memoised; callers
+ * that only need "give me the cached bytes" should call this with no argument.
  *
  * When a signal is provided (e.g. from a React effect cleanup), a *separate*
  * signal-aware fetch is started and returned. This does NOT replace the
@@ -236,57 +280,32 @@ async function fetchArtifacts(signal?: AbortSignal): Promise<ProverArtifacts> {
  * flight its result is still used by the no-signal path.
  */
 export function prefetchMembershipArtifacts(signal?: AbortSignal): Promise<ProverArtifacts> {
-  // Signal-aware callers get their own cancellable promise so an abort does
-  // not poison the shared background cache.
-  if (signal) {
-    return fetchArtifacts(signal).catch((cause: unknown) => {
-      // Don't publish an error for an intentional abort.
-      if (cause instanceof DOMException && cause.name === "AbortError") {
-        throw cause;
-      }
-      const error = cause instanceof Error ? cause : new Error(String(cause));
-      publish({
-        status: "error",
-        loaded: currentProgress.loaded,
-        total: currentProgress.total,
-        fraction: currentProgress.fraction,
-        error,
-      });
-      throw error;
-    });
-  }
-
-  if (!prefetchPromise) {
-    prefetchPromise = fetchArtifacts().catch((cause: unknown) => {
-      const error = cause instanceof Error ? cause : new Error(String(cause));
-      publish({
-        status: "error",
-        loaded: currentProgress.loaded,
-        total: currentProgress.total,
-        fraction: currentProgress.fraction,
-        error,
-      });
-      prefetchPromise = undefined; // allow retry
-      throw error;
-    });
-  }
-  return prefetchPromise;
+  return getDefaultLoader().prefetch(signal);
 }
 
 /**
- * Retrieves the compiled circuit artifacts, prefetching them if not already started.
+ * Subscribes to artifact prefetch progress updates.
  */
-function getArtifacts(): Promise<ProverArtifacts> {
-  return prefetchMembershipArtifacts();
+export function subscribeToArtifactProgress(listener: Listener): () => void {
+  return getDefaultLoader().subscribe(listener);
 }
 
 export function getArtifactPrefetchProgress(): ArtifactPrefetchProgress {
   return currentProgress;
 }
 
-export function subscribeToArtifactPrefetch(
-  listener: Listener,
-): () => void {
+export function __resetForTesting(): void {
+  prefetchPromise = undefined;
+  currentProgress = {
+    status: "idle",
+    loaded: 0,
+    total: null,
+    fraction: null,
+  };
+  listeners.clear();
+}
+
+export function subscribeToArtifactPrefetch(listener: Listener): () => void {
   listeners.add(listener);
   listener(currentProgress);
   return () => listeners.delete(listener);

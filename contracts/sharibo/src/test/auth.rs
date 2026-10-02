@@ -32,7 +32,17 @@ fn create_circle_requires_admin_auth() {
 
     let root = real_root(&env);
     let vk = real_verification_key(&env);
-    client.create_circle(&admin, &token, &root, &100i128, &5u32, &vk);
+    client.create_circle(
+        &admin,
+        &token,
+        &root,
+        &100i128,
+        &5u32,
+        &0u32,
+        &vk,
+        &0u32,
+        &Address::generate(&env),
+    );
 
     let auths = env.auths();
     assert_eq!(auths.len(), 1);

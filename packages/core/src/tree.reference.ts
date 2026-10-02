@@ -42,7 +42,7 @@ function buildLayers(levels: number, leaves: readonly bigint[]): bigint[][] {
   const capacity = 2 ** levels;
   // Pad leaves to full capacity with ZERO_VALUE — same rule as production.
   const layer0: bigint[] = Array.from({ length: capacity }, (_, i) =>
-    i < leaves.length ? leaves[i] : ZERO_VALUE,
+    i < leaves.length ? leaves[i]! : ZERO_VALUE,
   );
 
   const layers: bigint[][] = [layer0];
@@ -52,7 +52,7 @@ function buildLayers(levels: number, leaves: readonly bigint[]): bigint[][] {
     const next: bigint[] = [];
     // Hash pairs left-to-right, exactly as the production tree does.
     for (let i = 0; i < current.length; i += 2) {
-      next.push(poseidon(current[i], current[i + 1]));
+      next.push(poseidon(current[i]!, current[i + 1]!));
     }
     layers.push(next);
     current = next;
@@ -68,7 +68,7 @@ function buildLayers(levels: number, leaves: readonly bigint[]): bigint[][] {
  */
 export function referenceRoot(levels: number, leaves: readonly bigint[]): bigint {
   const layers = buildLayers(levels, leaves);
-  return layers[levels][0];
+  return layers[levels]![0]!;
 }
 
 /**
@@ -88,7 +88,7 @@ export function referenceProof(
   leafIndex: number,
 ): MerkleProof {
   const layers = buildLayers(levels, leaves);
-  const root = layers[levels][0];
+  const root = layers[levels]![0]!;
 
   const pathElements: bigint[] = [];
   const pathIndices: number[] = [];
@@ -96,13 +96,13 @@ export function referenceProof(
   let index = leafIndex;
 
   for (let level = 0; level < levels; level++) {
-    const layer = layers[level];
+    const layer = layers[level]!;
     // isRightNode: true when the current node is the RIGHT child of its parent.
     // Equivalently: its index is odd.
     const isRightNode = index % 2 === 1;
     const siblingIndex = isRightNode ? index - 1 : index + 1;
 
-    pathElements.push(layer[siblingIndex]);
+    pathElements.push(layer[siblingIndex]!);
     // 0 = current node is left child; 1 = current node is right child.
     pathIndices.push(isRightNode ? 1 : 0);
 
@@ -127,7 +127,7 @@ export function referenceVerify(leaf: bigint, proof: MerkleProof): boolean {
   let current = leaf;
 
   for (let i = 0; i < proof.pathElements.length; i++) {
-    const sibling = proof.pathElements[i];
+    const sibling = proof.pathElements[i]!;
     const isRight = proof.pathIndices[i] === 1;
 
     // Reconstruct (left, right) exactly as MerkleTreeChecker does:

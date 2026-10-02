@@ -1,127 +1,91 @@
 # Sharibo app
 
-This folder contains the React + Vite browser demo for the Sharibo project.
+React + Vite browser demo for Sharibo: real Groth16 proofs in the browser, real Soroban testnet transactions.
 
-It runs a live testnet demo in the browser using a compiled circuit, a Soroban contract, and real Stellar testnet transactions.
+Live deployment: see [docs/deployment.md](../docs/deployment.md).
 
-## Setup
+## Setup (fresh clone)
 
-1. Install dependencies.
-
-From the repository root:
+From the **repository root**:
 
 ```bash
 npm install
+
+# The app imports @sharibo/client from its built dist/ (main: ./dist/index.js).
+# dist/ is gitignored — build the SDK before the app can resolve it.
+npm run build --workspace=packages/client
+
+cp app/.env.example app/.env
+# Fill VITE_SHARIBO_CONTRACT_ID and VITE_TEST_TOKEN_CONTRACT_ID (56-char C… IDs).
+# RPC URL and network passphrase have safe testnet defaults if left as in .env.example.
 ```
 
-Then go into the app folder:
+### Circuit artifacts
 
-```bash
-cd app
-```
-
-2. Copy the app environment file.
-
-```bash
-cp .env.example .env
-```
-
-3. Fill in the required `VITE_` variables in `app/.env`.
-
-- `VITE_SHARIBO_CONTRACT_ID`
-  - The deployed Sharibo contract ID on Stellar testnet.
-- `VITE_STELLAR_RPC_URL`
-  - The Stellar RPC endpoint the demo uses.
-  - Default value in `.env.example`: `https://soroban-testnet.stellar.org`
-- `VITE_STELLAR_NETWORK_PASSPHRASE`
-  - The network passphrase for the Stellar network.
-  - Default value in `.env.example`: `Test SDF Network ; September 2015`
-- `VITE_TEST_TOKEN_CONTRACT_ID`
-  - The contract ID of the test token used for funding the circle.
-
-## Circuit artifacts
-
-The app expects the following circuit artifacts to exist in `app/public/circuits/`:
+The app serves these from `app/public/circuits/`:
 
 - `membership.wasm`
 - `membership_final.zkey`
 - `verification_key.json`
 
-`npm run dev` and `npm run build` automatically run `npm run sync-circuit` first. That script copies these files from the repository `circuits/` build output into `app/public/circuits/`.
-
-### What `scripts/sync-circuit.mjs` does
-
-It copies:
-
-- `circuits/build/membership_js/membership.wasm` → `app/public/circuits/membership.wasm`
-- `circuits/build/membership_final.zkey` → `app/public/circuits/membership_final.zkey`
-- `circuits/verification_key.json` → `app/public/circuits/verification_key.json`
-
-If any of the source files are missing, the script exits with an error and tells you to run the circuit build/setup scripts first.
-
-### Circuit compile prerequisite
-
-Before the app can sync and run, the circuit artifacts must already be built in the repository root under `circuits/build/`.
-
-Run this first from the repo root:
+Build them once from the repo root:
 
 ```bash
 cd circuits
 npm run compile
 npm run setup
+cd ..
 ```
 
-If you are working on the full repo, also verify the circuit once compiled:
+`scripts/sync-circuit.mjs` copies those files into `app/public/circuits/`. If sources are missing, it exits with an error telling you to compile/setup first.
 
-```bash
-npm test
-```
+### Environment validation
+
+`app/src/config.ts` validates all four `VITE_*` variables (contract IDs must be 56-char base-32 `C…` addresses; RPC must be `http(s)`). On failure the app does **not** crash — it shows a blocking **“setup required”** screen (`EnvSetupScreen`) listing what to fix.
 
 ## Running the app
 
-Start the local development server:
+| Script                 | What it does                     | When to use                                             |
+| ---------------------- | -------------------------------- | ------------------------------------------------------- |
+| `npm run dev:full`     | `sync-circuit` then Vite         | **First run / default.** Ensures artifacts are present. |
+| `npm run dev`          | Vite only                        | Artifacts already synced; faster HMR loop.              |
+| `npm run dev:circuits` | Watch-mode sync of circuit files | Editing circuits while the app is open.                 |
+| `npm run preview`      | Serve the production `dist/`     | After `npm run build`.                                  |
+
+From the app directory:
 
 ```bash
 cd app
-npm run dev
+npm run dev:full
 ```
 
-This runs `npm run sync-circuit` first, then starts Vite.
-
-Open the URL shown by Vite in your browser to use the app.
+Open the URL Vite prints.
 
 ## What the demo does on-chain
 
-The app is not a mock demo. It creates and uses real Stellar testnet state for each run.
+Not a mock: each run creates/funds/claims against live Stellar testnet using the configured contract and test-token SAC, with a real browser-generated Groth16 proof.
 
-- The browser demo loads the compiled circuit artifacts from `public/circuits/`.
-- It constructs a real Groth16 proof in the browser.
-- It uses the configured `VITE_SHARIBO_CONTRACT_ID` and `VITE_TEST_TOKEN_CONTRACT_ID`.
-- It creates a real testnet Sharibo circle and funds it with test token deposits.
-- It submits a real contract `claim` transaction on Stellar testnet.
-
-That means every run produces actual testnet transactions and interacts with live Stellar infrastructure.
-
-## Build and preview
-
-Build the production app:
+## Build, analyze, typecheck, test
 
 ```bash
 cd app
-npm run build
+npm run build           # sync-circuit + vite build
+npm run typecheck       # tsc --noEmit
+npm test                # Vitest (jsdom) — unit/component suite
+
+# Optional bundle analysis (requires a one-time install):
+npm install -D rollup-plugin-visualizer
+npm run build:analyze   # ANALYZE=1 vite build → dist/stats.html
 ```
 
-`npm run build` also runs `npm run sync-circuit` first, so the latest built circuit artifacts are copied into `app/public/circuits/` before the bundle is generated.
+Default `vite` / `vite build` do **not** import the visualizer (that was breaking fresh clones when the plugin was a hard import without a declared dependency). Analysis is opt-in via `ANALYZE=1`.
 
-Preview the production build locally:
+## Deployment
 
-```bash
-cd app
-npm run preview
-```
+Manual Vercel deploy of `app/dist` (git auto-deploy is disabled). Step-by-step: [docs/deployment.md](../docs/deployment.md).
 
 ## Notes
 
-- `app/.env` is loaded by Vite only for variables that start with `VITE_`.
-- If `app/public/circuits/` does not contain the expected files, `npm run dev` / `npm run build` will fail.
-- The circuit artifacts in `app/public/circuits/` are copied from the repository `circuits/` folder; make sure `circuits/` is compiled and the trusted setup is complete before running the app.
+- Only `VITE_*` keys from `app/.env` are exposed to the browser.
+- Missing `app/public/circuits/` files fail `dev:full` / `build` at sync time — compile the circuit first.
+- SDK must be rebuilt after changes under `packages/client/` (`npm run build --workspace=packages/client`).

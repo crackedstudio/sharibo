@@ -14,6 +14,10 @@
 .member.funded {
   background: var(--accent2);
 }
+.member.pending {
+  background: #ffefd5;
+  border-color: #ffcf3f;
+}
 .member-addr {
   font-family: "JetBrains Mono", monospace;
   font-size: 13px;

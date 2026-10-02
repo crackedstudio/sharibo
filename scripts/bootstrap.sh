@@ -175,6 +175,11 @@ else
   npm test --workspace=circuits
 fi
 
+if [ "${SKIP_HOOKS:-0}" -ne 1 ] && [ -f scripts/maintenance/install-hooks.sh ]; then
+  section "Installing git hooks"
+  bash scripts/maintenance/install-hooks.sh || true
+fi
+
 ADMIN_EMPTY=0
 MEMBER_EMPTY=0
 RECIPIENT_EMPTY=0
@@ -272,3 +277,6 @@ Bootstrap complete. This script never deploys contracts or spends funds.
 
   Problems? See docs/troubleshooting.md.
 NEXTSTEPS
+
+section "Final prerequisite verdict"
+npm run doctor --workspace=scripts

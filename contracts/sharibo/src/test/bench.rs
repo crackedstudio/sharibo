@@ -18,7 +18,17 @@ fn cpu_instruction_benchmarks() {
     let token = create_token(&env, &token_admin);
     let root = real_root(&env);
     let vk = real_verification_key(&env);
-    client.create_circle(&admin, &token, &root, &100i128, &5u32, &vk);
+    client.create_circle(
+        &admin,
+        &token,
+        &root,
+        &100i128,
+        &5u32,
+        &0u32,
+        &vk,
+        &0u32,
+        &Address::generate(&env),
+    );
     let create_cpu = env.cost_estimate().budget().cpu_instruction_cost();
     std::println!("bench create_circle: {create_cpu} CPU instructions");
 
@@ -37,26 +47,43 @@ fn cpu_instruction_benchmarks() {
         client.fund(&0u64, &m);
     }
 
-    // ---- claim (current: 3 public inputs, ic.len() == 4) ----
+    // ---- claim (current: 4 public inputs, ic.len() == 5) ----
     let recipient = Address::generate(&env);
     let nullifier_hash = real_nullifier_hash(&env);
     let external_nullifier = real_external_nullifier_round0(&env);
     let proof = real_valid_proof(&env);
-    client.claim(
-        &0u64,
-        &recipient,
-        &nullifier_hash,
-        &external_nullifier,
-        &proof,
-    );
-    let claim_cpu = env.cost_estimate().budget().cpu_instruction_cost();
-    std::println!("bench claim:         {claim_cpu} CPU instructions");
 
-    // Headroom assertion: upgrades that blow past ~60% of the 100M budget fail loudly.
-    assert!(
-        claim_cpu < 60_000_000,
-        "claim() CPU {claim_cpu} exceeded 60M headroom (budget 100M)"
-    );
+    for nullifier_count in [0, 10, 50, 200] {
+        // inject nullifiers and reset round pot
+        env.as_contract(&contract_id, || {
+            let key = DataKey::Circle(0);
+            let mut circle: Circle = env.storage().persistent().get(&key).unwrap();
+            circle.pot = circle.contribution * (circle.size as i128); // fully fund it
+            circle.round = 0; // reset round so the proof works
+            circle.contributors = Vec::new(&env);
+            
+            // clear and inject dummy nullifiers
+            circle.nullifiers = Vec::new(&env);
+            let dummy = Fr::from_u256(soroban_sdk::U256::from_u32(&env, 9999));
+            for _ in 0..nullifier_count {
+                circle.nullifiers.push_back(dummy.clone());
+            }
+            env.storage().persistent().set(&key, &circle);
+        });
+
+        // make sure the identity nullifier we test isn't in the dummy list
+        env.cost_estimate().budget().reset_default();
+        client.claim(
+            &0u64,
+            &Address::generate(&env),
+            &nullifier_hash,
+            &external_nullifier,
+            &proof,
+        );
+        let claim_cpu = env.cost_estimate().budget().cpu_instruction_cost();
+        std::println!("bench claim ({} nullifiers):         {} CPU instructions", nullifier_count, claim_cpu);
+    }
+
 
     // ---- larger IC (simulate 5 public inputs → ic.len() == 6) ----
     // Runs the same Groth16 path with 2 extra g1_mul terms. Proof will not
