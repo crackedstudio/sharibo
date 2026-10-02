@@ -17,9 +17,9 @@ jobs:
     name: just ci (js slices)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: extractions/setup-just@v2
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: extractions/setup-just@v4
+      - uses: actions/setup-node@v7
         with:
           node-version-file: ".nvmrc"
           cache: npm
@@ -39,8 +39,8 @@ jobs:
     name: just ci (rust slices)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: extractions/setup-just@v2
+      - uses: actions/checkout@v7
+      - uses: extractions/setup-just@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy

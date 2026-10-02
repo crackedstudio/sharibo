@@ -38,22 +38,45 @@ export function scanContent(content, filePath = "<memory>") {
   return findings;
 }
 
+const IGNORED_FILES = new Set(["scripts/check-secrets.test.mjs", "scripts/config.test.ts"]);
+
 export function scanFile(filePath) {
-  if (!existsSync(filePath)) return [];
+  if (!existsSync(filePath) || IGNORED_FILES.has(filePath)) return [];
   return scanContent(readFileSync(filePath, "utf8"), filePath);
 }
 
 export function isEnvLike(file) {
-  return ENV_LIKE.test(file);
+  const basename = file.split("/").pop();
+  if (basename === ".env.example") return false;
+  return ENV_LIKE.test(basename);
 }
 
-function getStagedFiles() {
-  const out = execFileSync("git", ["diff", "--cached", "--name-only", "--diff-filter=ACMR"]);
-  return out.toString().trim().split("\n").filter(Boolean);
+function getFilesToScan() {
+  const args = process.argv.slice(2);
+  const allIdx = args.indexOf("--all");
+  if (allIdx !== -1) {
+    return execFileSync("git", ["ls-files"]).toString().trim().split("\n").filter(Boolean);
+  }
+
+  const prIdx = args.indexOf("--pr");
+  if (prIdx !== -1 && args[prIdx + 1]) {
+    const base = args[prIdx + 1];
+    return execFileSync("git", ["diff", "--name-only", "--diff-filter=ACMR", `${base}...HEAD`])
+      .toString()
+      .trim()
+      .split("\n")
+      .filter(Boolean);
+  }
+
+  return execFileSync("git", ["diff", "--cached", "--name-only", "--diff-filter=ACMR"])
+    .toString()
+    .trim()
+    .split("\n")
+    .filter(Boolean);
 }
 
 function main() {
-  const stagedFiles = getStagedFiles();
+  const stagedFiles = getFilesToScan();
   let blocked = false;
 
   for (const file of stagedFiles) {

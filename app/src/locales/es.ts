@@ -154,7 +154,7 @@ const es = {
   "copy.title": "Copiar {label}",
 
   "busy.generating":
-    "Generando un administrador nuevo y 5 identidades de miembro y financiando con friendbot\u2026",
+    "Generando un administrador nuevo y {count} identidades de miembro y financiando con friendbot\u2026",
   "busy.creating": "Creando la tanda en testnet\u2026",
   "busy.claiming": "Reclamando\u2026",
   "busy.refunding":

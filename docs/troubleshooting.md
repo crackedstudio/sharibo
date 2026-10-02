@@ -479,6 +479,73 @@ will agree.
 
 ---
 
+## Running the browser end-to-end test locally
+
+`app/e2e/` holds a Playwright test of the flow people actually use: open the page, create a circle, fund five members, generate the Groth16 proof, claim. It asserts that the claim result card appears and that the recipient address shows up in that card and **nowhere else** on the page (DOM text, attributes, and browser storage). Unlike `scripts/e2e.ts`, which drives the contract from Node, this exercises the UI and the real proving path (real wasm + zkey) in headless Chromium.
+
+It runs against the Vite dev server and is **not** part of `npm test` or `just test`.
+
+**Run it**
+
+```bash
+just e2e-browser
+# or, if the SDK is built and the circuit artifacts are synced already:
+npm run test:e2e --workspace=app
+```
+
+`just e2e-browser` builds the SDK (`packages/client/dist` is what the app resolves), copies the circuit artifacts into `app/public/circuits/`, installs Chromium if it is missing (one-off download), and runs the test.
+
+**Prerequisites**
+
+- `npm install` at the repo root.
+- Circuit artifacts. Proving is real even in mock mode, so `circuits/build/` must exist: run `just circuits` first (needs `circom`; see the sections above). If they are missing the run stops immediately and names the absent file.
+
+**Mock (default) vs live (opt-in)**
+
+|                                        | `just e2e-browser` (default) | `just e2e-browser-live`               |
+| -------------------------------------- | ---------------------------- | ------------------------------------- |
+| Soroban RPC                            | in-memory fake chain         | real testnet                          |
+| Friendbot                              | stubbed                      | real                                  |
+| Groth16 proving                        | real                         | real                                  |
+| Spends testnet funds / Friendbot quota | **no**                       | **yes** (like `just e2e`)             |
+| Needs contract IDs                     | no                           | yes, in `app/.env` or the environment |
+
+The default run cannot spend funds, by construction:
+
+- Live mode is selected only by the exact value `E2E_LIVE=1`. Nothing in `package.json` sets it; `E2E_LIVE=true`, `yes`, `0` and unset all mean mock.
+- In mock mode the app is started with a placeholder RPC URL on the reserved `.invalid` TLD (it can never resolve), and the browser is blocked from every non-local host: Friendbot gets a canned response, anything else is aborted **and fails the test**.
+- A live run refuses to start unless `VITE_SHARIBO_CONTRACT_ID` and `VITE_TEST_TOKEN_CONTRACT_ID` are valid, non-placeholder IDs and the network is testnet.
+- Failed live runs are never retried automatically, because a retry would spend more.
+
+Mock mode replaces only what would talk to Soroban RPC (`connect`, `createCircle`, `fund`, `claim`, `getCircle`, `hasClaimed`, `cancelCircle`) — see `app/e2e/mock/client.mock.ts`. The fake chain still rejects an under-funded claim, a wrong external nullifier, a malformed proof and a replayed nullifier. It does **not** run the on-chain pairing check; the app's own local `verifyProofLocally` still runs against the real verification key before the claim is submitted.
+
+**Traces, videos and the demo GIF**
+
+On failure Playwright keeps a trace, a video and a screenshot under `app/e2e/test-results/`:
+
+```bash
+npx playwright show-trace app/e2e/test-results/<test-folder>/trace.zip
+npx playwright show-report app/e2e/playwright-report
+```
+
+To capture a _passing_ run — e.g. for the README demo GIF — keep the artifacts on success too:
+
+```bash
+E2E_TRACE=on npm run test:e2e --workspace=app
+ffmpeg -i app/e2e/test-results/<test-folder>/video.webm -vf "fps=10,scale=960:-1" demo.gif
+```
+
+**Common problems**
+
+- **`e2e prerequisites are not met`** — the message names the missing file. Missing `app/public/circuits/*`: run `just circuits`, then `npm run sync-circuit --workspace=app`. Missing `packages/client/dist`: `npm run build --workspace=packages/client`.
+- **`E2E_LIVE=1 was set but the live run cannot start`** — the listed items are what the live preflight rejected (missing or placeholder contract IDs, or a non-testnet passphrase). Unset `E2E_LIVE` to go back to the free mock run.
+- **`mock mode must make no requests to external hosts`** — the app started calling a host the mock layer does not know about. Stub it in `app/e2e/fixtures.ts` or route it through the fake chain.
+- **`Port 5199 is already in use`** — the suite only ever starts its own server (5199 mock, 5198 live) and never reuses one, so stop whatever holds the port.
+- **Timeout while proving** — the claim step has a 3-minute budget in mock mode (8 minutes live). Proving is CPU-bound in headless Chromium, so a heavily loaded machine can exceed it.
+- **Friendbot `429` in live mode** — wait a few minutes and re-run; see [Friendbot rate limited](#friendbot-rate-limited--already-funded-400s).
+
+---
+
 **Still stuck?** Re-read [`CONTRIBUTING.md`](../CONTRIBUTING.md) for the dev loop and
 the [README "Run it" section](../README.md#run-it) for the step order; open an issue if
 your symptom isn't here.

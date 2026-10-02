@@ -20,6 +20,39 @@ set working-directory := '.'
 doctor *ARGS:
     npm run doctor --workspace=scripts -- {{ARGS}}
 
+# ── Audit ────────────────────────────────────────────────────────────────────
+
+# Dependency audit gate: npm advisories across every workspace plus cargo
+# advisories / licences / duplicate crates for the contracts crate.
+#
+# Findings are accepted only through the allowlist files below — never by
+# appending `|| true` to a command:
+#
+#   * npm  — `audit-allowlist.json` (root): entries of the form
+#            { "id": "GHSA-…", "reason": "…", "expires": "YYYY-MM-DD" }
+#   * cargo — `contracts/deny.toml` `[advisories] ignore = [...]` entries,
+#            each with a comment giving the reason and an expiry date.
+#
+# An allowlist entry past its expiry is a failure: re-triage the advisory
+# instead of bumping the date.
+audit:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    echo "== npm audit (all workspaces, --audit-level=high) =="
+    npm audit --audit-level=high
+
+    echo ""
+    echo "== cargo audit (contracts/) =="
+    cd contracts && cargo audit
+
+    echo ""
+    echo "== cargo deny check (advisories, licences, bans, sources) =="
+    cd contracts && cargo deny check
+
+    echo ""
+    echo "audit: no unaccepted findings."
+
 # ── Circuits ──────────────────────────────────────────────────────────────────
 
 # Compile circuit, run trusted setup (with zkey verification), verify the
@@ -41,6 +74,8 @@ circuits-test:
 
 # Run contract unit tests and build wasm binary
 contract:
+    cd contracts && cargo fmt --check
+    cd contracts && cargo clippy --all-targets -- -D warnings
     cd contracts && cargo test
     cd contracts && stellar contract build
 
@@ -104,7 +139,51 @@ app-test:
 app-dev:
     cd app && npm run dev
 
-# ── Rust / Soroban slices ─────────────────────────────────────────────────────
+# ── Verify (umbrella) ───────────────────────────────────────────────────────────
+# Run a complete local verification/gate for contributors. This intentionally
+# excludes the slow or networked pieces: the `e2e` job (uses testnet/friendbot)
+# and the circuits *trusted setup* (slow and stateful). Use this as the
+# single pre-PR check to answer "did I break anything?".
+verify:
+    @root=$(git rev-parse --show-toplevel 2>/dev/null || printf "%s" "$(pwd)"); \
+    echo "Running verify from $root"; \
+    cd "$root"; \
+    set -o pipefail; \
+    s_type=0; s_eslint=0; s_deadcode=0; s_tests=0; s_cargo=0; \
+
+    echo "\n== 1) TypeScript typecheck (packages/client + app if present) =="; \
+    npm run -s typecheck --workspace=packages/client || s_type=1; \
+    if [ -f app/package.json ]; then (cd app && npx -y tsc --noEmit) || s_type=1; fi; \
+
+    echo "\n== 2) ESLint =="; \
+    npx -y eslint . --ext .js,.ts,.tsx || s_eslint=1; \
+
+    echo "\n== 3) Dead-code check (ts-prune; best-effort) =="; \
+    npx -y ts-prune --summary || s_deadcode=1; \
+
+    echo "\n== 4) Unit tests (app + packages/core + packages/client + circuits if present) =="; \
+    npm run -s test --workspace=app || s_tests=1; \
+    npm run -s test --workspace=packages/core || s_tests=1; \
+    npm run -s test --workspace=packages/client || s_tests=1; \
+    if [ -f circuits/package.json ]; then (cd circuits && npm test --if-present) || true; fi; \
+
+    echo "\n== 5) Cargo tests & clippy =="; \
+    (cd contracts && cargo test) || s_cargo=1; \
+    (cd contracts && cargo clippy -- -D warnings) || s_cargo=1; \
+
+    echo "\nSummary:"; \
+    printf "%-36s %s\n" "TypeScript typecheck" "$( [ $s_type -eq 0 ] && echo PASS || echo FAIL )"; \
+    printf "%-36s %s\n" "ESLint" "$( [ $s_eslint -eq 0 ] && echo PASS || echo FAIL )"; \
+    printf "%-36s %s\n" "Dead-code (ts-prune)" "$( [ $s_deadcode -eq 0 ] && echo PASS || echo WARN )"; \
+    printf "%-36s %s\n" "Unit tests (app + client)" "$( [ $s_tests -eq 0 ] && echo PASS || echo FAIL )"; \
+    printf "%-36s %s\n" "Cargo tests + clippy" "$( [ $s_cargo -eq 0 ] && echo PASS || echo FAIL )"; \
+
+    if [ $s_type -eq 0 -a $s_eslint -eq 0 -a $s_tests -eq 0 -a $s_cargo -eq 0 ]; then \
+        echo "\nverify: All checks passed."; \
+    else \
+        echo "\nverify: Some checks failed. See above for details."; \
+        exit 2; \
+    fi
 
 cargo-fmt:
     cd contracts && cargo fmt --check
@@ -137,6 +216,28 @@ format-check:
 verify: format-check typecheck lint client app-test
     @echo "just verify: fast subset passed. Run \`just ci\` before opening a PR."
 
+# Browser end-to-end test of the whole demo flow (open page → create circle →
+# fund 5 members → prove → claim) in headless Chromium, against a local Vite
+# dev server. Soroban RPC and Friendbot are MOCKED, so this spends nothing; the
+# Groth16 proving is still real (real wasm + zkey, in the browser).
+#
+# Needs the circuit artifacts (`just circuits`) — see docs/troubleshooting.md.
+# Not part of `just test` / `npm test`. Failure traces: app/e2e/test-results/.
+e2e-browser:
+    npm run build --workspace=packages/client
+    npm run sync-circuit --workspace=app
+    cd app && npx playwright install chromium
+    npm run test:e2e --workspace=app
+
+# The same browser flow against LIVE testnet: SPENDS testnet funds and
+# friendbot quota (like `just e2e`). Opt-in only; refuses to start unless
+# app/.env (or the environment) has real testnet contract IDs.
+e2e-browser-live:
+    npm run build --workspace=packages/client
+    npm run sync-circuit --workspace=app
+    cd app && npx playwright install chromium
+    E2E_LIVE=1 npm run test:e2e --workspace=app
+
 # ── Test (all suites, no e2e) ─────────────────────────────────────────────────
 
 # Run every test suite in the repo (still excludes e2e / trusted setup).
@@ -163,6 +264,7 @@ test:
 
     run_suite "dead-code check"   npm run lint:dead
     run_suite "client typecheck"  npm run typecheck --workspace=packages/client
+    run_suite "core tests"        npm test          --workspace=packages/core
     run_suite "client tests"      npm test          --workspace=packages/client
     run_suite "app tests"         npm test          --workspace=app
     run_suite "scripts tests"     npm test          --workspace=scripts

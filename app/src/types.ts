@@ -6,6 +6,7 @@ export interface Member {
   identity: Identity;
   funded: boolean;
   fundHash?: string;
+  freighterKey?: string;
   ineligible?: boolean;
   ineligibleReason?: string;
   /** Optimistic flag while this member's funding transaction is in flight. */
@@ -15,6 +16,8 @@ export interface Member {
 export interface ClaimResult {
   recipient: string;
   hash: string;
+  proofDurationMs: number;
+  verifyTimeMs: number;
   /** Actual fee charged for the claim transaction, in stroops. */
   feeCharged?: string;
   /** Pre-flight fee estimate shown before signing. */

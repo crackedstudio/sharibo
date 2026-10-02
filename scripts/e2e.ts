@@ -307,7 +307,7 @@ async function main() {
     return { tree, vk: verificationKeyToContractFormat(vkJson) };
   });
 
-  let circleId: bigint;
+  let circleId: CircleId;
   if (REUSE_CIRCLE != null) {
     circleId = makeCircleId(REUSE_CIRCLE);
     console.log(`\n2. Reusing existing circle ${circleId} (--reuse-circle)...`);

@@ -7,7 +7,8 @@
     "packages/core",
     "packages/client",
     "scripts",
-    "app"
+    "app",
+    "test-vectors"
   ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",
@@ -27,15 +28,15 @@
   },
   "devDependencies": {
     "@sharibo/client": "*",
-    "@typescript-eslint/eslint-plugin": "^8.0.0",
-    "@typescript-eslint/parser": "^8.0.0",
-    "eslint": "^9.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.71.0",
+    "@typescript-eslint/parser": "^8.71.0",
+    "eslint": "^10.11.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-react-hooks": "^7.1.1",
     "globals": "^17.11.0",
-    "knip": "6.33.0",
+    "knip": "6.38.0",
     "prettier": "^3.9.9",
-    "typescript-eslint": "^8.0.0",
-    "vitest": "^4.1.10"
+    "typescript-eslint": "^8.71.0",
+    "vitest": "^5.0.2"
   }
 }

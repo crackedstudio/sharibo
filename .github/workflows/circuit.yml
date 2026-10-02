@@ -1,0 +1,77 @@
+name: Circuit suite
+
+on:
+  push:
+    paths:
+      - "circuits/**"
+      - "packages/core/**"
+      - "packages/client/src/prove.ts"
+      - "contracts/**"
+      - ".github/workflows/circuit.yml"
+  pull_request:
+    paths:
+      - "circuits/**"
+      - "packages/core/**"
+      - "packages/client/src/prove.ts"
+      - "contracts/**"
+      - ".github/workflows/circuit.yml"
+
+jobs:
+  circuits:
+    name: circuits compile + setup + test
+    runs-on: ubuntu-latest
+    env:
+      # The committed verification_key.json is canonical — CI consumes it,
+      # never regenerates it. A CI-generated setup would be a different,
+      # untrusted key (see circuits/SETUP_TRANSCRIPT.md).
+      ALLOW_KEY_ROTATION: "0"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pinned circom
+        run: |
+          CIRCOM_VERSION="2.2.3"
+          curl -fsSL "https://github.com/iden3/circom/releases/download/v${CIRCOM_VERSION}/circom-linux-amd64" \
+            -o /usr/local/bin/circom
+          chmod +x /usr/local/bin/circom
+          circom --version
+          echo "circom ${CIRCOM_VERSION}" > /tmp/circom.version
+
+      - name: Cache powers-of-tau download
+        uses: actions/cache@v4
+        with:
+          path: circuits/build/pot12_bls12381_final.ptau
+          key: ${{ runner.os }}-ptau-12-${{ hashFiles('circuits/config.json') }}
+          restore-keys: |
+            ${{ runner.os }}-ptau-12-
+
+      - name: Cache compiled circuit artifacts
+        uses: actions/cache@v4
+        with:
+          path: circuits/build
+          key: ${{ runner.os }}-circuit-build-${{ hashFiles('circuits/membership.template.circom', 'circuits/config.json', '/tmp/circom.version') }}
+          restore-keys: |
+            ${{ runner.os }}-circuit-build-
+
+      - name: Install workspace dependencies
+        run: npm ci
+
+      - name: Compile (asserts pinned circom version)
+        working-directory: circuits
+        run: npm run compile
+
+      - name: Assert reproducibility — compiled artifacts match committed hashes
+        working-directory: circuits
+        run: node scripts/verify-artifacts.mjs
+
+      - name: Trusted setup (fast-path over the committed key)
+        working-directory: circuits
+        run: npm run setup
+
+      - name: Verify setup against the committed verification key
+        working-directory: circuits
+        run: npm run verify-setup
+
+      - name: Run circuit test suite
+        working-directory: circuits
+        run: npm test

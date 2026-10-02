@@ -20,6 +20,7 @@ to be considered canonical.
 | Field                               | Value                                                              |
 | ----------------------------------- | ------------------------------------------------------------------ |
 | Date (UTC)                          | `2025-07-01T00:00:00Z`                                             |
+| circom version                      | `2.2.3` (see `circuits/config.json` `circomVersion`)               |
 | snarkjs version                     | `0.7.6`                                                            |
 | Curve                               | `bls12381`                                                         |
 | Powers-of-Tau power                 | `12`                                                               |
@@ -54,6 +55,7 @@ to be considered canonical.
 | Field                               | Value                                                              |
 | ----------------------------------- | ------------------------------------------------------------------ |
 | Date (UTC)                          | `2026-09-04T21:41:32Z`                                             |
+| circom version                      | `2.2.3`                                                            |
 | snarkjs version                     | `0.7.6`                                                            |
 | Curve                               | `bls12381`                                                         |
 | Powers-of-Tau power                 | 12                                                                 |

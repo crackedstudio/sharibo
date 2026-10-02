@@ -28,7 +28,7 @@ export function checkSdkVersions(manifests) {
 }
 
 function main() {
-  const WORKSPACES = ["app", "packages/client", "scripts"];
+  const WORKSPACES = ["app", "packages/client", "packages/core", "scripts"];
   const repoRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
   /** @type {Record<string, object>} */

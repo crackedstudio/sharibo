@@ -6,13 +6,22 @@ This folder collects material an engagement team would need to reproduce claims,
 
 ## Pinned toolchain (reproduce the build)
 
-| Tool          | Version / source                                                          |
-| ------------- | ------------------------------------------------------------------------- |
-| Rust          | `rustc 1.92.0` (see root README); target `wasm32v1-none` for Soroban      |
-| `stellar` CLI | `23.4.1` (README)                                                         |
-| Node.js       | `v24.11.1` (README); workspaces root + `circuits/` + `packages/client/`   |
-| circom        | `2.2.3` (built from source in original build); pragma `2.1.6` in template |
-| snarkjs       | `0.7.6` (`circuits/package.json`, via `npx`)                              |
+| Tool          | Version / source                                                                                |
+| ------------- | ----------------------------------------------------------------------------------------------- |
+| Rust          | `rustc 1.92.0` (see root README); target `wasm32v1-none` for Soroban                            |
+| `stellar` CLI | `23.4.1` (README)                                                                               |
+| Node.js       | `v24.11.1` (README); workspaces root + `circuits/` + `packages/client/`                         |
+| circom        | `2.2.3` (pinned in `circuits/config.json`, asserted by `compile.sh`; prebuilt Linux x64 binary) |
+| snarkjs       | `0.7.6` (`circuits/package.json`, via `npx`)                                                    |
+
+Everything above is also available as one reproducible image: `Dockerfile.circuits`
+pins circom, Node and Rust. Build it with `docker build -t sharibo-circuits .` and
+run the circuit suite with
+`docker run --rm -v "$(pwd):/sharibo" -w /sharibo sharibo-circuits`.
+
+The committed `verification_key.json` is canonical — consume it, never regenerate
+it. A CI-generated setup would be a different, untrusted key (see
+`circuits/README.md` "Trusted setup is stateful").
 
 ## Reproduce circuit + verification artifacts
 

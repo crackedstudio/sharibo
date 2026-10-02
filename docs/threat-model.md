@@ -142,7 +142,7 @@ This risk is analogous to the vk trust assumption (§1 above): the creator choos
 
 - **Network-level linkage.** Correlating a claim transaction's submitter IP, RPC session, or wallet-provider metadata back to a specific member. Nothing in this repo's contract or circuit code defends against this; it would need to be addressed at the transport/relay layer (e.g., a genuinely third-party relayer network), which does not exist yet.
 - **Timing correlation.** Inferring which member claimed from _when_ a proof was generated or submitted relative to funding events. Not modeled or defended against.
-- **Testnet-only status.** Every on-chain artifact referenced in the README is testnet, using native testnet XLM as the pot asset. Mainnet-specific risks (real fund custody, gas-market front-running economics, ceremony participation incentives) are not analyzed here — see [SECURITY.md](../SECURITY.md) Limitations and Exclusions, and [`docs/roadmap.md`](roadmap.md) for the checklist of what has to be true before any of that changes.
+- **Testnet-only status.** Every on-chain artifact referenced in the README is testnet, using native testnet XLM as the pot asset. Mainnet-specific risks (real fund custody, gas-market front-running economics, ceremony participation incentives) are not analyzed here — see [SECURITY.md](../SECURITY.md) Limitations and Exclusions, and [`docs/mainnet-readiness.md`](mainnet-readiness.md) for the checklist of what has to be true before any of that changes.
 
 ## Verifying these claims
 

@@ -1,7 +1,7 @@
 # XDR Golden Files — issues #326 / #566
 
 This directory contains committed base64 snapshots of the Soroban XDR
-wire format for `Circle`, `VerificationKey`, and `Proof`.
+wire format for `Circle`, `CircleMeta`, `VerificationKey`, and `Proof`.
 
 ## Files
 

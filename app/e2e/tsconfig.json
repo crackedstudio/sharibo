@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "allowImportingTsExtensions": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "types": ["node"],
+    "paths": {
+      // The mock re-exports the built SDK under this alias (see vite.mock.config.ts).
+      "@sharibo/client-real": ["../../packages/client/src/index.ts"]
+    }
+  },
+  "include": ["."],
+  "exclude": ["test-results", "playwright-report"]
+}

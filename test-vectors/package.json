@@ -1,0 +1,12 @@
+{
+  "name": "test-vectors",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "generate": "node --experimental-vm-modules generate.mjs > poseidon.json"
+  },
+  "dependencies": {
+    "poseidon-bls12381": "^1.0.0"
+  }
+}

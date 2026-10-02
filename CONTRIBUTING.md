@@ -61,7 +61,7 @@ We use a set of topic labels to categorize issues and pull requests. These label
 
 ## Review expectations
 
-This repo historically had **no CI**, so human review remains the primary gate — a merged PR is effectively the last check before the code lands. Contract line-coverage is now also enforced in GitHub Actions (`.github/workflows/coverage.yml`) against `coverage-thresholds.json`. `.github/CODEOWNERS` requests the owning reviewers automatically on every PR.
+This repo historically had **no CI**, so human review remains the primary gate — a merged PR is effectively the last check before the code lands. Contract line-coverage is now also enforced in GitHub Actions (`.github/workflows/coverage.yml`) against `coverage-thresholds.json`. `.github/CODEOWNERS` requests the owning reviewers automatically on every PR. Branch protection on `main` requires CODEOWNERS review before merge - a CODEOWNERS file without branch protection only requests reviewers, it does not require them (issue #541).
 
 - **Reviewers confirm the gate passed on the merge result.** Because there is no CI, the reviewer is responsible for confirming the local verification gate passes on the **merge result**, not just on the branch as it was pushed. Today that means running `just all` (circuit tests, contract tests, client typecheck; e2e separately), and the umbrella `just verify` recipe that codifies this is tracked in issue [#222](https://github.com/crackedstudio/sharibo/issues/222) — merge conflicts resolved carelessly are how landed work gets silently reverted.
 - **Security-critical paths require a domain reviewer.** `circuits/**` and `contracts/**` changes must be reviewed by someone who reads circom / Rust respectively, not just by whoever happens to be around.
@@ -177,6 +177,14 @@ In short:
 
 Running `npm run lint` will catch violations.
 
+## Setup
+
+For setting up your local environment, we recommend running `./scripts/bootstrap.sh` as described in the README. This script will install dependencies, compile the circuit, and set up your environment variables. It also automatically configures git hooks by invoking `scripts/maintenance/install-hooks.sh` to prevent accidentally committing sensitive data such as Stellar secret keys. If you want to configure these hooks manually, you can run:
+
+```bash
+bash scripts/maintenance/install-hooks.sh
+```
+
 ## Setup trouble?
 
 Getting a fresh machine running and tripping on a toolchain issue (`circom`, `wasm32v1-none`, `stellar` vs `soroban`, friendbot limits, testnet resets, missing `circuits/build/`)? See [docs/troubleshooting.md](docs/troubleshooting.md) for symptom → cause → fix walkthroughs.
@@ -240,3 +248,22 @@ Before opening a pull request, run the authoritative local verification gate:
 - The gate intentionally excludes `e2e`, circuit trusted setup (`just circuits`), mutation, and benchmarks — those are slow and/or spend testnet friendbot funds. Run them on demand when your change touches those areas.
 
 If `just ci` passes locally, it's the single documented answer to "did I break anything?" and a good signal your change is ready for review.
+
+## Releases
+
+A release is a git tag plus a `CHANGELOG.md` entry plus the deployment record.
+Every release must accompany (issue #540):
+
+1. A version bump done deliberately: the contract (`contracts/sharibo/Cargo.toml`)
+   and the circuit are the load-bearing artifacts - version those first, then let
+   the TS packages (`package.json` files) follow.
+2. A `CHANGELOG.md` entry (Keep-a-Changelog format) recording schema-version and
+   circuit changes.
+3. A Deployments row in `docs/deployment.md`: tag -> contract ID ->
+   `Circle.schema_version` -> `verification_key.json` SHA-256
+   (`sha256sum circuits/verification_key.json`) -> circom version -> Rust toolchain.
+4. A testnet reset produces a new Deployments row (see `docs/runbook-testnet-reset.md`);
+   never overwrite the previous row - append.
+
+Releases stay manual until there is a reason to automate: release automation on
+a repo with no CI would be premature.

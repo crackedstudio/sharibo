@@ -6,6 +6,7 @@ import {
   verificationKeyToContractFormat,
   connect,
   connectReadOnly,
+  clearContractClientCache,
   createCircle,
   fund,
   claim,
@@ -21,9 +22,8 @@ import {
   POLL_RETRY_POLICY,
   PATIENT_RETRY_POLICY,
   type Identity,
-  type ContractProof,
-  type CircleId,
   makeCircleId,
+  makeExternalNullifier,
   ContractError,
   CircleNotFoundError,
   RoundNotFundedError,
@@ -39,16 +39,18 @@ import {
   InvalidInputError,
   describeError,
   networkOf,
+  formatXlmDisplay,
 } from "@sharibo/client";
 import { config, configError } from "./config";
 import { LanguageSwitcher, useI18n } from "./i18n";
 import { usePoliteLiveRegion } from "./usePoliteLiveRegion";
 import { ArtifactProgress } from "./components/ArtifactProgress.js";
 import { explorerTx, short, explorerAccount, explorerContract } from "./lib/explorer";
-import type { CirclePhase } from "./hooks/useCircleFlow";
 import { MemberRingSkeleton } from "./components/MemberRing";
 import { FundingListSkeleton } from "./components/FundingList";
-import { friendbotFund as fundWithFriendbot } from "./lib/friendbot";
+import {
+  friendbotFund as fundWithFriendbot,
+} from "./lib/friendbot";
 import styles from "./App.module.css";
 import {
   createDemoSigner,
@@ -63,14 +65,11 @@ import { Toaster } from "./components/Toaster";
 import { ConnectionStatus } from "./components/ConnectionStatus";
 import { useOnlineStatus } from "./hooks/useOnlineStatus";
 import { useSdkEvents } from "./hooks/useSdkEvents";
-import { diagnose, type Failure } from "./state/circleMachine";
+import type { Failure } from "./state/circleMachine";
 import { copyDebugBundle, type BundleInput } from "./lib/debugBundle";
 import type { LoggedSdkEvent } from "./lib/sdkEventLog";
 
-function formatError(
-  error: unknown,
-  t: (key: string, vars?: Record<string, string | number>) => string,
-): string {
+function formatError(error: unknown, t: (key: string, vars?: Record<string, string | number>) => string): string {
   const mapped = toUiError(error);
   return t(mapped.key, mapped.vars);
 }
@@ -86,7 +85,6 @@ const NETWORK = {
 };
 const TOKEN = config?.testTokenContractId ?? "";
 const LEVELS = TREE_LEVELS;
-const CIRCLE_SIZE = 5;
 const README_URL = "https://github.com/crackedstudio/sharibo#honest-limitations";
 
 const isTestnet = networkOf(NETWORK.networkPassphrase) === "testnet";
@@ -120,10 +118,7 @@ const NAMES = [
   "chit fund",
 ];
 
-function toUiError(
-  error: unknown,
-  t: (key: string, vars?: Record<string, string | number>) => string,
-): string {
+function toUiError(error: unknown, t: (key: string, vars?: Record<string, string | number>) => string): string {
   if (error instanceof FriendbotRetryableError) {
     return FRIEND_BOT_RATE_LIMIT_MESSAGE;
   }
@@ -193,6 +188,7 @@ function getErrorMessage(error: unknown): string {
   return describeError(error);
 }
 
+
 // Every truncated value on screen (addresses, tx hashes) needs to be
 // pasteable in full somewhere else — a CLI call, an explorer search — so
 // this pairs with each `short(...)` display. Falls back to a prompt() (which
@@ -260,7 +256,7 @@ function CopyDebugBundleButton({
   timings,
   recentEvents,
 }: {
-  circleId: bigint | null;
+  circleId: CircleId | null;
   round: number;
   currentStep: string | null;
   lastError: string | null;
@@ -337,7 +333,12 @@ function CopyDebugBundleButton({
         {label}
       </button>
       {(status === "copied" || status === "fallback") && (
-        <a className="link fineprint" href={BUG_REPORT_URL} target="_blank" rel="noreferrer">
+        <a
+          className="link fineprint"
+          href={BUG_REPORT_URL}
+          target="_blank"
+          rel="noreferrer"
+        >
           open bug report ↗
         </a>
       )}
@@ -355,13 +356,6 @@ interface Member {
   ineligible?: boolean;
   ineligibleReason?: string;
   pending?: boolean; // Optimistic flag while transaction is in flight
-}
-
-interface ClaimResult {
-  recipient: string;
-  hash: string;
-  proofDurationMs: number;
-  verifyTimeMs: number;
 }
 
 // The visible stages of doClaim, in the order they actually occur. snarkjs's
@@ -404,15 +398,15 @@ function ClaimProgress({ stage, elapsedSeconds }: { stage: ClaimStage; elapsedSe
             className={`${styles.step} ${i < activeIndex ? styles.done : i === activeIndex ? styles.active : ""}`}
           >
             <span className={styles.stepDot}>{i < activeIndex ? "✓" : i + 1}</span>
-            {CLAIM_STAGE_LABELS[s]}
+            {stageLabels[s]}
           </div>
         ))}
       </div>
       {stage === "proving" && (
         <p className={styles.techline}>
-          <span className={styles.spinner} aria-hidden="true" /> Groth16 · BLS12-381 · 3,757
-          constraints · proving locally in your browser, nothing sent anywhere until the proof is
-          done · {elapsedSeconds}s elapsed
+          <span className={styles.spinner} aria-hidden="true" /> Groth16 · BLS12-381 · 3,757 constraints ·
+          proving locally in your browser, nothing sent anywhere until the proof is done ·{" "}
+          {elapsedSeconds}s elapsed
         </p>
       )}
     </div>
@@ -489,13 +483,7 @@ function useRingRadius(): number {
   return radius;
 }
 
-function MemberRing({
-  members,
-  revealed,
-}: {
-  members: { funded: boolean; pending?: boolean }[];
-  revealed: boolean;
-}) {
+function MemberRing({ members, revealed }: { members: { funded: boolean; pending?: boolean }[]; revealed: boolean }) {
   const { t } = useI18n();
   const radius = useRingRadius();
   const fundedCount = members.filter((m) => m.funded).length;
@@ -544,8 +532,7 @@ function MemberRing({
       </div>
       {revealed && (
         <p id={captionId} role="note" className={styles.ringCaption}>
-          Payout landed on the address above — cryptographically, it could be tied to <em>any</em>{" "}
-          of the {members.length} members in the ring. An outside observer cannot tell which.
+          {t("ring.caption", { count: members.length })}
         </p>
       )}
     </div>
@@ -570,7 +557,9 @@ function EnvSetupScreen({ errors }: { errors: string[] }) {
             </li>
           ))}
         </ul>
-        <p className={styles.fineprint}>{t("env.setupDetails")}</p>
+        <p className={styles.fineprint}>
+          {t("env.setupDetails")}
+        </p>
       </div>
     </div>
   );
@@ -584,13 +573,7 @@ function LiveRegion({ message }: { message: string }) {
       aria-live="polite"
       aria-atomic="true"
       className="sr-only"
-      style={{
-        position: "absolute",
-        width: 1,
-        height: 1,
-        overflow: "hidden",
-        clip: "rect(0,0,0,0)",
-      }}
+      style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0,0,0,0)" }}
     >
       {message}
     </div>
@@ -607,7 +590,9 @@ function ClaimExplainer() {
       <div className={styles.claimExplainerBody}>
         <section>
           <h3>{t("explainer.sayingTitle")}</h3>
-          <p>{t("explainer.sayingBody")}</p>
+          <p>
+            {t("explainer.sayingBody")}
+          </p>
         </section>
         <section>
           <h3>{t("explainer.secretTitle")}</h3>
@@ -636,8 +621,14 @@ function ClaimExplainer() {
 export default function App() {
   const { t, locale } = useI18n();
   const online = useOnlineStatus();
-  const { onEvent, claimStage, setClaimStage, clearEvents, resetClaimStage, recentEvents } =
-    useSdkEvents();
+  const {
+    onEvent,
+    claimStage,
+    setClaimStage,
+    clearEvents,
+    resetClaimStage,
+    recentEvents,
+  } = useSdkEvents();
   const [failure, setFailure] = useState<Failure | null>(null);
 
   if (configError.length > 0) {
@@ -668,7 +659,7 @@ export default function App() {
   const [cancelled, setCancelled] = useState(false);
   const [claimantIndex, setClaimantIndex] = useState(0);
   const [proof, setProof] = useState<ContractProof | null>(null);
-  const [nullifierHash, setNullifierHash] = useState<bigint | null>(null);
+  const [nullifierHash, setNullifierHash] = useState<NullifierHash | null>(null);
   const [claimResult, setClaimResult] = useState<ClaimResult | null>(null);
   const [isProving, setIsProving] = useState(false);
   const [provingElapsedMs, setProvingElapsedMs] = useState<number | null>(null);
@@ -721,29 +712,22 @@ export default function App() {
   // resetToLanding and the unmount cleanup can cancel it synchronously.
   const claimAbortRef = useRef<AbortController | null>(null);
 
-  // Abort any in-flight claim when the component unmounts (e.g. the user
-  // navigates away mid-proof).  This prevents a stale setState from firing on
-  // a dead component and triggering React's "Can't perform a React state
-  // update on an unmounted component" warning.
-  useEffect(() => {
-    return () => {
-      claimAbortRef.current?.abort();
-    };
-  }, []);
-  const fundedCount = members.filter((m) => m.funded).length;
-  const fullyFunded = pot === contribution * BigInt(CIRCLE_SIZE);
   const { announce, message: liveRegionMessage } = usePoliteLiveRegion(120);
 
-  // Sync funding state from on-chain data
+  // Sync funding state from on-chain data. Reads the latest circle through a
+  // ref so an in-flight read that finishes after reset does not dispatch.
   const syncFundingState = useCallback(async () => {
-    if (!admin || circleId === null) return;
+    const current = selectCircle(circleStateRef.current);
+    if (!current.admin || current.circleId === null) return;
+    const adminKey = current.admin;
+    const id = current.circleId;
     try {
-      const { connect, getCircle } = await import("@sharibo/client");
+      const { connect, getCircle, getContributors } = await import("@sharibo/client");
       const adminClient = await connect(NETWORK, admin);
       const circle = await getCircle(adminClient, circleId, POLL_RETRY_POLICY);
 
       setPot(circle.pot);
-      setOnChainContributors(circle.contributors);
+      setOnChainContributors(contributors);
       setCancelled(circle.cancelled);
       setFeeBps(circle.fee_bps ?? 0);
       setFeeRecipient(circle.fee_recipient ?? "");
@@ -755,12 +739,12 @@ export default function App() {
             circle.contributors.includes(m.address) ||
             Boolean(m.freighterKey && circle.contributors.includes(m.freighterKey));
           return { ...m, funded: hasFunded, pending: false };
-        }),
+        })
       );
     } catch (e) {
       console.error("Failed to sync funding state:", e);
     }
-  }, [admin, circleId]);
+  }, []);
 
   // Sync funding state when circleId changes or on mount
   useEffect(() => {
@@ -803,7 +787,7 @@ export default function App() {
     if (fullyFunded) {
       announce(t("liveRegion.claimStepReady"));
     }
-  }, [announce, busy, circlePhase, claimResult, error, fullyFunded]);
+  }, [announce, busy, circlePhase, claimResult, error, fullyFunded, t]);
 
   // ── Focus management ────────────────────────────────────────────────────
   // When a screen or major section appears, move keyboard focus to its
@@ -838,36 +822,36 @@ export default function App() {
     let mounted = true;
     async function checkEligibility() {
       if (!fullyFunded || claimResult || !circleId || !admin) return;
+      if (readCircleStatus() !== "readyToClaim") return;
+      let failed = false;
       try {
-        setBusy("Checking member eligibility…");
+        dispatch({ type: "setBusy", busy: "Checking member eligibility…" });
         const client = await import("@sharibo/client");
-        const { computeExternalNullifier, computeNullifierHash, connect, hasClaimed } = client;
+        const { computeExternalNullifier, computeNullifierHash, connect, hasClaimed, makeNullifierHash } = client;
         const external = await computeExternalNullifier(circleId, BigInt(round));
         const adminClient = await connect(NETWORK, await toShariboSigner(admin));
         const results = await Promise.all(
           members.map(async (m) => {
-            const nullifier = computeNullifierHash(m.identity.identityNullifier, external);
+            const nullifier = makeNullifierHash(computeNullifierHash(m.identity.identityNullifier, external));
             return await hasClaimed(adminClient, circleId, nullifier);
           }),
         );
-        if (!mounted) return;
-        setMembers((prev) =>
-          prev.map((m, i) => ({
-            ...m,
-            ineligible: results[i],
-            ineligibleReason: results[i] ? "Already claimed in this circle" : undefined,
-          })),
-        );
+        if (!mounted || readCircleStatus() !== "readyToClaim") return;
+        dispatch({
+          type: "setEligibility",
+          ineligible: results,
+          reason: "Already claimed in this circle",
+        });
       } catch (e) {
         setError(formatError(e, t));
       } finally {
-        if (mounted) setBusy(null);
+        if (mounted && !failed && readCircleStatus() === "readyToClaim") {
+          dispatch({ type: "clearBusy" });
+        }
       }
     }
     checkEligibility();
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, [fullyFunded, claimResult, circleId, round, admin]);
   // ────────────────────────────────────────────────────────────────────────
 
@@ -896,6 +880,7 @@ export default function App() {
     // Cancel any in-flight proof generation / artifact download.
     claimAbortRef.current?.abort();
     claimAbortRef.current = null;
+    clearContractClientCache();
 
     setPreviousCircleId(circleId);
     clearSession();
@@ -962,7 +947,6 @@ export default function App() {
 
     // Sync from on-chain after loading state
     setTimeout(() => syncFundingState(), 100);
-    setCirclePhase("ready");
   }
 
   async function startCircle() {
@@ -983,16 +967,12 @@ export default function App() {
       return;
     }
     setCirclePhase("loading");
-    setBusy("Generating a fresh admin + 5 member identities and funding via friendbot…");
+    setBusy(
+      "Generating a fresh admin + 5 member identities and funding via friendbot…",
+    );
     try {
       const client = await import("@sharibo/client");
-      const {
-        generateIdentity,
-        MerkleTree,
-        verificationKeyToContractFormat,
-        connect,
-        createCircle,
-      } = client;
+      const { generateIdentity, MerkleTree, verificationKeyToContractFormat, connect, createCircle } = client;
 
       setBusy(t("busy.generating"));
       const adminSigner = await createDemoSigner(NETWORK.networkPassphrase);
@@ -1017,8 +997,10 @@ export default function App() {
         newMembers.map((m) => m.identity.commitment),
       );
 
-      setBusy(t("busy.creating"));
-      const vkJson = await fetch("/circuits/verification_key.json").then((r) => r.json());
+      dispatch({ type: "setBusy", busy: t("busy.creating") });
+      const vkJson = await fetch("/circuits/verification_key.json").then((r) =>
+        r.json(),
+      );
       const vk = verificationKeyToContractFormat(vkJson);
       const adminClient = await connect({ ...NETWORK, onEvent }, adminKp);
       const { result: newCircleId } = await createCircle(adminClient, {
@@ -1068,15 +1050,18 @@ export default function App() {
 
   async function fundMember(i: number) {
     if (!admin || circleId === null) return;
-    setError(null);
-    setBusy(t("fund.busy", { index: i + 1 }));
+    dispatch({ type: "setBusy", busy: t("fund.busy", { index: i + 1 }) });
     try {
       const { connect, fund } = await import("@sharibo/client");
       const m = members[i];
       await fundWithFriendbot(m.keypair.publicKey());
 
       // Set optimistic pending state
-      setMembers((prev) => prev.map((mm, idx) => (idx === i ? { ...mm, pending: true } : mm)));
+      setMembers((prev) =>
+        prev.map((mm, idx) =>
+          idx === i ? { ...mm, pending: true } : mm,
+        ),
+      );
 
       const memberClient = await connect(NETWORK, m.keypair);
       const { hash } = await fund(memberClient, {
@@ -1088,10 +1073,18 @@ export default function App() {
       await syncFundingState();
 
       // Update fund hash for the successful transaction
-      setMembers((prev) => prev.map((mm, idx) => (idx === i ? { ...mm, fundHash: hash } : mm)));
+      setMembers((prev) =>
+        prev.map((mm, idx) =>
+          idx === i ? { ...mm, fundHash: hash } : mm,
+        ),
+      );
     } catch (e) {
       // Clear pending state on error
-      setMembers((prev) => prev.map((mm, idx) => (idx === i ? { ...mm, pending: false } : mm)));
+      setMembers((prev) =>
+        prev.map((mm, idx) =>
+          idx === i ? { ...mm, pending: false } : mm,
+        ),
+      );
       setError(formatError(e, t));
     } finally {
       setBusy(null);
@@ -1100,8 +1093,7 @@ export default function App() {
 
   async function fundWithFreighter(i: number) {
     if (!admin || circleId === null) return;
-    setError(null);
-    setBusy(t("fund.busyFreighter", { index: i + 1 }));
+    dispatch({ type: "setBusy", busy: t("fund.busyFreighter", { index: i + 1 }) });
     try {
       const allowedRes = await isAllowed();
       if (!allowedRes.isAllowed) {
@@ -1113,10 +1105,11 @@ export default function App() {
       // Check for network mismatch between wallet and app config
       const mismatch = checkNetworkMatch(networkRes.network, NETWORK.networkPassphrase);
       if (mismatch) {
+        clearContractClientCache();
         throw new Error(
           `Your Freighter wallet is connected to ${mismatch.walletNetwork}, ` +
-            `but this app is configured for ${mismatch.appNetwork}. ` +
-            `Please open Freighter, click the network selector in the upper right, and switch to ${mismatch.appNetwork}.`,
+          `but this app is configured for ${mismatch.appNetwork}. ` +
+          `Please open Freighter, click the network selector in the upper right, and switch to ${mismatch.appNetwork}.`
         );
       }
 
@@ -1132,30 +1125,27 @@ export default function App() {
         signTransaction: async (txXdr: string, opts?: any) => {
           // Re-check network before signing to catch mid-session network switches
           const currentNetworkRes = await getNetworkDetails();
-          const currentMismatch = checkNetworkMatch(
-            currentNetworkRes.network,
-            NETWORK.networkPassphrase,
-          );
+          const currentMismatch = checkNetworkMatch(currentNetworkRes.network, NETWORK.networkPassphrase);
           if (currentMismatch) {
+            clearContractClientCache();
             throw new Error(
               `Your Freighter wallet is connected to ${currentMismatch.walletNetwork}, ` +
-                `but this app is configured for ${currentMismatch.appNetwork}. ` +
-                `Please open Freighter, click the network selector in the upper right, and switch to ${currentMismatch.appNetwork}.`,
+              `but this app is configured for ${currentMismatch.appNetwork}. ` +
+              `Please open Freighter, click the network selector in the upper right, and switch to ${currentMismatch.appNetwork}.`
             );
           }
 
           const signedRes = await freighterSignTx(txXdr, {
-            networkPassphrase: currentNetworkRes.networkPassphrase,
+            networkPassphrase: currentNetworkRes.networkPassphrase
           });
           if (signedRes.error) {
             throw new Error(signedRes.error.toString());
           }
           return signedRes.signedTxXdr;
-        },
+        }
       };
 
-      // Set optimistic pending state
-      setMembers((prev) => prev.map((mm, idx) => (idx === i ? { ...mm, pending: true } : mm)));
+      dispatch({ type: "patchMember", index: i, pending: true });
 
       const { connect, fund } = await import("@sharibo/client");
       const memberClient = await connect(NETWORK, await toShariboSigner(signer));
@@ -1164,7 +1154,6 @@ export default function App() {
         from: pubKey,
       });
 
-      // Sync with on-chain state after submission
       await syncFundingState();
 
       // Update fund hash and freighter key for the successful transaction
@@ -1173,7 +1162,11 @@ export default function App() {
       );
     } catch (e) {
       // Clear pending state on error
-      setMembers((prev) => prev.map((mm, idx) => (idx === i ? { ...mm, pending: false } : mm)));
+      setMembers((prev) =>
+        prev.map((mm, idx) =>
+          idx === i ? { ...mm, pending: false } : mm,
+        ),
+      );
       setError(formatError(e, t));
     } finally {
       setBusy(null);
@@ -1182,6 +1175,8 @@ export default function App() {
 
   async function doClaim() {
     if (!admin || !tree || circleId === null) return;
+    const status = readCircleStatus();
+    if (status !== "readyToClaim" && !(status === "failed" && !claimResult && fullyFunded)) return;
 
     // Cancel any previous claim that might still be running.
     claimAbortRef.current?.abort();
@@ -1189,16 +1184,10 @@ export default function App() {
     claimAbortRef.current = controller;
     const { signal } = controller;
 
-    setError(null);
-    setClaimResult(null);
-    setRejection(null);
-    setBusy(t("busy.claiming"));
+    dispatch({ type: "beginProve", busy: t("busy.claiming") });
+    let ticking = false;
     try {
-      const [
-        { Keypair },
-        { computeExternalNullifier, connect, claim, getCircle, hasClaimed },
-        { generateProof, verifyProofLocally },
-      ] = await Promise.all([
+      const [{ Keypair }, { computeExternalNullifier, connect, claim, getCircle, hasClaimed }, { generateProof, verifyProofLocally }] = await Promise.all([
         import("@stellar/stellar-sdk"),
         import("@sharibo/client"),
         import("@sharibo/client/prove"),
@@ -1246,6 +1235,7 @@ export default function App() {
           { signal, onEvent },
         );
       } finally {
+        ticking = false;
         clearInterval(proveTimer);
       }
 
@@ -1261,11 +1251,13 @@ export default function App() {
       await fundWithFriendbot(recipient);
 
       if (signal.aborted) return;
-      setClaimStage("submitting");
-      const adminClient = await connect(
-        { ...NETWORK, onEvent: (e) => setEvents((prev) => [...prev, e]) },
-        admin,
-      );
+      dispatch({
+        type: "beginClaim",
+        proof: generated.proof,
+        nullifierHash: generated.nullifierHash,
+        provingElapsedMs: generated.provingTimeMs,
+      });
+      const adminClient = await connect({ ...NETWORK, onEvent: (e) => setEvents(prev => [...prev, e]) }, admin);
       const { hash } = await claim(
         adminClient,
         {
@@ -1287,10 +1279,11 @@ export default function App() {
         proofDurationMs: generated.provingTimeMs,
         verifyTimeMs,
       });
-      setNullifierClaimed(await hasClaimed(adminClient, circleId, generated.nullifierHash));
 
-      // Sync with on-chain state after claim
       await syncFundingState();
+      if (!signal.aborted && readCircleStatus() === "claimed") {
+        dispatch({ type: "clearBusy" });
+      }
     } catch (e) {
       setError(formatError(e, t));
     } finally {
@@ -1307,9 +1300,9 @@ export default function App() {
 
   async function claimAgain() {
     if (!admin || circleId === null || !proof || nullifierHash === null) return;
-    setError(null);
-    setRejection(null);
-    setBusy(t("busy.refunding"));
+    const status = readCircleStatus();
+    if (status !== "claimed" && !(status === "failed" && claimResult)) return;
+    dispatch({ type: "setBusy", busy: t("busy.refunding"), clearRejection: true });
     try {
       const { connect, fund, computeExternalNullifier, claim } = await import("@sharibo/client");
       // Fund round `round` again so this exercises the nullifier-reuse
@@ -1320,7 +1313,10 @@ export default function App() {
         const memberClient = await connect({ ...NETWORK, onEvent }, m.keypair);
         await fund(memberClient, { circleId, from: m.keypair.publicKey() });
       }
-      const freshExternalNullifier = await computeExternalNullifier(circleId, BigInt(round));
+      const freshExternalNullifier = makeExternalNullifier(await computeExternalNullifier(
+        circleId,
+        BigInt(round),
+      ));
 
       setBusy(t("busy.replaying"));
       await claim(
@@ -1345,7 +1341,14 @@ export default function App() {
       } catch {
         // best-effort refresh only
       }
-      setBusy(null);
+    } catch (e) {
+      if (readCircleStatus() === "claimed") {
+        dispatch({ type: "recordRejection", rejection: toUiError(e, t) });
+      }
+    } finally {
+      if (readCircleStatus() === "claimed") {
+        dispatch({ type: "clearBusy" });
+      }
     }
   }
 
@@ -1357,7 +1360,7 @@ export default function App() {
     const refundTotal = (Number(pot) / 1e7).toFixed(1);
 
     const confirmed = window.confirm(
-      t("cancel.confirmation", { count: refundCount, total: refundTotal }),
+      t("cancel.confirmation", { count: refundCount, total: refundTotal })
     );
 
     if (!confirmed) return;
@@ -1370,6 +1373,7 @@ export default function App() {
 
       // Sync with on-chain state after cancellation
       await syncFundingState();
+      dispatch({ type: "clearBusy" });
     } catch (e) {
       setError(formatError(e, t));
     } finally {
@@ -1385,23 +1389,14 @@ export default function App() {
           <p className={styles.sub}>
             It looks like you refreshed the page while a circle was active. Do you want to resume?
           </p>
-          <div
-            className={styles.row}
-            style={{ marginTop: "2rem", justifyContent: "center", gap: "1rem" }}
-          >
-            <button
-              className={`${styles.btn} ${styles.btnPrimary}`}
-              onClick={() => loadState(resumePrompt)}
-            >
+          <div className={styles.row} style={{ marginTop: '2rem', justifyContent: 'center', gap: '1rem' }}>
+            <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => loadState(resumePrompt)}>
               Resume Circle
             </button>
-            <button
-              className={`${styles.btn} ${styles.btnDanger}`}
-              onClick={() => {
-                clearSession();
-                setResumePrompt(null);
-              }}
-            >
+            <button className={`${styles.btn} ${styles.btnDanger}`} onClick={() => {
+              clearSession();
+              setResumePrompt(null);
+            }}>
               {t("resume.discardButton")}
             </button>
           </div>
@@ -1430,15 +1425,16 @@ export default function App() {
           </div>
           <h1>SHARIBO</h1>
           <p className={styles.tagline}>
-            A private rotating savings circle — on Stellar, with real zero-knowledge proofs.
+            {t("landing.tagline")}
           </p>
           <p className={styles.sub}>
-            Every round, everyone contributes. Every round, one member takes the pot. Sharibo proves{" "}
-            <em>who's entitled to claim</em> without ever revealing <em>who</em> claimed.
+            {t("landing.sub.before")} <em>{t("landing.sub.em1")}</em> {t("landing.sub.middle")}{" "}
+            <em>{t("landing.sub.em2")}</em> {t("landing.sub.after")}
           </p>
           <p className={styles.sub}>
-            Every round, everyone contributes. Every round, one member takes the pot. Sharibo proves{" "}
-            <em>who's entitled to claim</em> without ever revealing <em>who</em> claimed.
+            Every round, everyone contributes. Every round, one member takes the
+            pot. Sharibo proves <em>who's entitled to claim</em> without ever
+            revealing <em>who</em> claimed.
           </p>
           <label className={styles.contributionField}>
             <span>{t("landing.contributionLabel")}</span>
@@ -1465,32 +1461,27 @@ export default function App() {
             {busy ?? t("landing.launch")}
           </button>
           {error && <p className={styles.error}>{error}</p>}
-          <Toaster
-            failure={failure}
-            busy={!!busy}
-            online={online}
-            onDismiss={() => setFailure(null)}
-          />
+          <Toaster failure={failure} busy={!!busy} online={online} onDismiss={() => setFailure(null)} />
           {previousCircleId !== null && (
             <p className={styles.fineprint}>
               Your previous circle lives on at{" "}
-              <a className={styles.link} href={explorerContract()} target="_blank" rel="noreferrer">
+              <a
+                className={styles.link}
+                href={explorerContract()}
+                target="_blank"
+                rel="noreferrer"
+              >
                 {t("landing.previousCircleLink", { id: previousCircleId.toString() })}
               </a>
             </p>
           )}
           <p className={styles.fineprint}>
-            Testnet only. Demo identities are generated fresh in your browser, never reused.
+            {t("landing.testnetFineprint")}
           </p>
           {prevCircle && (
             <p className={styles.fineprint}>
               Your previous circle #{prevCircle.id} lives on-chain —{" "}
-              <a
-                className={styles.link}
-                href={prevCircle.explorerUrl}
-                target="_blank"
-                rel="noreferrer"
-              >
+              <a className={styles.link} href={prevCircle.explorerUrl} target="_blank" rel="noreferrer">
                 view on explorer ↗
               </a>
             </p>
@@ -1499,8 +1490,6 @@ export default function App() {
       </div>
     );
   }
-
-  const step: 0 | 1 | 2 | 3 = claimResult ? 3 : fullyFunded ? 2 : 1;
 
   return (
     <div className={styles.page}>
@@ -1553,17 +1542,17 @@ export default function App() {
           </>
         ) : (
           <>
-            <MemberRing
-              members={members.map((m) => ({ funded: m.funded, pending: m.pending }))}
-              revealed={!!claimResult}
-            />
+            <MemberRing members={members.map(m => ({ funded: m.funded, pending: m.pending }))} revealed={!!claimResult} />
 
             <div className={styles.potBarWrap}>
-              <div className="pot-bar" style={{ width: `${(fundedCount / CIRCLE_SIZE) * 100}%` }} />
+              <div
+                className="pot-bar"
+                style={{ width: `${(fundedCount / CIRCLE_SIZE) * 100}%` }}
+              />
             </div>
             <p className="pot-label">
-              pot: {formatXlmDisplay(pot, locale)} / {contributionXlm * CIRCLE_SIZE} XLM · round{" "}
-              {round}
+              pot: {formatXlmDisplay(pot, locale)} / {contributionXlm * CIRCLE_SIZE} XLM ·
+              round {round}
               {feeBps > 0 &&
                 ` · ${t("pot.fee", {
                   feePercent: (feeBps / 100).toString(),
@@ -1573,13 +1562,7 @@ export default function App() {
             </p>
 
             {cancelled && (
-              <div
-                className="callout"
-                style={{
-                  backgroundColor: "var(--color-warning-bg)",
-                  color: "var(--color-warning-text)",
-                }}
-              >
+              <div className="callout" style={{ backgroundColor: "var(--color-warning-bg)", color: "var(--color-warning-text)" }}>
                 <strong>{t("cancel.cancelled")}</strong>
                 <p>{t("cancel.cancelledMessage")}</p>
               </div>
@@ -1601,10 +1584,7 @@ export default function App() {
             <h2>Fund</h2>
             <div className={styles.members}>
               {members.map((m, i) => (
-                <div
-                  key={i}
-                  className={`member ${m.funded ? "funded" : ""} ${m.pending ? "pending" : ""}`}
-                >
+                <div key={i} className={`member ${m.funded ? "funded" : ""} ${m.pending ? "pending" : ""}`}>
                   <span className="member-addr">
                     {t("fund.memberLabel", { index: i + 1 })} · {short(m.keypair.publicKey())}
                     <CopyButton
@@ -1655,8 +1635,9 @@ export default function App() {
               {t("claim.heading")}
             </h2>
             <p className={styles.sub}>
-              Pick which member is claiming this round — the proof will show the contract that
-              they're a real member <em>without</em> revealing which one.
+              Pick which member is claiming this round — the proof will show the
+              contract that they're a real member <em>without</em> revealing
+              which one.
             </p>
             <div className="row">
               {members.map((m, i) => (
@@ -1664,40 +1645,41 @@ export default function App() {
                   <input
                     type="radio"
                     checked={claimantIndex === i}
-                    onChange={() => setClaimantIndex(i)}
+                    onChange={() => dispatch({ type: "selectClaimant", index: i })}
                     disabled={!!busy || !!m.ineligible}
-                    title={m.ineligible ? (m.ineligibleReason ?? "Ineligible to claim") : undefined}
+                    title={m.ineligible ? m.ineligibleReason ?? "Ineligible to claim" : undefined}
                   />
-                  member {i + 1}
-                  {m.ineligible ? " (ineligible)" : ""}
+                  member {i + 1}{m.ineligible ? " (ineligible)" : ""}
                 </label>
               ))}
             </div>
             <button className="btn btn-primary" disabled={!online || !!busy} onClick={doClaim}>
               {claimStage ? CLAIM_STAGE_LABELS[claimStage] : "Generate proof & claim"}
             </button>
+            {claimStage && <ClaimProgress stage={claimStage} elapsedSeconds={proveElapsedSeconds} />}
             <ClaimExplainer />
             {busy && (
               <p className={styles.techline}>
                 {/* Constraint count: update this AND circuits/README.md if the circuit changes. */}
                 Groth16 · BLS12-381 · 3,757 constraints · proving locally in your browser, nothing
                 sent anywhere until the proof is done
-                {isProving && proveElapsedSeconds !== null
-                  ? ` · proving… ${proveElapsedSeconds}s`
-                  : ""}
+                {isProving && proveElapsedSeconds !== null ? ` · proving… ${proveElapsedSeconds}s` : ""}
               </p>
             )}
           </>
         )}
 
         {claimResult && (
-          <div className={styles.result}>
+          <div className={styles.result} data-testid="claim-result">
             <h2 ref={payoutHeadingRef} tabIndex={-1}>
               {t("result.heading")}
             </h2>
             <p>
               {t("result.recipientIntro")} <code>{short(claimResult.recipient)}</code>
-              <CopyButton value={claimResult.recipient} label={t("result.recipientLabel")} />{" "}
+              <CopyButton
+                value={claimResult.recipient}
+                label={t("result.recipientLabel")}
+              />{" "}
               <a href={explorerAccount(claimResult.recipient)} target="_blank" rel="noreferrer">
                 ↗
               </a>{" "}
@@ -1713,18 +1695,20 @@ export default function App() {
             </a>
             <CopyButton value={claimResult.hash} label="claim transaction hash" />
             <p className={styles.callout}>
-              Compare the 5 funding transactions above to this claim — same contract, no shared
-              address, no visible link.
+              Compare the 5 funding transactions above to this claim — same
+              contract, no shared address, no visible link.
             </p>
             <p className="techline">
-              proof generated in {(claimResult.proofDurationMs / 1000).toFixed(1)}s · local verify{" "}
-              {claimResult.verifyTimeMs.toFixed(0)}ms ✓
+              proof generated in {(claimResult.proofDurationMs / 1000).toFixed(1)}s ·
+              local verify {claimResult.verifyTimeMs.toFixed(0)}ms ✓
             </p>
             <button
               className={`${styles.btn} ${styles.btnDanger}`}
               disabled={!online || !!busy || (!!rejection && nullifierClaimed)}
               onClick={claimAgain}
-              title={rejection && nullifierClaimed ? t("result.claimAgainTitle") : undefined}
+              title={
+                rejection && nullifierClaimed ? t("result.claimAgainTitle") : undefined
+              }
             >
               {busy ?? t("result.claimAgainButton")}
             </button>
@@ -1759,12 +1743,7 @@ export default function App() {
                 </button>
                 <p className={styles.fineprint}>
                   Circle #{circleId?.toString()} stays on-chain forever —{" "}
-                  <a
-                    className={styles.link}
-                    href={explorerContract()}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
+                  <a className={styles.link} href={explorerContract()} target="_blank" rel="noreferrer">
                     view on explorer ↗
                   </a>
                   {t("result.newCircleOutro")}

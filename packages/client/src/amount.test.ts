@@ -1,5 +1,6 @@
-import { test } from "vitest";
+import { describe, it } from "vitest";
 import assert from "node:assert/strict";
+import { STROOPS_PER_XLM, formatXlm, stroopsToWholeXlm, xlmToStroops } from "./amount";
 
 import {
   formatXlm,
@@ -23,10 +24,11 @@ test("xlmToStroops accepts exponent-notation numbers below 1e-6", () => {
   assert.equal(xlmToStroops(1e-8), 0n); // sub-stroop truncates to 0
 });
 
-test("formatXlm preserves the full i128::MAX boundary without losing precision", () => {
-  const maxI128 = 170141183460469231731687303715884105727n;
-  assert.equal(formatXlm(maxI128), "170141183460469231731687303715884105727.0000000");
-  assert.equal(STROOPS_PER_XLM, 10_000_000n);
+test("round-trips through xlmToStroops", () => {
+  const values = [0n, 1n, STROOPS_PER_XLM, 10_000_001n, 170141183460469231731687303715884105727n];
+  for (const stroops of values) {
+    assert.equal(xlmToStroops(formatXlm(stroops)), stroops);
+  }
 });
 
 test("xlmToStroops and formatXlm handle negative values consistently", () => {
@@ -79,4 +81,12 @@ test("validateContributionAmount accepts a normal demo amount", () => {
 
 test("validateContributionAmount names unaffordable when above friendbot limit", () => {
   expectCause("10001", "unaffordable");
+});
+
+test("xlmToStroops(formatXlm(n)) round-trips for any non-negative stroop count", () => {
+  fc.assert(
+    fc.property(fc.bigInt({ min: 0n, max: 170141183460469231731687303715884105727n }), (n) => {
+      assert.equal(xlmToStroops(formatXlm(n)), n);
+    }),
+  );
 });

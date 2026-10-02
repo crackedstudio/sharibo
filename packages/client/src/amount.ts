@@ -47,7 +47,8 @@ export function xlmToStroops(xlm: number | bigint | string): bigint {
   }
 
   const negative = value.startsWith("-");
-  const [wholePart, fractionalPart = ""] = value.replace(/^[+-]/, "").split(".");
+  const unsigned = value.replace(/^[+-]/, "");
+  const [wholePart, fractionalPart = ""] = unsigned.split(".");
 
   const wholeUnits = BigInt(wholePart || "0");
   // Truncate — do not round — past the stroop boundary.
@@ -76,13 +77,17 @@ export function stroopsToXlm(stroops: bigint): bigint {
   return stroops / STROOPS_PER_XLM;
 }
 
+/**
+ * Format a stroop amount as a decimal XLM string, preserving all seven
+ * fractional digits.
+ *
+ * @param stroops - The amount in stroops.
+ * @returns The XLM amount as a string, e.g. `"0.9999999"`.
+ */
 export function formatXlm(stroops: bigint): string {
-  const negative = stroops < 0n;
-  const absolute = negative ? -stroops : stroops;
-  const whole = absolute / STROOPS_PER_XLM;
-  const remainder = absolute % STROOPS_PER_XLM;
-  const fraction = remainder.toString().padStart(7, "0");
-  return `${negative ? "-" : ""}${whole}.${fraction}`;
+  const whole = stroops / STROOPS_PER_XLM;
+  const fraction = stroops % STROOPS_PER_XLM;
+  return `${whole}.${fraction.toString().padStart(7, "0")}`;
 }
 
 export type ContributionValidationCause =

@@ -1,4 +1,5 @@
 #![no_std]
+#![allow(clippy::too_many_arguments)]
 #[cfg(test)]
 extern crate std;
 
@@ -7,7 +8,7 @@ mod storage;
 use soroban_sdk::{
     contract, contracterror, contractimpl, contracttype,
     crypto::bls12_381::{Fr, G1Affine, G2Affine},
-    panic_with_error, symbol_short, token, vec, xdr::ToXdr, Address, Bytes, Env, Vec,
+    panic_with_error, token, vec, xdr::ToXdr, Address, Bytes, Env, Vec,
 };
 
 use crate::storage::{load_circle, save_circle, bump_instance, LEDGER_EXTEND_TO, LEDGER_THRESHOLD};
@@ -76,8 +77,8 @@ pub struct Proof {
 /// - A bump requires either a migration function (reading the old layout,
 ///   writing the new one) or an explicit "testnet-reset" note in the release
 ///   commit message.
-/// - A golden-XDR test in `test.rs` (`circle_xdr_layout_golden`) will fail if
-///   the serialised layout changes without a deliberate version bump, making
+/// - The golden-XDR tests in `test.rs` (`mod xdr_golden`) will fail if the
+///   serialised layout changes without a deliberate version bump, making
 ///   accidental breakage impossible to land unnoticed.
 ///
 /// Current version: **2** (adds `fee_bps`/`fee_recipient` — breaking, needs
@@ -179,6 +180,58 @@ pub struct Circle {
     /// [`Contract::claim`]. Must not be the contract's own address when
     /// `fee_bps > 0` (enforced at creation — mirror of the `claim` recipient
     /// guard); ignored when `fee_bps == 0`. Immutable after creation.
+    pub fee_recipient: Address,
+}
+
+/// Lightweight, poll-friendly view of a [`Circle`]'s mutable/small fields.
+///
+/// Returned by [`Contract::get_circle_meta`] for callers that track funding
+/// progress or round advancement (e.g. a UI polling loop). Deliberately
+/// excludes:
+///
+/// - the immutable [`VerificationKey`] — committed at creation and never
+///   changed, fetch it once via [`Contract::get_vk`] and cache it;
+/// - the growable `contributors` / `nullifiers` vectors — already served by
+///   [`Contract::get_contributors`] and [`Contract::has_claimed`].
+///
+/// On BLS12-381 the embedded VK alone serialises to several hundred bytes
+/// (48 bytes per G1 point, 96 per G2 point, plus 5 G1 points in `ic`), so
+/// returning it on every poll dominates RPC payload size for data that never
+/// changes.
+#[contracttype]
+#[derive(Clone)]
+pub struct CircleMeta {
+    /// Schema version for this stored struct. Mirrors [`Circle::schema_version`].
+    pub schema_version: u32,
+    /// Owner of the circle. See [`Circle::admin`].
+    pub admin: Address,
+    /// SAC token contract used for contributions and payouts. See
+    /// [`Circle::token`].
+    pub token: Address,
+    /// Merkle root of the member-commitment tree. See [`Circle::root`].
+    pub root: Fr,
+    /// Amount each [`Contract::fund`] call deposits into [`Circle::pot`].
+    /// See [`Circle::contribution`].
+    pub contribution: i128,
+    /// Number of funders required to fill a round. See [`Circle::size`].
+    pub size: u32,
+    /// Current round number. See [`Circle::round`].
+    pub round: u32,
+    /// Tokens deposited for the **current** round. See [`Circle::pot`].
+    pub pot: i128,
+    /// True once `cancel_circle` has been called. See [`Circle::cancelled`].
+    pub cancelled: bool,
+    /// Number of ledgers each round is allowed to stay open before any
+    /// contributor may call `expire_round`. See
+    /// [`Circle::round_deadline_ledgers`].
+    pub round_deadline_ledgers: u32,
+    /// The ledger sequence number at which the current round began. See
+    /// [`Circle::round_started_ledger`].
+    pub round_started_ledger: u32,
+    /// Protocol fee in basis points. See [`Circle::fee_bps`].
+    pub fee_bps: u32,
+    /// Address that receives the fee deduction on every claim. See
+    /// [`Circle::fee_recipient`].
     pub fee_recipient: Address,
 }
 
@@ -350,7 +403,9 @@ const _: () = assert!(
 pub struct Contract;
 
 #[contractimpl]
+#[allow(clippy::too_many_arguments)]
 impl Contract {
+    /// Create a new contribution circle and return its assigned `circle_id`.
     /// Create a new contribution circle and return its assigned `circle_id`.
     ///
     /// # Authentication
@@ -370,11 +425,11 @@ impl Contract {
     ///   is eligible to claim. Stored in [`Circle::root`].
     /// * `contribution` — fixed amount each [`Self::fund`] deposits.
     ///   Stored in [`Circle::contribution`].
-/// * `size` — number of funders needed to fill a round. `pot_target =
-///   contribution * size`. Stored in [`Circle::size`]. Capped at
-///   [`MAX_CIRCLE_SIZE`] (the Merkle tree's capacity); a larger size is
-///   rejected with [`Error::InvalidCircleParams`] since no more than
-///   2^levels members can ever prove membership.
+    /// * `size` — number of funders needed to fill a round. `pot_target =
+    ///   contribution * size`. Stored in [`Circle::size`]. Capped at
+    ///   [`MAX_CIRCLE_SIZE`] (the Merkle tree's capacity); a larger size is
+    ///   rejected with [`Error::InvalidCircleParams`] since no more than
+    ///   2^levels members can ever prove membership.
     /// * `vk` — Groth16 verification key for the membership circuit.
     ///   Stored in [`Circle::vk`].
     /// * `fee_bps` — protocol fee in basis points (`0..=10_000`; `10_000`
@@ -400,6 +455,7 @@ impl Contract {
     /// * [`Error::InvalidFeeParams`] — `fee_bps` outside `0..=10_000`.
     /// * [`Error::InvalidRecipient`] — `fee_bps > 0` but `fee_recipient` is
     ///   the contract's own address, which would strand the fee forever.
+    #[allow(clippy::too_many_arguments)]
     pub fn create_circle(
         env: Env,
         admin: Address,
@@ -486,15 +542,14 @@ impl Contract {
         // periods (see contracts/README.md §Instance-storage archival).
         extend_instance_ttl(&env);
 
-        env.events().publish(
-            (symbol_short!("circle"), symbol_short!("created"), circle_id),
-            (
-                circle.admin.clone(),
-                circle.token.clone(),
-                circle.contribution,
-                circle.size,
-            ),
-        );
+         CircleCreated {
+             circle_id,
+             admin: circle.admin.clone(),
+             token: circle.token.clone(),
+             contrib: circle.contribution,
+             size: circle.size,
+         }
+        .publish(&env);
         circle_id
     }
 
@@ -529,6 +584,7 @@ impl Contract {
     ///   exact-equality check. See `contracts/README.md`.
     /// * [`Error::Overflow`] — `contribution * size` (computed via
     ///   `pot_target`) or `pot + contribution` overflows `i128`.
+    #[allow(clippy::too_many_arguments)]
     pub fn fund(env: Env, circle_id: u64, from: Address) {
         from.require_auth();
 
@@ -630,6 +686,7 @@ impl Contract {
     /// * [`Error::InvalidProof`] — check 4 failed.
     /// * [`Error::Overflow`] — computing `contribution * size` overflows
     ///   `i128` (absurd parameters set at circle creation).
+    #[allow(clippy::too_many_arguments)]
     pub fn claim(
         env: Env,
         circle_id: u64,
@@ -711,18 +768,17 @@ impl Contract {
         let (fee, net) = apply_fee(&env, circle.fee_bps, payout);
         let token_client = token::Client::new(&env, &circle.token);
         if fee > 0 {
-            token_client.transfer(
-                &env.current_contract_address(),
-                &circle.fee_recipient,
-                &fee,
-            );
+            token_client.transfer(&env.current_contract_address(), &circle.fee_recipient, &fee);
         }
         token_client.transfer(&env.current_contract_address(), &recipient, &net);
 
-        env.events().publish(
-            (symbol_short!("circle"), symbol_short!("claimed"), circle_id),
-            (claimed_round, payout, recipient),
-        );
+         CircleClaimed {
+             circle_id,
+             cround: claimed_round,
+             payout,
+             recipient: recipient.clone(),
+         }
+        .publish(&env);
     }
 
     /// Look up a [`Circle`] by its assigned id.
@@ -740,11 +796,80 @@ impl Contract {
     /// A full [`Circle`] struct (including the embedded [`VerificationKey`]
     /// and current-round [`Circle::contributors`]).
     ///
+    /// # Polling callers
+    ///
+    /// The embedded [`VerificationKey`] is committed at creation and
+    /// immutable, yet serialises to several hundred bytes of BLS12-381 group
+    /// elements on every call. Callers that poll funding state (e.g. a UI
+    /// progress loop) should prefer [`Self::get_circle_meta`], fetching the
+    /// VK once via [`Self::get_vk`] instead.
+    ///
     /// # Errors
     ///
     /// * [`Error::CircleNotFound`] — no circle stored at `circle_id`.
     pub fn get_circle(env: Env, circle_id: u64) -> Circle {
         load_circle(&env, circle_id)
+    }
+
+    /// Lightweight read of a circle's mutable/small fields — the poll-friendly
+    /// alternative to [`Self::get_circle`].
+    ///
+    /// Returns a [`CircleMeta`] that deliberately excludes the embedded
+    /// [`VerificationKey`] (committed at creation and immutable — fetch it
+    /// once via [`Self::get_vk`]) and the `contributors`/`nullifiers` vectors
+    /// (already served by [`Self::get_contributors`] and
+    /// [`Self::has_claimed`]).
+    ///
+    /// # Authentication
+    ///
+    /// None — pure read, available to any caller.
+    ///
+    /// # Arguments
+    ///
+    /// * `circle_id` — id returned from [`Self::create_circle`].
+    ///
+    /// # Errors
+    ///
+    /// * [`Error::CircleNotFound`] — no circle stored at `circle_id`.
+    pub fn get_circle_meta(env: Env, circle_id: u64) -> CircleMeta {
+        let circle = load_circle(&env, circle_id);
+        CircleMeta {
+            schema_version: circle.schema_version,
+            admin: circle.admin,
+            token: circle.token,
+            root: circle.root,
+            contribution: circle.contribution,
+            size: circle.size,
+            round: circle.round,
+            pot: circle.pot,
+            cancelled: circle.cancelled,
+            round_deadline_ledgers: circle.round_deadline_ledgers,
+            round_started_ledger: circle.round_started_ledger,
+            fee_bps: circle.fee_bps,
+            fee_recipient: circle.fee_recipient,
+        }
+    }
+
+    /// Pure read: the circle's Groth16 [`VerificationKey`].
+    ///
+    /// The VK is committed at creation and never changes, so clients should
+    /// fetch it **once** and cache it (e.g. per `(contract_id, circle_id)`)
+    /// rather than polling it. Use [`Self::get_circle_meta`] for the
+    /// poll-friendly view of the remaining state.
+    ///
+    /// # Authentication
+    ///
+    /// None — pure read, available to any caller.
+    ///
+    /// # Arguments
+    ///
+    /// * `circle_id` — id returned from [`Self::create_circle`].
+    ///
+    /// # Errors
+    ///
+    /// * [`Error::CircleNotFound`] — no circle stored at `circle_id`.
+    pub fn get_vk(env: Env, circle_id: u64) -> VerificationKey {
+        load_circle(&env, circle_id).vk
     }
 
     /// Pure read: the current count of circles ever created (i.e. the next
@@ -853,6 +978,7 @@ impl Contract {
     ///
     /// Reverts with [`Error::CircleCancelled`] on a cancelled circle — there
     /// is no point transferring admin rights once the circle is closed.
+    #[allow(clippy::too_many_arguments)]
     pub fn propose_admin(env: Env, circle_id: u64, new_admin: Address) {
         let circle = load_circle(&env, circle_id);
 
@@ -872,17 +998,19 @@ impl Contract {
             .instance()
             .extend_ttl(LEDGER_THRESHOLD, LEDGER_EXTEND_TO);
 
-        env.events().publish(
-            (soroban_sdk::symbol_short!("prop_adm"), circle_id),
-            (circle.admin, new_admin),
-        );
+        AdminProposed {
+            circle_id,
+            old_admin: circle.admin.clone(),
+            new_admin,
+        }
+        .publish(&env);
     }
 
     /// Step 2 of two-step admin transfer: the nominated address accepts,
     /// atomically updating `Circle.admin` and clearing the pending slot.
     ///
     /// Only the address stored by [`Self::propose_admin`] may call this.
-    /// Reverts with [`Error::CircleCancelled`] on a cancelled circle.
+    #[allow(clippy::too_many_arguments)]
     pub fn accept_admin(env: Env, circle_id: u64) {
         let mut circle = load_circle(&env, circle_id);
 
@@ -911,10 +1039,12 @@ impl Contract {
             .extend_ttl(LEDGER_THRESHOLD, LEDGER_EXTEND_TO);
         env.storage().persistent().remove(&pending_key);
 
-        env.events().publish(
-            (soroban_sdk::symbol_short!("acc_adm"), circle_id),
-            (old_admin, new_admin),
-        );
+        AdminAccepted {
+            circle_id,
+            old_admin,
+            new_admin: new_admin.clone(),
+        }
+        .publish(&env);
     }
 
     /// Permissionless: expire a stuck round and refund all current-round
@@ -938,6 +1068,7 @@ impl Contract {
     /// - Increments `circle.round` so old proof round-tags are invalidated.
     /// - Resets `pot`, `contributors`, and `round_started_ledger`.
     /// - Emits a `rnd_exp` event.
+    #[allow(clippy::too_many_arguments)]
     pub fn expire_round(env: Env, circle_id: u64) {
         let mut circle = load_circle(&env, circle_id);
 
@@ -975,10 +1106,11 @@ impl Contract {
         circle.round_started_ledger = env.ledger().sequence();
         persist_circle(&env, circle_id, &circle);
 
-        env.events().publish(
-            (soroban_sdk::symbol_short!("rnd_exp"), circle_id),
-            expired_round,
-        );
+         RoundExpired {
+             circle_id,
+             eround: expired_round,
+         }
+        .publish(&env);
     }
 
     /// Admin-only: cancel a stuck circle and refund all current-round
@@ -1016,6 +1148,7 @@ impl Contract {
     ///
     /// * [`Error::CircleNotFound`] — `circle_id` does not exist.
     /// * [`Error::CircleCancelled`] — circle was already cancelled.
+    #[allow(clippy::too_many_arguments)]
     pub fn cancel_circle(env: Env, circle_id: u64) {
         let mut circle = load_active_circle(&env, circle_id);
 
@@ -1060,10 +1193,12 @@ impl Contract {
             );
         }
 
-        env.events().publish(
-            (symbol_short!("circle"), symbol_short!("cancelled"), circle_id),
-            (refunded_count, refunded_total),
-        );
+         CircleCancelled {
+             circle_id,
+             rcount: refunded_count,
+             rtotal: refunded_total,
+         }
+        .publish(&env);
     }
 
     // External nullifier derivation: SHA-256 over big-endian u64(circle_id)

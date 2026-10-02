@@ -14,6 +14,9 @@ const CLEAN_DIRS = [
   "app/dist",
   "app/.vite",
   "packages/client/dist",
+  "coverage",
+  ".stryker-tmp",
+  "packages/client/reports",
 ];
 
 export function createCleaner(

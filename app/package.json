@@ -1,54 +1,40 @@
 {
-  "name": "@sharibo/app",
-  "version": "0.0.0",
+  "name": "app",
   "private": true,
+  "version": "0.0.0",
   "type": "module",
-  "description": "Web frontend for Sharibo ROSCA platform",
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/crackedstudio/sharibo.git",
-    "directory": "app"
-  },
-  "keywords": [
-    "stellar",
-    "soroban",
-    "rosca",
-    "react",
-    "frontend"
-  ],
   "scripts": {
-    "sync-circuit": "node scripts/sync-circuit.mjs",
-    "dev:circuits": "node scripts/sync-circuit.mjs --watch",
     "dev": "vite",
     "dev:full": "npm run sync-circuit && vite",
     "build": "npm run sync-circuit && vite build",
     "build:analyze": "npm run sync-circuit && ANALYZE=1 vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:e2e": "playwright test -c e2e/playwright.config.ts"
   },
   "dependencies": {
     "@sharibo/client": "*",
     "@stellar/freighter-api": "^6.0.1",
-    "@stellar/stellar-sdk": "^16.2.0",
+    "@stellar/stellar-sdk": "^17.2.0",
     "buffer": "^6.0.3",
-    "react": "19.2.7",
-    "react-dom": "19.2.7"
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
   },
   "devDependencies": {
+    "@playwright/test": "1.63.0",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "7.0.0",
     "@testing-library/react": "16.3.2",
     "@testing-library/user-event": "^14.6.7",
-    "@types/react": "^19.2",
-    "@types/react-dom": "^19.2",
-    "@vitejs/plugin-react": "6.0.3",
+    "@types/react": "^19.3",
+    "@types/react-dom": "^19.3",
+    "@vitejs/plugin-react": "6.1.1",
     "axe-core": "^4.13.0",
-    "jsdom": "26.1.0",
-    "typescript": "6.0.3",
-    "vite": "8.1.3",
-    "vitest": "4.1.10",
+    "jsdom": "30.1.1",
+    "typescript": "7.0.2",
+    "vite": "8.3.1",
+    "vitest": "5.0.2",
     "vitest-axe": "^0.1.0"
   }
 }

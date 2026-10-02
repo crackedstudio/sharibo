@@ -1,0 +1,35 @@
+version: 2
+updates:
+  # npm at the repository root so every workspace (packages/client,
+  # packages/core, app, scripts) is covered by a single grouped update.
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      npm-dependencies:
+        patterns:
+          - "*"
+
+  # Rust dependencies for the Soroban contracts workspace.
+  - package-ecosystem: "cargo"
+    directory: "/contracts"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      cargo-dependencies:
+        patterns:
+          - "*"
+
+  # Keep the pinned GitHub Actions used by the workflows current.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      github-actions:
+        patterns:
+          - "*"

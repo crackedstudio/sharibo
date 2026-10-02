@@ -51,18 +51,18 @@
     "mutate": "stryker run stryker.conf.json && node scripts/generate-mutation-score.js"
   },
   "dependencies": {
-    "@stellar/stellar-sdk": "^16.2.0",
+    "@stellar/stellar-sdk": "^17.2.0",
     "poseidon-bls12381": "1.0.2",
     "snarkjs": "0.7.6"
   },
   "devDependencies": {
-    "@stryker-mutator/core": "8.7.1",
-    "@stryker-mutator/vitest-runner": "8.7.1",
-    "@types/node": "24.13.3",
+    "@stryker-mutator/core": "10.0.0",
+    "@stryker-mutator/vitest-runner": "10.0.0",
+    "@types/node": "26.6.3",
     "@types/snarkjs": "0.7.9",
-    "fast-check": "3.22.0",
-    "tsx": "4.22.4",
-    "typescript": "6.0.3",
-    "vitest": "^2.1.8"
+    "fast-check": "4.10.2",
+    "tsx": "4.23.15",
+    "typescript": "7.0.2",
+    "vitest": "^5.0.2"
   }
 }

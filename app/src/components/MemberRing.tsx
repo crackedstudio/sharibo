@@ -2,9 +2,9 @@ import type { Member } from "../types.js";
 import { useI18n } from "../i18n.js";
 import styles from "./MemberRing.module.css";
 
-// Purely presentational: after a claim, none of the 5 nodes are highlighted
+// Purely presentational: after a claim, none of the nodes are highlighted
 // as "the one that claimed" — that's the point. From outside the ring, all
-// five remain equally plausible; only the demo operator (via the radio
+// members remain equally plausible; only the demo operator (via the radio
 // picker below) ever knows which one actually did.
 import type { Member } from "../types.js";
 import { useI18n } from "../i18n.js";

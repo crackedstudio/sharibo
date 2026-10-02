@@ -280,48 +280,14 @@ export function startArtifactPrefetch(signal?: AbortSignal): Promise<ProverArtif
  * flight its result is still used by the no-signal path.
  */
 export function prefetchMembershipArtifacts(signal?: AbortSignal): Promise<ProverArtifacts> {
-  // Signal-aware callers get their own cancellable promise so an abort does
-  // not poison the shared background cache.
-  if (signal) {
-    return fetchArtifacts(signal).catch((cause: unknown) => {
-      // Don't publish an error for an intentional abort.
-      if (cause instanceof DOMException && cause.name === "AbortError") {
-        throw cause;
-      }
-      const error = cause instanceof Error ? cause : new Error(String(cause));
-      publish({
-        status: "error",
-        loaded: currentProgress.loaded,
-        total: currentProgress.total,
-        fraction: currentProgress.fraction,
-        error,
-      });
-      throw error;
-    });
-  }
-
-  if (!prefetchPromise) {
-    prefetchPromise = fetchArtifacts().catch((cause: unknown) => {
-      const error = cause instanceof Error ? cause : new Error(String(cause));
-      publish({
-        status: "error",
-        loaded: currentProgress.loaded,
-        total: currentProgress.total,
-        fraction: currentProgress.fraction,
-        error,
-      });
-      prefetchPromise = undefined; // allow retry
-      throw error;
-    });
-  }
-  return prefetchPromise;
+  return getDefaultLoader().prefetch(signal);
 }
 
 /**
- * Retrieves the compiled circuit artifacts, prefetching them if not already started.
+ * Subscribes to artifact prefetch progress updates.
  */
-function getArtifacts(): Promise<ProverArtifacts> {
-  return prefetchMembershipArtifacts();
+export function subscribeToArtifactProgress(listener: Listener): () => void {
+  return getDefaultLoader().subscribe(listener);
 }
 
 export function getArtifactPrefetchProgress(): ArtifactPrefetchProgress {

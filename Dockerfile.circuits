@@ -1,0 +1,69 @@
+# Sharibo circuit toolchain
+#
+# Reproducible image for CI, the third-party circuit audit, and new
+# contributors. Everything the circuit suite needs is pinned here:
+#   - circom 2.2.3 (the version the committed verification_key.json and
+#     constraints.json were produced with — asserted by scripts/compile.sh)
+#   - snarkjs 0.7.6 (circuits/package.json)
+#   - Node.js 24 (README requirement)
+#   - Rust 1.92.0 + wasm32v1-none (contract work, needed by `just all`)
+#
+# The trusted setup is stateful and single-party (see circuits/SETUP_TRANSCRIPT.md),
+# so this image consumes the committed verification_key.json rather than
+# generating a new one — a CI-generated setup would be a different, untrusted key.
+#
+# Build & run the circuit suite from a clean checkout:
+#
+#   docker build -t sharibo-circuits .
+#   docker run --rm -v "$(pwd):/sharibo" -w /sharibo sharibo-circuits \
+#       bash -c "cd circuits && npm ci && npm run compile && npm test"
+
+FROM node:24-bookworm
+
+# ── Toolchain ─────────────────────────────────────────────────────────────────
+
+ARG CIRCOM_VERSION=2.2.3
+ARG RUST_VERSION=1.92.0
+
+ENV CIRCOM_VERSION=${CIRCOM_VERSION}
+ENV RUST_VERSION=${RUST_VERSION}
+
+# circom ships prebuilt Linux x64 binaries per release (no source build).
+RUN curl -fsSL "https://github.com/iden3/circom/releases/download/v${CIRCOM_VERSION}/circom-linux-amd64" \
+    -o /usr/local/bin/circom \
+    && chmod +x /usr/local/bin/circom \
+    && circom --version
+
+# Rust toolchain (contract build + stellar CLI).
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+    | sh -s -- -y --default-toolchain ${RUST_VERSION} --profile minimal \
+    && /root/.cargo/bin/rustup target add wasm32v1-none \
+    && /root/.cargo/bin/rustc --version
+
+ENV PATH="/root/.cargo/bin:$PATH"
+
+# ── Workspace deps ────────────────────────────────────────────────────────────
+
+WORKDIR /sharibo
+
+# Install workspace deps first (leverages the Docker layer cache for the
+# heavy node_modules tree; only package.json changes bust this layer).
+COPY package*.json ./
+COPY circuits/package*.json circuits/
+COPY packages/client/package*.json packages/client/
+COPY packages/core/package*.json packages/core/
+COPY app/package*.json app/
+COPY scripts/package*.json scripts/ 2>/dev/null || true
+
+RUN npm ci
+
+# ── Source ────────────────────────────────────────────────────────────────────
+
+COPY . .
+
+# Verify the pinned toolchain reproduces the committed circuit artifacts.
+# This is a build-time assertion: a circom drift fails the image build
+# instead of producing a different-but-passing circuit.
+RUN cd circuits && npm run compile && node scripts/verify-artifacts.mjs
+
+CMD ["bash"]

@@ -42,7 +42,7 @@
 ## Out of scope (unless separately contracted)
 
 - Frontend UX (`app/`) except where it affects secret handling or proof submission
-- Operational key custody, monitoring, incident response ([roadmap.md](../roadmap.md))
+- Operational key custody, monitoring, incident response ([mainnet-readiness.md](../mainnet-readiness.md))
 - Economic / MEV analysis on Stellar mainnet
 - Formal verification of circom compiler or snarkjs
 - Legal / regulatory compliance

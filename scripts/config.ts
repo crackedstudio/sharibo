@@ -151,18 +151,37 @@ const rules: ValidationRule[] = [
 
 // ---- Load & validate ----
 
-function loadConfig(): ScriptConfig {
-  loadEnv();
-
+export function validate(env: Record<string, string | undefined>) {
   const errors: string[] = [];
 
   for (const rule of rules) {
-    const value = process.env[rule.key];
+    const value = env[rule.key];
     const err = rule.validate(value);
     if (err !== null) {
       errors.push(`  - ${rule.label}: ${err}`);
     }
   }
+
+  if (errors.length > 0) {
+    return { config: null, errors };
+  }
+
+  return {
+    config: {
+      stellarRpcUrl: env.STELLAR_RPC_URL || NETWORKS.testnet.rpcUrl,
+      stellarNetworkPassphrase: env.STELLAR_NETWORK_PASSPHRASE || NETWORKS.testnet.passphrase,
+      testTokenContractId: env.TEST_TOKEN_CONTRACT_ID!,
+      shariboContractId: env.SHARIBO_CONTRACT_ID!,
+      adminSecretKey: env.ADMIN_SECRET_KEY!,
+    } as ScriptConfig,
+    errors: [],
+  };
+}
+
+function loadConfig(): ScriptConfig {
+  loadEnv();
+
+  const { config, errors } = validate(process.env);
 
   if (errors.length > 0) {
     const aggregated = [
@@ -175,13 +194,7 @@ function loadConfig(): ScriptConfig {
     throw new Error(aggregated);
   }
 
-  return {
-    stellarRpcUrl: process.env.STELLAR_RPC_URL || NETWORKS.testnet.rpcUrl,
-    stellarNetworkPassphrase: process.env.STELLAR_NETWORK_PASSPHRASE || NETWORKS.testnet.passphrase,
-    testTokenContractId: process.env.TEST_TOKEN_CONTRACT_ID!,
-    shariboContractId: process.env.SHARIBO_CONTRACT_ID!,
-    adminSecretKey: process.env.ADMIN_SECRET_KEY!,
-  };
+  return config!;
 }
 
 // Singleton — loaded once on first import, validated eagerly.

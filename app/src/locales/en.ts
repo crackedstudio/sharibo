@@ -149,7 +149,8 @@ const en = {
   "copy.aria": "Copy {label}",
   "copy.title": "Copy {label}",
 
-  "busy.generating": "Generating a fresh admin + 5 member identities and funding via friendbot…",
+  "busy.generating":
+    "Generating a fresh admin + {count} member identities and funding via friendbot…",
   "busy.creating": "Creating the circle on testnet…",
   "busy.claiming": "Claiming…",
   "busy.refunding": "Refunding a new round, then replaying the same proof's nullifier…",

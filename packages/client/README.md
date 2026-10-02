@@ -153,6 +153,23 @@ The package ships a conditional `exports` map:
 
 ---
 
+## Contract client cache
+
+`connect` caches constructed contract clients to avoid fetching the on-chain
+contract spec repeatedly. A signed client's key is the tuple
+`("signed", contractId, rpcUrl, networkPassphrase, signerPublicKey)`; it
+includes the signer's public key because each client retains its signer. A
+read-only client uses `("read-only", contractId, rpcUrl, networkPassphrase)`.
+`onEvent` is not part of either key; each call updates the cached client's event
+handler to that caller's handler.
+
+The cache is an LRU capped at 16 clients. Consumers should call
+`clearContractClientCache()` when the active network changes, after a contract
+redeploy whose spec may have changed, or when they need to discard clients for
+a replaced contract deployment. A new `contractId` naturally creates a distinct
+entry, but clearing also releases old clients. The demo app clears on detected
+Freighter network mismatches and when returning to the landing screen.
+
 ## Public API
 
 The public surface is small and explicit. `index.ts` re-exports exactly the values and types below, and a test (`src/index.test.ts`) asserts that this list and the barrel agree in both directions.
@@ -212,6 +229,7 @@ g2ToBytes;
 generateIdentity;
 generateProof;
 getCircle;
+getVk;
 getCircleCount;
 getCircleStatus;
 getContributors;

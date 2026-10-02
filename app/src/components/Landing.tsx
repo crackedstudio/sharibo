@@ -1,6 +1,7 @@
 import { explorerContract } from "../lib/explorer.js";
 import styles from "./Landing.module.css";
 import { useI18n } from "../i18n.js";
+import type { CircleId } from "@sharibo/client";
 
 const NAMES = [
   "ajo",
@@ -46,7 +47,7 @@ export function Landing({
 }: {
   busy: string | null;
   error: string | null;
-  previousCircleId: bigint | null;
+  previousCircleId: CircleId | null;
   onLaunch: () => void;
 }) {
   const { t } = useI18n();

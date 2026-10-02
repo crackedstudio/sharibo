@@ -47,6 +47,11 @@ vi.mock("./config", () => ({
     testTokenContractId: "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
   },
   configError: [],
+  CIRCLE_SIZE: 5,
+}));
+
+vi.mock("./hooks/useOnlineStatus", () => ({
+  useOnlineStatus: () => true,
 }));
 
 // Also mock @stellar/stellar-sdk's Keypair so `Keypair.random()` and

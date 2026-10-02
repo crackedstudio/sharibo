@@ -7,6 +7,16 @@
  * serialised bundle. Every field is explicitly allow-listed; a final regex
  * pass is the defence-in-depth backstop.
  *
+ * Redaction split (see #503):
+ * - Fields the build-time allow-list controls (network config, artifact
+ *   hashes, timings, user agent) are trusted. If a secret pattern matches
+ *   there, the allow-list itself is broken, so we THROW — the caller must
+ *   know the build-time guarantee failed.
+ * - Runtime-sourced fields (notably `lastError`, which can carry Stellar SDK
+ *   error payloads and XDR dumps) are untrusted. There we REDACT the match
+ *   with `[REDACTED]` and surface a visible warning, so the user can still
+ *   report their bug instead of getting an exception.
+ *
  * The output is formatted markdown — paste directly into a bug report body.
  */
 
@@ -71,6 +81,12 @@ export interface DebugBundle {
   timings: Record<string, number>;
   recentEvents: LoggedSdkEvent[];
   userAgent: string;
+  /**
+   * Non-fatal redaction warnings raised while building the bundle. Present
+   * only when a runtime-sourced field matched a secret pattern and was
+   * redacted in place (see #503).
+   */
+  redactionWarnings?: string[];
 }
 
 // ─── redaction ──────────────────────────────────────────────────────────────
@@ -103,16 +119,54 @@ export function findLeakedSecret(serialised: string): RegExp | null {
   return null;
 }
 
+/**
+ * Replace every secret-pattern match in `value` with `[REDACTED]`.
+ * Returns the redacted string and the patterns that fired (empty if clean).
+ */
+export function redactSecrets(value: string): {
+  redacted: string;
+  matched: RegExp[];
+} {
+  const matched: RegExp[] = [];
+  let redacted = value;
+  for (const pattern of REDACT_PATTERNS) {
+    pattern.lastIndex = 0;
+    if (pattern.test(redacted)) {
+      matched.push(pattern);
+      pattern.lastIndex = 0;
+      redacted = redacted.replace(pattern, "[REDACTED]");
+    }
+  }
+  return { redacted, matched };
+}
+
 // ─── core builder ───────────────────────────────────────────────────────────
 
 /**
  * Build a redacted debug bundle from explicit, allow-listed inputs.
  *
- * Throws if any value in the serialised bundle matches a secret pattern —
- * this is the hard guarantee: a bundle that would expose secret key material
- * is never returned to the caller.
+ * Trusted (allow-list-controlled) fields are scanned and THROW on a match —
+ * a hit there means the build-time allow-list failed and the caller must
+ * know. Runtime-sourced fields (notably `lastError`) are redacted in place
+ * and reported via `redactionWarnings`, so the user can still file a report.
  */
 export function buildDebugBundle(input: BundleInput): DebugBundle {
+  const warnings: string[] = [];
+
+  // Runtime-sourced field: redact rather than throw so the report survives.
+  let lastError = input.lastError;
+  if (lastError !== null) {
+    const { redacted, matched } = redactSecrets(lastError);
+    if (matched.length > 0) {
+      lastError = redacted;
+      for (const m of matched) {
+        warnings.push(
+          `[debugBundle] Redacted secret-like value in lastError (matched /${m.source}/).`,
+        );
+      }
+    }
+  }
+
   const bundle: DebugBundle = {
     collectedAt: new Date().toISOString(),
     appVersion: input.appVersion,
@@ -126,7 +180,7 @@ export function buildDebugBundle(input: BundleInput): DebugBundle {
     circleId: input.circleId !== null ? input.circleId.toString() : null,
     round: input.round,
     currentStep: input.currentStep,
-    lastError: input.lastError,
+    lastError,
     fundedCount: input.fundedCount,
     circleSize: input.circleSize,
     potStroops: input.pot.toString(),
@@ -140,9 +194,11 @@ export function buildDebugBundle(input: BundleInput): DebugBundle {
     userAgent: input.userAgent,
   };
 
+  if (warnings.length > 0) bundle.redactionWarnings = warnings;
+
   // Defence-in-depth: scan the entire serialised bundle before returning it.
-  // If anything pattern-matches a secret we throw rather than silently redact,
-  // so the caller knows the build-time allow-list failed and can file a bug.
+  // A hit here means a trusted (allow-list-controlled) field leaked — the
+  // build-time guarantee failed, so we throw rather than silently redact.
   const serialised = JSON.stringify(bundle);
   const leaked = findLeakedSecret(serialised);
   if (leaked) {
@@ -263,7 +319,8 @@ export async function copyDebugBundle(
     await navigator.clipboard.writeText(markdown);
     return { ok: true, markdown };
   } catch {
-    // Return the markdown so the UI can fall back to prompt().
+    // Clipboard API unavailable or permission denied — return the markdown
+    // so the caller can fall back to a manual copy prompt.
     return { ok: false, markdown, error: "Clipboard API unavailable" };
   }
 }

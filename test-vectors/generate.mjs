@@ -133,8 +133,52 @@ const fullCircuitExample = {
     nullifierHash: circuitNullifierHash.toString(),
     root: root.toString(),
     externalNullifier: externalNullifier.toString(),
+    recipientHash: recipientHash.toString(),
   },
+  publicSignalsVector: [
+    circuitNullifierHash.toString(),
+    root.toString(),
+    externalNullifier.toString(),
+    recipientHash.toString(),
+  ],
 };
+
+// ── 4. G1/G2 Encoding Example ───────────────────────────────────────────────
+function bytesToHex(bytes) {
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+function encodeG1(point) {
+  const x = BigInt(point[0]);
+  const y = BigInt(point[1]);
+  const bytes = new Uint8Array(96);
+  const xHex = x.toString(16).padStart(96, "0");
+  const yHex = y.toString(16).padStart(96, "0");
+  for (let i = 0; i < 48; i++) {
+    bytes[i] = parseInt(xHex.slice(i * 2, i * 2 + 2), 16);
+    bytes[48 + i] = parseInt(yHex.slice(i * 2, i * 2 + 2), 16);
+  }
+  return bytesToHex(bytes);
+}
+
+function encodeG2(point) {
+  const [x, y] = point;
+  const bytes = new Uint8Array(192);
+  const fields = [x[1], x[0], y[1], y[0]];
+  for (let f = 0; f < 4; f++) {
+    const hex = BigInt(fields[f]).toString(16).padStart(96, "0");
+    for (let i = 0; i < 48; i++) {
+      bytes[f * 48 + i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+    }
+  }
+  return bytesToHex(bytes);
+}
+
+const g1Example = ["123456789012345678901234567890", "987654321098765432109876543210"];
+const g2Example = [
+  ["111111111111111111111111111111", "222222222222222222222222222222"],
+  ["333333333333333333333333333333", "444444444444444444444444444444"],
+];
 
 const vectors = {
   _comment:
@@ -151,7 +195,22 @@ const vectors = {
     externalNullifier: externalNullifierExample.toString(),
     nullifierHash: nullifierHash.toString(),
   },
+  externalNullifierDerivationExample: {
+    circleId: circleId.toString(),
+    round: round.toString(),
+    externalNullifier: externalNullifier.toString(),
+  },
   fullCircuitExample,
+  encodingExample: {
+    g1: {
+      point: g1Example,
+      encoded: encodeG1(g1Example),
+    },
+    g2: {
+      point: g2Example,
+      encoded: encodeG2(g2Example),
+    },
+  },
 };
 
 console.log(JSON.stringify(vectors, null, 2));

@@ -18,6 +18,7 @@ const ISSUE_MESSAGES: Record<CapabilityIssue, string> = {
 
 export function getCapabilityReport(): CapabilityReport {
   const missing: CapabilityIssue[] = [];
+  const insecureContext = typeof window !== "undefined" && window.isSecureContext === false;
 
   if (typeof WebAssembly === "undefined") {
     missing.push("webassembly");
@@ -27,11 +28,11 @@ export function getCapabilityReport(): CapabilityReport {
     missing.push("bigint");
   }
 
-  if (typeof crypto === "undefined" || !crypto.subtle) {
+  if (!insecureContext && (typeof crypto === "undefined" || !crypto.subtle)) {
     missing.push("crypto.subtle");
   }
 
-  if (typeof window !== "undefined" && window.isSecureContext === false) {
+  if (insecureContext) {
     missing.push("secure-context");
   }
 

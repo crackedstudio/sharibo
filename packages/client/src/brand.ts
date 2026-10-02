@@ -65,3 +65,31 @@ export function makeCircleId(id: bigint): CircleId {
   }
   return id as CircleId;
 }
+
+/**
+ * A branded type for nullifier hashes.
+ *
+ * Prevents accidental mixing of a nullifier hash with other bigints.
+ */
+export type NullifierHash = Brand<bigint, "NullifierHash">;
+
+/**
+ * Cast a raw `bigint` to a {@link NullifierHash}.
+ */
+export function makeNullifierHash(hash: bigint): NullifierHash {
+  return hash as NullifierHash;
+}
+
+/**
+ * A branded type for external nullifiers.
+ *
+ * Prevents accidental mixing of an external nullifier with other bigints.
+ */
+export type ExternalNullifier = Brand<bigint, "ExternalNullifier">;
+
+/**
+ * Cast a raw `bigint` to an {@link ExternalNullifier}.
+ */
+export function makeExternalNullifier(nullifier: bigint): ExternalNullifier {
+  return nullifier as ExternalNullifier;
+}

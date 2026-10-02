@@ -39,7 +39,8 @@ Options:
   process.exit(0);
 }
 
-const circleId = BigInt(values["circle-id"]!);
+const { makeCircleId } = await import("@sharibo/client");
+const circleId = makeCircleId(BigInt(values["circle-id"]!));
 
 // --- diagnostics ---
 

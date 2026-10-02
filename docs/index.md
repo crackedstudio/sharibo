@@ -15,6 +15,7 @@ each covers and where to find it.
 | [`CODE_OF_CONDUCT.md`](../CODE_OF_CONDUCT.md)               | Contributor code of conduct                                                                                      |
 | [`SECURITY.md`](../SECURITY.md)                             | Security policy and responsible disclosure                                                                       |
 | [`LICENSE`](../LICENSE)                                     | Project license                                                                                                  |
+| [`CHANGELOG.md`](../CHANGELOG.md)                           | Keep-a-Changelog release history (see Releases in CONTRIBUTING)                                                  |
 
 ## Hackathon-era artifacts (`docs/hackathon/` — point-in-time archive, not maintained)
 
@@ -38,11 +39,11 @@ an archive is allowed to contain stale claims.
 | [`canary.md`](canary.md)                           | Scheduling `scripts/e2e.ts` on testnet; foreground-run constraint                                                                                         |
 | [`ceremony.md`](ceremony.md)                       | **Planned** multi-party trusted-setup runbook (#546) — not executed                                                                                       |
 | [`poseidon-provenance.md`](poseidon-provenance.md) | Poseidon-over-BLS12-381 constants: packages, verification status, risks                                                                                   |
-| [`roadmap.md`](roadmap.md)                         | Mainnet readiness checklist (no target dates)                                                                                                             |
+| [`mainnet-readiness.md`](mainnet-readiness.md)     | Mainnet readiness checklist (no target dates)                                                                                                             |
 | [`threat-model.md`](threat-model.md)               | Assets, adversaries, and which code enforces each property                                                                                                |
 | [`troubleshooting.md`](troubleshooting.md)         | Common setup and proof-verification failures                                                                                                              |
 | [`observability.md`](observability.md)             | SDK `SdkEvent` taxonomy (`onEvent`) for retries, proofs, artifacts, transactions                                                                          |
-| [`deployment.md`](deployment.md)                   | How the live browser demo is built and manually deployed to Vercel                                                                                        |
+| [`deployment.md`](deployment.md)                   | Browser demo deploys plus releases and the Deployments table (tag -> contract ID -> schema -> vk hash)                                                    |
 | [`glossary.md`](glossary.md)                       | Plain-language crypto + ROSCA terms                                                                                                                       |
 
 ## Architecture decision records (`docs/adr/`)
@@ -80,10 +81,11 @@ an archive is allowed to contain stale claims.
 
 ## Contract docs
 
-| File                                                    | Description                                                          |
-| ------------------------------------------------------- | -------------------------------------------------------------------- |
-| [`contracts/README.md`](../contracts/README.md)         | Contract build and deploy instructions                               |
-| [`contracts/BENCHMARKS.md`](../contracts/BENCHMARKS.md) | CPU instruction benchmarks and gas analysis for contract entrypoints |
+| File                                                    | Description                                                                                  |
+| ------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| [`contracts/README.md`](../contracts/README.md)         | Contract build and deploy instructions                                                       |
+| [`contracts/BENCHMARKS.md`](../contracts/BENCHMARKS.md) | CPU instruction benchmarks and gas analysis for contract entrypoints                         |
+| [`events.md`](events.md)                                | Typed event schema: all seven `#[contractevent]` structs, topics, data fields, and lifecycle |
 
 ## Verifiability
 

@@ -19,7 +19,7 @@ jobs:
     name: contracts llvm-cov
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -27,7 +27,7 @@ jobs:
           components: llvm-tools-preview
 
       - name: Cache cargo registry and llvm-cov binary
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.cargo/bin/
@@ -46,6 +46,12 @@ jobs:
           fi
           cargo llvm-cov --version
 
+      - name: Cargo fmt and clippy
+        working-directory: contracts
+        run: |
+          cargo fmt --check
+          cargo clippy --all-targets -- -D warnings
+
       - name: Run contract coverage with floor
         working-directory: contracts
         run: |
@@ -61,7 +67,7 @@ jobs:
 
       - name: Upload lcov artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: contracts-lcov
           path: contracts/coverage/lcov.info
